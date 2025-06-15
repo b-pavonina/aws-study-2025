@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CIDRとは</title>
+    <link rel="stylesheet" href="../common/style.css">
+
+</head>
+
+<body>
+    <header>
+        <a href="../index.html" class="logo">AWS勉強会</a>
+    </header>
+    <main>
+
+    <div class="container">
+        <div class="content">
+            <section id="cidr-intro">
+                <h1>CIDRとは？</h1>
+                <p>
+                    CIDR（Classless Inter-Domain Routing）は、
+                    <strong>IPアドレスとサブネットマスクの長さ</strong>を「/」でまとめて表す方法です。<br>
+                    例えば <span class="cidr">10.0.0.0/24</span> のように記述し、これは「最初の24ビットがネットワーク部」という意味になります。
+                </p>
+            </section>
+
+            <section id="ip-basics">
+                <h2>IPアドレス（IPv4）の基礎</h2>
+                <p>
+                    IPv4アドレスは、インターネット上の機器を識別するための一意の番号で、32ビット（=4バイト）で構成されています。
+                </p>
+                <p>
+                    例：<span class="ip">10.0.0.0</span> や <span class="ip">192.0.2.1</span>
+                </p>
+                <p>
+                    それぞれを8ビットごと（1オクテット）に区切って2進数で表すと、以下のようになります：
+                </p>
+                <ul>
+                    <li>192 → 11000000</li>
+                    <li>0 → 00000000</li>
+                    <li>2 → 00000010</li>
+                    <li>1 → 00000001</li>
+                </ul>
+                <p>
+                    ですが、11000000.00000000.00000010.00000001では見づらいため、通常は10進数（例：<span class="ip">192.0.2.1</span>）で表記します。
+                </p>
+                <p>
+                    IPv4全体で使えるアドレス数は <span class="math">2の32乗 = 約42億個</span> です。<br>
+                    世界の人口が約80億人であり、IPv4アドレスは限られた資源です。そのため、効率的な利用が求められます。        
+                </p>
+            </section>
+
+            <section id="why-cidr">
+                <h2>CIDRの役割と利点</h2>
+                <p>
+                    かつてはIPアドレスは「A/B/Cクラス」によって分けられていましたが、これでは柔軟なネットワーク設計ができませんでした。<br>
+                    CIDRを使うことで、<strong>柔軟にIPアドレス空間を分割</strong>できるようになり、アドレスの無駄も減らせます。<br>
+                    Classlessという名前の通り、クラスにとらわれず、必要なサイズでネットワークを設計できるのがCIDRの特徴です。
+                </p>
+            </section>
+
+            <section id="example">
+                <h2>CIDRの例と読み方</h2>
+                <p>
+                    例：<span class="cidr">10.0.0.0/24</span><br>
+                    → これは「最初の24ビットがネットワーク部」で、残りの8ビットがホスト部という意味です。
+                </p>
+                <p>
+                    残りの8ビットで表せるホスト数は <span class="math">2の8乗 = 256個</span> です。
+                </p>
+                <p>
+                    ※ただし、先頭（ネットワークアドレス）と末尾（ブロードキャストアドレス）は使用できず、AWSが予約しているIPアドレスも含め5つは使えないため、<strong>実際に使えるのは251個</strong>です。
+                </p>
+            </section>
+
+            <section id="cidr-table">
+                <h2>CIDRと使えるIP数の早見表（AWS基準）</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>CIDR表記</th>
+                            <th>ホスト部のビット数</th>
+                            <th>総IP数</th>
+                            <th>AWSで利用可能なIP数</th>
+                            <th>備考</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>/32</td><td>0</td><td>1</td><td>0</td><td>単一IP。通常ルーティング用途。使えない</td></tr>
+                        <tr><td>/30</td><td>2</td><td>4</td><td>1</td><td>5つ予約の影響で使えない。ALB/NAT Gatewayの最小</td></tr>
+                        <tr><td>/29</td><td>3</td><td>8</td><td>3</td><td>非推奨（予約で圧迫）</td></tr>
+                        <tr><td>/28</td><td>4</td><td>16</td><td>11</td><td>最小実用サブネット</td></tr>
+                        <tr><td>/27</td><td>5</td><td>32</td><td>27</td><td>小規模サービス向け</td></tr>
+                        <tr><td>/26</td><td>6</td><td>64</td><td>59</td><td>より現実的な構成</td></tr>
+                        <tr><td>/24</td><td>8</td><td>256</td><td>251</td><td>よく使われる標準サイズ</td></tr>
+                        <tr><td>/16</td><td>16</td><td>65,536</td><td>65,531</td><td>大規模システム向け</td></tr>
+                        <tr><td>/8</td><td>24</td><td>16,777,216</td><td>16,777,211</td><td>非常に広い、通常は使用しない範囲</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="summary">
+                <h2>まとめ</h2>
+                <ul class="feature-list">
+                    <li><strong>CIDR</strong> は IPアドレスとサブネットを1つにまとめる表記方法</li>
+                    <li>IPv4は32ビット、CIDRでネットワークとホストの範囲を調整できる</li>
+                    <li>柔軟なネットワーク設計とアドレスの節約が可能に</li>
+                </ul>
+            </section>
+        </div>
+
+        <nav class="toc">
+            <h2>目次</h2>
+            <ul>
+                <li><a href="#cidr-intro">CIDRとは</a></li>
+                <li><a href="#ip-basics">IPアドレスの基礎</a></li>
+                <li><a href="#why-cidr">CIDRの必要性</a></li>
+                <li><a href="#example">CIDRの例</a></li>
+                <li><a href="#cidr-table">CIDR早見表</a></li>
+                <li><a href="#summary">まとめ</a></li>
+            </ul>
+        </nav>
+    </div>
+    </main>
+
+    <footer>
+        &copy; 2025 AWS勉強会. All rights reserved.
+    </footer>
+    <script>
+        // 省略：目次スクロール処理
+    </script>
+</body>
+
+</html>

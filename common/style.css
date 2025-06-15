@@ -1,0 +1,284 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  
+  margin: 0;
+  font-family: sans-serif;
+  background: #edf2f7;
+}
+
+.index-page {
+  margin: 0;
+  font-family: sans-serif;
+  background: #ecf5ff;
+}
+.page-wrapper{
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+header {
+  background-color: white;
+  padding: 10px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-bottom: 1px solid #ddd;
+}
+
+a {
+  color: #0066ff;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+a:hover {
+  text-decoration: underline;
+  color: #0055cc;
+}
+
+.logo {
+  background-color: rgb(14, 40, 157);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 15px;
+  font-size: 1.5em;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+a.logo:hover {
+  text-decoration: none;
+  background-color: rgb(10, 30, 120);
+  color: white;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin: 20px auto;
+  max-width: 1000px;
+  gap: 10px;
+}
+
+.nav a {
+  flex: 1;
+  background: #fff;
+  padding: 10px;
+  text-align: center;
+  font-weight: bold;
+  text-decoration: none;
+  color: black;
+  border-bottom: 4px solid transparent;
+  min-width: 100px;
+}
+
+.nav a.active {
+  border-bottom-color: #4965d7;
+}
+
+.nav a:hover {
+  background-color: #f0f0f0;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 20px 40px;
+}
+
+.card {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+  text-decoration: none;
+  color: black;
+}
+
+.card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+.card h3 {
+  margin: 10px;
+  font-size: 1em;
+}
+
+.container {
+  display: flex;
+  justify-content: center;
+  padding: 30px 20px;
+  max-width: 1200px;
+  margin: auto;
+  gap: 40px;
+}
+
+.content {
+  background: white;
+  padding: 50px;
+  border-radius: 10px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.content h1 {
+  font-size: 1.5em;
+  margin-top: 0;
+}
+
+.content section {
+  margin-bottom: 40px;
+}
+
+.content img {
+  display: block;
+  margin: 15px auto 0;
+  max-width: 100%;
+}
+
+.content video {
+  display: block;
+  margin: 15px auto 0;
+  max-width: 100%;
+}
+
+.feature-list li,
+.caution-list li {
+  margin-bottom: 1em;
+  line-height: 1.6;
+}
+
+.feature-list strong,
+.caution-list strong {
+  display: inline-block;
+  font-weight: bold;
+  margin-bottom: 0.3em;
+}
+
+.pillar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.pillar-card {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.pillar-card h5 {
+  margin-top: 0;
+  font-size: 1.1em;
+  color: #2c3e50;
+}
+
+.pillar-card ul {
+  padding-left: 1.2em;
+  margin: 0;
+}
+
+.pillar-card li {
+  margin-bottom: 0.5em;
+  line-height: 1.5;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 600px;
+  background: #fff;
+}
+
+table th,
+table td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: left;
+}
+
+table th {
+  background-color: #f0f0f0;
+}
+
+.toc {
+  width: 250px;
+  flex-shrink: 0;
+  background: transparent;
+  position: sticky;
+  top: 30px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding-right: 10px;
+  font-size: 0.85em;
+}
+
+.toc h2 {
+  font-size: 1em;
+  color: #666;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 5px;
+}
+
+.toc ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.toc li {
+  margin: 10px 0;
+}
+
+.toc a {
+  text-decoration: none;
+  color: #333;
+  display: block;
+  border-radius: 4px;
+}
+
+.toc a:hover {
+  background-color: #e0e0e0;
+}
+
+.toc ul ul {
+  margin-left: 2em;
+}
+
+footer {
+  margin-top: auto;
+  width: 100%;
+  text-align: center;
+  padding: 20px;
+  background: white;
+  font-size: 0.9em;
+}
+
+@media (max-width: 960px) {
+  .container {
+    flex-direction: column;
+  }
+
+  .toc {
+    display: none;
+  }
+}

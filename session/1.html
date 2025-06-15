@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>第1回：クラウドって何？AWSで仮想サーバーを立ち上げてみよう！ | AWS勉強会</title>
+    <link rel="stylesheet" href="../common/style.css">
+</head>
+
+<body>
+    <header>
+        <a href="../index.html" class="logo">AWS勉強会</a>
+    </header>
+    <main>
+
+    <div class="container">
+        <div class="content">
+            <h1>第1回：AWSで仮想サーバーを立ち上げてみよう！</h1>
+
+            <section id="introduction">
+                <h2><br>はじめに</h2>
+
+                <h3>このセッションで学べること</h3>
+                <ul>
+                    <li>AWSの基本構造と用語（リージョン、AZ、エッジロケーション など）</li>
+                    <li>クラウドインフラの利点と課題</li>
+                    <li>アカウント作成・セキュリティ設定（IAM, MFA, 課金確認など）</li>
+                    <li>VPC(仮想ネットワーク)の基本構成と作り方</li>
+                    <li>EC2インスタンス(仮想サーバー)の立ち上げとSSHによるリモート接続</li>
+                    <li>最小限のネットワーク構成図を理解して自分で再現できるようにすること</li>
+                </ul>
+                <p>ハンズオンでは、AWS上にシンプルなインフラ(VPC等)を構築し、EC2インスタンスの作成、SSH接続を行います。最終的には以下のような構成図になります。</p>
+                <img src="../image/session/1/introduction.png" alt="AWS構成図"
+                    style="width:100%; max-width:400px; margin-top: 15px; ">
+                <section id="aws">
+                    <h2>1. AWSとは</h2>
+
+                    <h3>1.1 AWSの概要</h3>
+                    <p>
+                        AWS（Amazon Web
+                        Services）は、Amazonが提供する世界最大級のクラウドサービスプラットフォームです。サーバーやデータベース、ストレージ、ネットワークなど、ITインフラに必要なあらゆる機能を、インターネットを通じてオンデマンドで利用できます。
+                    </p>
+
+                    <h3> 1.2 クラウドが普及する理由とその注意点</h3>
+                    <p>オンプレミスを使うより便利で安い場合が多いからというのがクラウドが普及する理由ですが、AWSはクラウドのメリットとして以下を述べています。<br>
+                        ※オンプレミス - 物理的なサーバーを自社運用すること</p>
+
+                    <h4>クラウドコンピューティングの6つの利点（<a
+                            href="https://docs.aws.amazon.com/ja_jp/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html"
+                            target="_blank" rel="noopener">公式link</a>）</h4>
+
+                    <ul class="feature-list">
+                        <li><strong>初期費用が不要（従量課金）</strong><br>
+                            サーバーやデータセンターに先に大きな投資をする必要がなく、使った分だけお金を払う「従量課金制」。使い始めるハードルが低くなります。</li>
+                        <li><strong>スケールメリットによる低コスト</strong><br>
+                            世界中の多くのユーザーとインフラを共有することで、AWSは大規模なスケールでコストを抑え、その分低価格なサービスを提供できます。</li>
+                        <li><strong>キャパシティの事前見積もりが不要</strong><br>
+                            利用者はリソースの数を事前に見積もる必要がなく、必要に応じてすぐに増減できます。これにより、無駄な設備投資や処理不足の心配がなくなります。</li>
+                        <li><strong>スピードと俊敏性の向上</strong><br>
+                            新しいサーバーやストレージを数分で立ち上げられるため、開発や検証のスピードが格段に上がり、アイデアをすばやく形にできます。</li>
+                        <li><strong>運用負担の軽減</strong><br>
+                            物理的なサーバーやデータセンターの保守・運用から解放され、本来集中すべきプロジェクトやサービスの開発に時間を使えるようになります。</li>
+                        <li><strong>グローバル展開が簡単</strong><br>
+                            世界中の複数リージョンにアプリケーションを数クリックで展開可能。お客様に近い場所でサービスを提供でき、遅延を減らせます。</li>
+                    </ul>
+                    <h4>クラウドコンピューティングの注意点</h4>
+                    <p>こちらは<a href="https://cloud.google.com/learn/advantages-of-cloud-computing?hl=ja">GCP(Google Cloud
+                            Platform)のページ</a>を参考にしたクラウドの注意点になります。これらのリスクは、プロバイダのサービスを正しく理解し、慎重に評価選定、運用することで、抑えることができます。
+                    </p>
+                    <ul class="caution-list">
+                        <li><strong>インターネット接続に依存</strong><br>
+                            クラウドはネット経由で利用するため、通信環境が悪いとアプリやデータにアクセスできなくなります。オフライン時の業務継続を考慮する必要があります。</li>
+                        <li><strong>サービス停止のリスク（障害・災害など）</strong><br>
+                            たとえ大手クラウドでも、自然災害や技術的トラブルにより、一時的にサービスが停止することがあります。重要なサービスは冗長化や多リージョン展開が推奨されます。</li>
+                        <li><strong>ベンダーロックインの可能性</strong><br>
+                            一度特定クラウドに依存した設計をすると、他のクラウドやオンプレミスへの移行が難しくなることがあります。ポータビリティを意識した設計が必要です。</li>
+                        <li><strong>自由に制御できない領域がある</strong><br>
+                            物理インフラや一部のネットワーク設定など、クラウドでは利用者が直接制御できない範囲もあります。特定用途では柔軟性が制限される可能性もあります。</li>
+                        <li><strong>セキュリティとプライバシーの懸念</strong><br>
+                            クラウドのセキュリティにはユーザーの責任も含まれます。設定ミスによる情報漏洩や、不十分なアクセス制御がリスクとなるため、設計段階から対策が必須です。</li>
+                        <li><strong>予期せぬコストの発生</strong><br>
+                            使った分だけ課金される仕組みは便利ですが、使いすぎると想定以上の請求が来ることも。リソースの自動停止やコストアラートなどで管理体制を整える必要があります。</li>
+                    </ul>
+
+                    <h3>1.3 責任共有モデル（<a href="https://aws.amazon.com/jp/compliance/shared-responsibility-model/"
+                            target="_blank" rel="noopener">公式link</a>）</h3>
+                    <p> クラウドでは「セキュリティや運用のすべて」をユーザーがやるわけでも、AWSがすべてやってくれるわけでもありません。AWSでは<strong>「責任共有モデル」</strong>という考え方を採用しており、<strong>ユーザーとAWSがそれぞれ異なる範囲の責任を持つ</strong>ことが明確に定義されています。
+                    </p>
+                    <img src="../image/session/1/shared-responsibility-model.png" alt="AWS責任共有モデル"
+                        style="width:100%; max-width:600px; margin-top: 15px; border: 1px solid #ccc; border-radius: 6px;">
+                    <p style="text-align: center; font-size: 0.9em; color: #555; margin-top: 15px;">
+                        AWSの一般的な責任共有モデル
+                    </p>
+                    <h4>AWS側のクラウドのセキュリティ責任</h4>
+                    <ul>
+                        <li>データセンターの物理セキュリティ</li>
+                        <li>サーバー、ネットワーク、ストレージなどのインフラ管理</li>
+                        <li>仮想化基盤やホストOSの運用・保守</li>
+                    </ul>
+                    <p>→ この部分はAWSが責任をもって保護・管理するため、ユーザーはインフラを自分で構築・監視する必要がありません。</p>
+                    <h4>ユーザー側のクラウドにおけるセキュリティ責任</h4>
+                    <ul>
+                        <li>OSやアプリの更新、セキュリティパッチの適用（例：EC2）</li>
+                        <li>データの暗号化、アクセス制御（IAM）</li>
+                        <li>S3バケットやセキュリティグループの設定</li>
+                    </ul>
+                    <p>→ クラウドを安全に使うには、これらの設定をユーザー自身で正しく行う必要があります。</p>
+                    <h4>サービスによって責任範囲は変わる</h4>
+                    <img src="../image/session/1/Shared-Responsibility-by-Service-Type.png" alt="AWS責任共有モデル"
+                        style="width:100%; max-width:600px; margin-top: 15px; ">
+
+                    <p style="text-align: center; font-size: 0.9em; color: #555; margin-top: 5px;">
+                        サービス・タイプ別責任共有モデル（<a
+                            href="https://aws.amazon.com/jp/blogs/news/applying-the-aws-shared-responsibility-model-to-your-gxp-solution/"
+                            target="_blank" rel="noopener">link</a>）
+                    </p>
+                    <p> たとえばEC2のようなIaaSの場合、OSやアプリケーションの管理もユーザーの責任です。逆に、S3やDynamoDBなどのマネージドサービスでは、OSやミドルウェアはAWSが管理してくれます。<br>
+                        つまり、<strong>使うサービスによって、自分がやるべき範囲が変わる</strong>という点に注意が必要です。</p>
+                    <p>※IaaS - Infrastructure as a Serviceの略でイアースやアイアースと読む。仮想サーバーやストレージなどのインフラを提供するクラウドサービスを指す </p>
+
+                    <h4>メリットと注意点</h4>
+                    <ul>
+                        <li><strong>メリット：</strong>自分でインフラを管理しなくてよい分、運用負担を軽減できる</li>
+                        <li><strong>注意点：</strong>「AWSがやってくれるだろう」と思い込まず、自分の責任範囲をしっかり把握して設定・運用を行う必要がある</li>
+                    </ul>
+
+                    <h3>1.4 Well-Architected Framework（<a
+                            href="https://docs.aws.amazon.com/ja_jp/wellarchitected/latest/security-pillar/welcome.html"
+                            target="_blank" rel="noopener">公式link</a>）</h3>
+
+                    <p>
+                        AWSには<strong>安全かつ効率的にシステムを設計・運用するための指針</strong>として、<strong>Well-Architected
+                            Framework</strong>があります。これは推奨される設計・運用のベストプラクティスをまとめたもので、セキュリティやコスト、障害対策など、現場で直面しやすい課題に対応しやすくなり、クラウドを安全に活用する上で重要です。
+                    </p>
+
+                    <h4>6つの柱と設計原則</h4>
+                    <p>Well-Architected
+                        Frameworkは、次の6つ柱から構成され、それぞれに複数の設計原則が定められています。以下で紹介しているのはほんの一部になります。公式ドキュメントは内容は充実しているのですが、なかなか読みづらいため色々なサイトを参照することをお薦めていたします。
+                    </p>
+
+                    <div class="pillar-grid">
+
+                        <div class="pillar-card">
+                            <h5>1. 運用上の優秀性</h5>
+                            <ul>
+                                <li>小規模かつ可逆的な変更を頻繁に行う</li>
+                                <li>マネージドサービスを使用する</li>
+
+                            </ul>
+                        </div>
+
+                        <div class="pillar-card">
+                            <h5>2. セキュリティ</h5>
+                            <ul>
+                                <li>最小権限の原則</li>
+                                <li>データ暗号化</li>
+                                <li>トレーサビリティを確保</li>
+                            </ul>
+                        </div>
+
+                        <div class="pillar-card">
+                            <h5>3. 信頼性</h5>
+                            <ul>
+                                <li>自動復旧の設計</li>
+                                <li>冗長構成とバックアップ</li>
+                                <li>フェイルオーバーの実装</li>
+                            </ul>
+                        </div>
+
+                        <div class="pillar-card">
+                            <h5>4. パフォーマンス効率</h5>
+                            <ul>
+                                <li>サーバーレスの活用</li>
+                                <li>スケーリングの自動化</li>
+                                <li>最新技術の採用</li>
+                            </ul>
+                        </div>
+
+                        <div class="pillar-card">
+                            <h5>5. コスト最適化</h5>
+                            <ul>
+                                <li>従量課金モデル</li>
+                                <li>不要なリソースの削減</li>
+                                <li>使用状況の可視化</li>
+                            </ul>
+                        </div>
+
+                        <div class="pillar-card">
+                            <h5>6. 持続可能性</h5>
+                            <ul>
+                                <li>電力効率の良いサービス</li>
+                                <li>環境に配慮した設計</li>
+                                <li>継続的な最適化</li>
+                            </ul>
+                        </div>
+
+                    </div>
+
+                    <h3>1.5 AWSグローバルインフラストラクチャ（<a href="https://aws.amazon.com/jp/about-aws/global-infrastructure/"
+                            target="_blank" rel="noopener">公式link</a>）</h3>
+
+                    <p>
+                        AWSは世界中にデータセンターを展開しており、<strong>高可用性・低レイテンシ・災害対策</strong>を実現するために、グローバルで分散されたインフラを構築しています。ここでは主要な構成要素である<strong>リージョン、アベイラビリティーゾーン、エッジロケーション</strong>について紹介します。
+                    </p>
+
+                    <h4>🌍 リージョン</h4>
+
+
+                    <p> AWSの<strong>リージョン</strong>とは、地理的に分離された物理的なロケーションのことです。2025年時点で、世界に37のリージョンが存在し、日本には「東京リージョン」や「大阪リージョン」、アメリカには「バージニアリージョン」などがあります。各リージョンには、最低でも<strong>3つ以上のアベイラビリティーゾーン（AZ）</strong>が含まれています。<br><br>
+
+
+                    </p>
+
+                    <img src="../image/session/1/global-infrastructure1.png" alt="AWSグローバルインフラストラクチャマップ"
+                        style="width:100%; max-width:700px; display: block; margin: 20px auto;">
+                    <p style="text-align: center; font-size: 0.9em; color: #555;">AWS グローバルインフラストラクチャマップ（2025年6月現在）</p>
+
+                    <h4>🏢 アベイラビリティーゾーン（AZ）</h4>
+                    <p>
+                    <p> <strong>アベイラビリティーゾーン（AZ）</strong>は、<strong>独立したデータセンター群(1つ以上のデータセンターで構成)</strong>のことであり、1つのリージョンに最低3つ以上のAZが存在します。たとえば、東京リージョンには「ap-northeast-1a」「ap-northeast-1c」「ap-northeast-1d」などのAZが存在します。
+                    </p>
+                    <img src="../image/session/1/region-az.png" alt="リージョンとAZのイメージ図"
+                        style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+                    <p style="text-align: center; font-size: 0.9em; color: #555;">リージョンとAZのイメージ</p>
+                    <p>各AZは、<strong>個別の電力供給、ネットワーク設備、冷却システム</strong>を持ち、<strong>高帯域かつ低レイテンシーの専用ネットワーク</strong>で相互接続されています。こうした特徴から、複数のAZを組み合わせることで<strong>高可用性・耐障害性・拡張性</strong>を実現するシステム構成が可能です。たとえば、アプリケーションを複数のAZに分散し冗長性を持たせることで、停電・落雷・地震などで1つのAZに障害が発生しても、安全にサービスを継続できます。
+                    </p>
+                    <p>※可用性（Availability）- システムが継続して稼働できる度合いや能力のこと </p>
+                    <p> AZ同士は数キロ〜100km以内の物理的に意味のある距離で分離されています。 </p>
+
+
+
+                    <h4>📍 エッジロケーション（Edge Location）</h4>
+                    <p>
+                        エッジロケーションは、CloudFrontなどのCDNで使用される<strong>キャッシュ配信ポイント</strong>です。<br>
+                        <strong>世界700以上の都市に設置</strong>されており、ユーザーに最も近い場所からコンテンツを配信することで、表示速度を大幅に改善できます。
+                    </p>
+                    <p>
+                        たとえばアメリカのユーザーが東京リージョンのサイトにアクセスした場合でも、アメリカ国内のエッジロケーションにあるキャッシュを取得することで、高速にページを表示できます。
+                    </p>
+                    <p>キャッシュとは</p>
+                </section>
+
+                <section id="account">
+                    <h2>2. AWSアカウント作成とセキュリティ設定</h2>
+
+                    <h3>2.1 AWSアカウント開設</h3>
+                    <p><a href="https://aws.amazon.com/jp/register-flow/" target="_blank">公式サイトのAWS
+                            アカウント作成の流れ</a>を開きます。<br>
+                        ページ内の作成の流れ(ステップ1~5)を確認し、「今すぐ無料サインアップ」からアカウント作成を進めます。作成の流れは確認しながら進めることができます。<br>
+
+                        パスワードは忘れないようお気をつけください。難しいところはないと思いますが、ステップ2の連絡先情報の入力は決まったフォーマットがある為、下の図を参考にしてみてください。
+                        またステップ5は無料のベーシックサポートを選択します。
+                    </p>
+                    <img src="../image/session/1/register.png" alt="AWSアカウント登録画面"
+                        style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+                    <p style="text-align: center; font-size: 0.9em; color: #555;">ステップ2の参考画面 フォーマットに注意する必要があります</p>
+                    <p>無事に作成ができ、以下の画面が出たら、「AWSマネジメントコンソールにお進みください」をクリックしましょう。</p>
+                    <img src="../image/session/1/register2.png" alt="AWSアカウント登録完了画面"
+                        style="width:100%; max-width:400px; display: block; margin-top: 10px; ">
+                    <p>自動的にルートユーザーとしてサインインした状態でAWSマネジメントコンソールに遷移します。</p>
+                    <img src="../image/session/1/management-console.png" alt="AWSマネジメントコンソール画面"
+                        style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+
+                    <h3>ルートユーザーとIAMユーザーの使い分け</h3>
+                    <p>現在はルートユーザーにサインインしている状態です。<br>
+                        ルートユーザーはAWSアカウントを作成したときに設定したメールアドレスとパスワードでサインインすることができます。<br>
+                        <strong>ルートユーザーはアカウントの所有者であり、すべてのAWSサービスに対する完全なアクセス権限を持っています。</strong>そのため、セキュリティ上の理由から、日常的な操作ではなく、特別な操作を行うときのみ使用することが推奨されます。<br>
+                        後ほどIAMユーザーというものを作成し、それ以降はルートユーザーの代わりにIAMユーザーを使用します。<br>
+                        <img src="../image/session/1/signin.png" alt="サインイン画面"
+                            style="width:100%; max-width:200px; display: block; margin-top: 10px; ">
+                    </p>
+                    <p style="text-align: center; font-size: 0.7em; color: #555;">サインイン画面:
+                        ルートユーザーとIAMユーザーどちらを使用するか選ぶことができます</p>
+                    <h3>マネジメントコンソールのリージョン注意点</h3>
+                    <p>左上のリージョンの表示が「アジアパシフィック(東京)」か確認してください。まれに画面遷移をしていると、バージニア北部など違うリージョン設定になる場合があるため注意してください。気づいたら東京リージョンに変更しましょう。
+                    </p>
+                    <img src="../image/session/1/check-region.png" alt="リージョン確認画面"
+                        style="width:100%; max-width:400px; display: block; margin-top: 10px; ">
+                    <p>表示がグローバルとなることがありますが、こちらは問題ありません。リージョン単位ではないAWSのサービスはグローバルの表示になります。</p>
+                    <img src="../image/session/1/global-region.png" alt="リージョングローバル表示"
+                        style="width:100%; max-width:400px; display: block; margin-top: 10px; ">
+                    <h3>AWS課金額の確認方法</h3>
+                    <h4>①請求とコスト管理</h4>
+                    <p>マネジメントコンソール右上の検索窓にbillingと入力し、「Billing and Cost Management」を選択します。<br>
+                        <img src="../image/session/1/billing.png" alt="Billing and Cost Management"
+                            style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+
+                        請求とコスト管理ホームが表示され、請求額の確認ができます。アカウントを作成した直後は以下のようにデータ利用不可と表示されます。<br>
+                        <img src="../image/session/1/costmanagement1.png" alt="Billing and Cost Management"
+                            style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+
+                        より詳しい内容は「請求書」または「Cost Explorer」から確認できます。<br>
+                    </p>
+                    <img src="../image/session/1/costmanagement.png" alt="Billing and Cost Management"
+                        style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+                    <h4>②請求書</h4>
+                    <p>月ごとの請求内容を印刷からPDFでダウンロードできます。サービス別料金の確認もできます。</p>
+                    <img src="../image/session/1/billing2.png" alt="Billing"
+                        style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+                    <img src="../image/session/1/billing3.png" alt="Billing"
+                        style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+
+                    <h4>③Cost Explorer</h4>
+                    <p>月ごとの利用料金やサービス別の課金状況がグラフで確認できます。右側のパラメータを使い表示内容を設定できます。</p>
+                    <img src="../image/session/1/costexproler.png" alt="Cost Explorer"
+                        style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+                    <h3>予算(Budgets)を使用し、意図せぬ課金時にメール通知を設定</h3>
+                    <p>「請求とコスト管理」から「予算」を選択します。
+                        <img src="../image/session/1/budgets1.png" alt="予算設定画面"
+                            style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+                        予算を作成を選択し、下の図を参考に設定を進めます。<br>
+                        <img src="../image/session/1/budgets2.png" alt="予算設定画面"
+                            style="width:100%; max-width:800px; display: block; margin-top: 10px; ">
+                        上記で設定すると、予算額に対して以下の３つのパターンの通知が設定されます。<br>
+                        予算額が$10の場合<br>
+                        1) 実際の支出が 85% ($8.5)に達したとき<br>
+                        2) 実際の支出が 100% ($10)に達したとき<br>
+                        3) 予測される支出が 100% ($10)に達すると想定されるとき<br>
+                        さらに、作成した予算を編集することで、しきい値の変更や新しいアラートの追加が可能です。<br>
+                        下の動画では実際の支出を85%から20%($2)に変え、さらに実際の支出が50%($5)のアラートも追加しています。<br>
+                        <video controls width="100%" style="max-width:600px; margin-top:10px;">
+                            <source src="../video/session/1/budgets.mp4" type="video/mp4">
+                            お使いのブラウザは video タグに対応していません。
+                        </video>
+                        <img src="../image/session/1/budgets3.png" alt="予算設定画面"
+                            style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+                    </p>
+                    <h3>IAM ユーザーおよびロールによる請求情報へのアクセス </h3>
+                    <p>現在の状態ではルートユーザーからしか請求情報を見ることができません。それでは不便なため、このあと作成するIAMユーザーでも請求情報を見られるように設定を変更します。<br></p>
+                    <p>マネジメントコンソール画面左上のユーザー名をクリックし、メニューから「アカウント」を選択します。</p>
+                    <img src="../image/session/1/billingaccess.png" alt="請求情報へのアクセス許可"
+                        style="width:100%; max-width:200px; display: block; margin-top: 10px; ">
+                    <p>アカウント画面を半分以上スクロールダウンし、「IAMユーザーおよびロールによる請求情報へのアクセス」のセクションを探し、編集を押します。<br>
+                        <img src="../image/session/1/billingaccess1.png" alt="請求情報へのアクセス許可"
+                            style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+                        IAMアクセスをアクティブ化をチェックし更新を押します。
+                        <img src="../image/session/1/billingaccess2.png" alt="請求情報へのアクセス許可"
+                            style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+                        有効化済みになることを確認します。
+                        <img src="../image/session/1/billingaccess3.png" alt="請求情報へのアクセス許可"
+                            style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+
+                    <h3>IAMユーザーの作成</h3>
+                    <p>「IAM」サービスから新しいユーザーを作成し、管理者権限（AdministratorAccess）を付与します。<br>
+                        マネジメントコンソールの検索窓にiamと入力し、IAMサービスを選択します。<br>
+                        <img src="../image/session/1/iam1.png" alt="IAMサービス画面"
+                            style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+                        IAMサービスの画面が表示されます。左側のメニューから「ユーザー」を選択します。<br>
+                        <img src="../image/session/1/iam2.png" alt="IAMサービス画面"
+                            style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+                        「ユーザーを作成」を押します。<br>
+                        <img src="../image/session/1/iam3.png" alt="IAMサービス画面"
+                            style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+                        ユーザー名を入力し、「AWSマネジメントコンソールへのユーザーアクセスを提供する」にチェック、「IAMユーザーを作成します」を選択、カスタムパスワードを選択し任意のパスワードを入力、次へを押します。<br>
+                        パスワードは忘れないようにしてください。
+                        <img src="../image/session/1/iam4.png" alt="IAMサービス画面"
+                            style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+                        許可を設定で「ポリシーを直接アタッチする」を選択し、許可ポリシーから「AdministratorAccess」を選択し、スクロールダウンして次へを押します。<br>
+                        <img src="../image/session/1/iam5.png" alt="IAMサービス画面"
+                            style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+                        ※ポリシーはJSONで書かれています。ポリシーなどのIAMは次回学習します<br>
+                        <img src="../image/session/1/iam6.png" alt="IAMサービス画面"
+                            style="width:100%; max-width:300px; display: block; margin-top: 10px; ">
+                        確認画面が表示されるので、内容を確認し、問題なければ「ユーザーの作成」を押します。<br>
+                        <img src="../image/session/1/iam7.png" alt="IAMサービス画面"
+                            style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+                        ユーザーの作成が完了すると、以下のような画面が表示されます。ユーザーリストに戻るをクリックして戻りましょう。<br>
+                        <img src="../image/session/1/iam8.png" alt="IAMサービス画面"
+                            style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+
+
+                    </p>
+                    <h3>MFA認証の設定</h3>
+                    <p>セキュリティのため、<strong>ルートユーザーとIAMユーザー両方に必ず多要素認証（MFA）</strong>を設定してください。<br>
+                        ルートユーザーから設定します。画面左上のアカウント名をクリックし、メニューから「セキュリティ認証情報」を選択します。<br>
+
+                        <img src="../image/session/1/mfa2.png" alt="MFA設定画面"
+                            style="width:100%; max-width:200px; display: block; margin-top: 10px; ">
+                        「多要素認証（MFA）」セクションの「MFAデバイスの割り当て」をクリックします。<br>
+                        <img src="../image/session/1/mfa6.png" alt="MFA設定画面"
+                            style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+                        <br>MFAデバイスを選択します。デバイス名は任意のものを指定できます。<br>
+                        「パスキーまたはセキュリティキー」がセキュアで操作も簡潔で優れています。
+                        (生体認証やPINを使用したiCloud キーチェーン、Google パスワードマネージャー、Windows Helloなどが使用可)<br>
+                        認証アプリケーションは、Google AuthenticatorやMicrosoft Authenticatorなどのアプリが利用できます。<br>
+                        選択後は「次へ」を押して、画面の指示に沿って設定をお願いします。<br>
+                        <img src="../image/session/1/mfa3.png" alt="MFA設定画面"
+                            style="width:100%; max-width:400px; display: block; margin-top: 10px; ">
+                    <p>
+
+
+                        可能であれば、複数のMFAデバイスを設定してください(<a
+                            href="https://docs.aws.amazon.com/ja_jp/IAM/latest/UserGuide/id_credentials_mfa_lost-or-broken.html">公式</a>で推奨されています)。MFAデバイス紛失時などサポートに連絡することなく、予備のMFAデバイスを使用しアカウントへサインインでき、ルートユーザーのパスワード変更ができます。<br>
+                        <br>
+
+
+                        ルートユーザーのMFAが設定し終わりましたら、IAMユーザーにも同様にMFAを設定していきます。<br>
+                        IAMの左メニューから「ユーザー」を選択し、先ほど作成したIAMユーザーを選択します。<br>
+                        「セキュリティ認証情報」タブを選択し、「MFAデバイスの割り当て」を押します。以降は先ほどと同じ手順でMFAを設定します。<br>
+                        <img src="../image/session/1/mfa7.png" alt="MFA設定画面"
+                            style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+
+                    <h4>エイリアスの設定</h4>
+                    <p>エイリアスはアカウントIDの代わりに使用できる名前です。必須ではないですが、サインイン時に利用でき、覚えやすく便利です。<br>
+                        IAMダッシュボード左側にエイリアス作成ボタンがあります。名前は自由に設定できますが、他のユーザーが既に利用しているものは使えません。<br>
+                        <img src="../image/session/1/alias.png" alt="エイリアス設定画面"
+                            style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+
+
+                    <h4>IAMユーザーでサインイン</h4>
+                    ここまでルートユーザーにサインインしていましたが、今後はIAMユーザーを使用し学習します。<br>
+                    画面左上のメニューから、アカウントIDまたはエイリアスをコピーしておきましょう、サインイン時に必要になります。<br>
+                    コピーしたらルートユーザーからサインアウトします。<br>
+                    <img src="../image/session/1/signout.png" alt="サインアウト画面"
+                        style="width:100%; max-width:150px; display: block; margin-top: 10px; ">
+                    画面遷移後に、「もう一度ログインする」、「またはコンソールにサインイン」を押します。
+                    <img src="../image/session/1/signin1.png" alt="IAMユーザーサインイン画面"
+                        style="width:100%; max-width:600px; display: block; margin-top: 10px; ">
+                    <p>下のどちらかのサインイン画面が出ますが、一つ目の場合IAMユーザーを選択し、アカウントIDまたはエイリアスを入力し次へを押します。<br>
+                        二つ目の場合アカウントIDまたはエイリアス、IAMユーザー名、パスワードを入力しサインインします。<br>
+                        MFA認証を済ませると、IAMユーザーとしてマネジメントコンソールにサインインできます。<br>
+                        <img src="../image/session/1/signin2.png" alt="IAMユーザーサインイン画面"
+                            style="width:100%; max-width:200px; display: block; margin-top: 10px; ">
+                        <img src="../image/session/1/signin3.png" alt="IAMユーザーサインイン画面"
+                            style="width:100%; max-width:200px; display: block; margin-top: 10px; ">
+                    </p>
+                </section>
+
+                <section id="vpc-overview">
+                
+                        <h2>3. VPCの概要と構成要素</h2>
+                        <p>AWSではEC2などの仮想サーバーを立ち上げる際、自分でインフラを作る必要があります。<br><strong>VPC、サブネット、インターネットゲートウェイ、ルートテーブル、セキュリティーグループ</strong>などたくさんの用語が出てきます。あとのハンズオンで使う為、この5つは理解しましょう。
+                        </p>
+
+                        <article class="vpc-block">
+                            <h3>1. VPCとは？</h3>
+                            <p><strong>Amazon VPC（Amazon Virtual Private
+                                    Cloud）</strong>は、AWS上に構築する自分専用の仮想ネットワーク空間です。企業ネットワークのように、サブネット、ルート、セキュリティなどを自由に設計できます。
+                            </p>
+                            <img src="../image/session/1/vpc1.drawio.png" alt="vpc構成図"
+                                style="width:100%; max-width:200px; display: block; margin-top: 10px; ">
+                            <p style="text-align: center; font-size: 0.9em; color: #555; margin-top: 15px;">
+                                VPCイメージ：VPCのみ作成した状態ではインターネットとは接続しておらず、VPC内は完全にプライベートな状態です
+                            </p>
+                            <p>VPCのIPアドレスの範囲は、CIDR(Classless Inter-Domain Routing)を使用し設定します。</p>
+                            <p>CIDRとは？
+                                10.0.0.0/24のような形式で、IPアドレスとサブネットマスクを組み合わせた表記法です。<br>
+                                まずIPアドレス(IPv4)について理解しましょう。<br>
+                                10.0.0.0や192.0.2.1のような形式のネットワーク上のデバイスを識別するための一意の番号です。<br>
+                                IPv4は32ビットです。４バイト(8ビット×4)ですね。そのため00001010.00000000.00000000.00000000のように8ビットを4つに分けて表記できます。<br>
+                                ただ見づらいため、00001010.00000000.00000000.00000000なら、各8ビットを10進数にし、10.0.0.0のように通常は書きます。<br>
+                                ちなみにIPv4の数は、2の32乗で計算でき、約42億個あります。人口に比べて少ないため枯渇が叫ばれています。<br>
+
+                                10.0.0.0/24のように「/」の後に数字が続く場合、これはサブネットマスクを表します。<br>
+                                
+
+                            </p>
+                            <p>以下のCIDR(Classless Inter-Domain Routing)範囲内から任意のCIDRを指定します(/16〜/28のCIDRブロックを使用)。仮想であるため、0.0.0.0から255.255.255.255まで全ての範囲のプライベートIP(約40億個)を設定可能ですが、グローバルIPと重複する範囲の設定は推奨されません。
+                            </p>
+                            <table style="border-collapse: collapse; width: 100%; max-width: 600px;">
+                                <thead>
+                                    <tr>
+                                        <th style="border: 1px solid #ccc; padding: 8px; background: #f2f2f2;">範囲</th>
+                                        <th style="border: 1px solid #ccc; padding: 8px; background: #f2f2f2;">
+                                            実際のIPアドレス範囲</th>
+                                        <th style="border: 1px solid #ccc; padding: 8px; background: #f2f2f2;">
+                                            利用可能IPアドレス数（理論値）</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="border: 1px solid #ccc; padding: 8px;"><code>10.0.0.0/8</code></td>
+                                <td style="border: 1px solid #ccc; padding: 8px;">
+                                    <code>10.0.0.0 ～ 10.255.255.255</code>
+                                </td>
+                                <td style="border: 1px solid #ccc; padding: 8px;">16,777,216 個（約1,670万）</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid #ccc; padding: 8px;"><code>172.16.0.0/12</code>
+                                    </td>
+                                    <td style="border: 1px solid #ccc; padding: 8px;">
+                                        <code>172.16.0.0 ～ 172.31.255.255</code>
+                                    </td>
+                                    <td style="border: 1px solid #ccc; padding: 8px;">1,048,576 個（約104万）</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid #ccc; padding: 8px;"><code>192.168.0.0/16</code>
+                                    </td>
+                                    <td style="border: 1px solid #ccc; padding: 8px;">
+                                        <code>192.168.0.0 ～ 192.168.255.255</code>
+                                    </td>
+                                    <td style="border: 1px solid #ccc; padding: 8px;">65,536 個（約6.5万）</td>
+                                </tr>
+                                </tbody>
+                                </table>
+                            <p>あとのVPC作成のハンズオンでは「10.0.0.0/16」を指定します。
+                            </p>
+                        </article>
+
+                        <article class="vpc-block">
+                            <h3>2. ネットワーク構成の基本</h3>
+
+                            <h4>🧱 サブネット（Subnet）</h4>
+                            <p>VPC内のネットワークを小さく分割したものサブネットです。EC2などのリソースはVPCに直接はおけず、サブネットの中に作成します。</p>
+                            <p>サブネットの図を挿入</p>
+                            <p>サブネットにもCIDRを割り当てます。例えば「10.0.1.0/24」や「10.0.2.0/24」など、VPC全体のCIDR内で範囲を区切ります。</p>
+                            <p>上記図の状態ではまだインターネットとサブネットはつながっていません。プライベートサブネットと呼ばれます。</p>
+                            <p>ではどうしたらインターネットとの通信ができるのでしょうか？必要なものがあります。</p>
+
+
+                            <h4>🌐 インターネットゲートウェイ（IGW）</h4>
+                            <p>VPC図を挿入</p>
+                            <p>VPCをインターネットに接続するための出入口。VPCにアタッチします。<br>
+                                これでサブネットはインターネットに接続可能になりますか？まだです、出入り口をつけただけではサブネットはインターネットに接続できません。</p>
+                            </p>
+
+                            <h4>🛣 ルートテーブル（Route Table）</h4>
+                            <p>通信経路を定義する設定。各サブネットにアタッチし、宛先CIDRとターゲット（IGW/NATなど）を指定します。</p>
+                            <p>ルートテーブルの図を挿入</p>
+                            <p>ルートテーブルでIGWを経由するルート（例：<code>0.0.0.0/0 → IGW</code>）を設定することで、サブネットがパブリックになります</p>
+                            <p>その設定のないものはプライベートなままです。</p>
+                            <ul>
+                                <li><strong>パブリックサブネット：</strong>インターネットとの通信が可能なサーバー向け（例：Webサーバー）</li>
+                                <li><strong>プライベートサブネット：</strong>外部アクセス不可。内部処理向け（例：DB）</li>
+                            </ul>
+
+                            <h4>🔁 NAT Gateway</h4>
+                            <p>プライベートサブネットのインスタンスが外部通信するためのゲートウェイ。外部からのアクセスは不可です。</p>
+
+
+                        </article>
+
+                        <article class="vpc-block">
+                            <h3>3. セキュリティとIP管理</h3>
+
+                            <h4>🔐 セキュリティグループ（SG）</h4>
+                            <p>EC2などに適用する仮想ファイアウォール。インバウンド/アウトバウンドで許可ルールのみ設定し、返答通信は自動的に許可されます（ステートフル）。</p>
+
+                            <h4>📜 ネットワークACL（NACL）</h4>
+                            <p>サブネット単位のアクセス制御。許可・拒否の両ルールを設定します（ステートレス）。</p>
+
+                            <h4>🧠 SGとNACLの違い</h4>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>項目</th>
+                                        <th>セキュリティグループ</th>
+                                        <th>ネットワークACL</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>適用単位</td>
+                                        <td>EC2インスタンス</td>
+                                        <td>サブネット</td>
+                                    </tr>
+                                    <tr>
+                                        <td>通信の状態</td>
+                                        <td>ステートフル</td>
+                                        <td>ステートレス</td>
+                                    </tr>
+                                    <tr>
+                                        <td>許可・拒否</td>
+                                        <td>許可のみ</td>
+                                        <td>許可・拒否両方</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <h4>🧩 Elastic IP（EIP）</h4>
+                            <p>EC2インスタンスなどに割り当て可能な固定グローバルIP。再起動時でもIPが変わらないため、外部公開用途に便利です。</p>
+
+                            <h4>📶 ENI（Elastic Network Interface）</h4>
+                            <p>EC2にアタッチできる仮想ネットワークカード。IPアドレスやセキュリティグループの設定を柔軟に扱えます。</p>
+                        </article>
+
+                        <article class="vpc-block">
+                            <h3>4. 可用性と拡張性</h3>
+
+                            <h4>🏢 アベイラビリティゾーン（AZ）</h4>
+                            <p>リージョン内の物理的に分離されたデータセンター群。AZ単位でサブネットを配置することで、冗長構成と高可用性を実現できます。</p>
+
+                            <h4>🌉 マルチVPCと接続</h4>
+                            <p>VPCを用途や部門ごとに分け、VPCピアリングやTransit Gatewayで接続することで、大規模なネットワーク設計が可能です。</p>
+                        </article>
+                    </section>
+
+
+                    <section id="vpc-hands-on">
+                        <h2>4. VPCハンズオン</h2>
+
+                        <p>このハンズオンでは、EC2インスタンスを配置するための最小構成のVPCを作成します。パブリックサブネットを1つ持ち、インターネット接続が可能な構成を用意します。</p>
+
+                        <h3>構成概要</h3>
+                        <ul>
+                            <li>VPC（10.0.0.0/16）</li>
+                            <li>パブリックサブネット（10.0.1.0/24）</li>
+                            <li>インターネットゲートウェイ</li>
+                            <li>ルートテーブル（0.0.0.0/0 → IGW）</li>
+                            <li>セキュリティグループ（SSH: 22番ポートを自分のIPから許可）</li>
+                        </ul>
+
+                        <h3>手順</h3>
+                        <ol>
+                            <li>VPCを作成（10.0.0.0/16）</li>
+                            <li>サブネットを作成（10.0.1.0/24、パブリック）</li>
+                            <li>インターネットゲートウェイ（IGW）を作成してVPCにアタッチ</li>
+                            <li>ルートテーブルを作成し、0.0.0.0/0 に IGW を設定</li>
+                            <li>ルートテーブルをサブネットに関連付け</li>
+                            <li>サブネットの「自動割り当てパブリックIP」を有効にする</li>
+                            <li>セキュリティグループを作成し、SSH(22)を許可</li>
+                        </ol>
+
+                        <p>この構成で、次のEC2ハンズオンでパブリックIPからSSH接続が可能になります。</p>
+                    </section>
+
+                    <section id="ec2-overview">
+                        <h2>5. EC2とは？</h2>
+
+                        <h3>仮想サーバーとは</h3>
+                        <p>物理的なサーバーを仮想的に分割し、複数の利用者がそれぞれ独立した環境として利用できるようにしたものです。AWSではEC2というサービスで仮想サーバーを提供しています。</p>
+
+                        <h3>ハイパーバイザーとは</h3>
+                        <p>仮想化を実現するソフトウェアのことです。物理マシンの上で複数の仮想マシンを動かす仕組みを提供し、AWSではXenやNitroといった技術が使われています。</p>
+
+                        <h3>AMI（Amazon Machine Image）</h3>
+                        <p>EC2インスタンスを起動するための「OSとソフトウェアのセット」です。UbuntuやAmazon Linuxなど、用途に応じたAMIを選んでサーバーを立ち上げます。</p>
+
+                        <h3>インスタンスタイプ</h3>
+                        <p>仮想サーバーのスペックを表します。CPU・メモリ・ネットワーク帯域などに応じて様々なタイプ（例：t3.micro, m5.largeなど）があります。</p>
+
+                        <h3>EBS（Elastic Block Store）</h3>
+                        <p>EC2にアタッチする仮想ハードディスクです。インスタンスのストレージとしてOSやデータを保存します。停止してもデータが保持されます。</p>
+
+                        <h3>キーペア</h3>
+                        <p>SSH接続のための公開鍵と秘密鍵のセットです。インスタンス作成時に登録し、秘密鍵（.pemファイル）を使って安全にリモート接続します。</p>
+                    </section>
+
+                    <section id="ec2-hands-on">
+                        <h2>6. EC2ハンズオン</h2>
+
+                        <p>このハンズオンでは、VPC上にEC2インスタンスを作成し、SSH接続を行って "hello world" を表示するまでの手順を体験します。</p>
+
+                        <h3>前提</h3>
+                        <ul>
+                            <li>VPCとパブリックサブネットが作成済み</li>
+                            <li>インターネットゲートウェイが設定済み</li>
+                            <li>キーペア（.pemファイル）を事前に作成しておく</li>
+                        </ul>
+
+                        <h4>✅ キーペアの作成方法（AWSマネジメントコンソール）</h4>
+                        <ol>
+                            <li>AWSマネジメントコンソールにログイン</li>
+                            <li>サービスメニューから「EC2」を選択</li>
+                            <li>左メニューで「キーペア」をクリック</li>
+                            <li>「キーペアを作成」を押す</li>
+                            <li>
+                                下記の項目を入力または選択：
+                                <ul>
+                                    <li>キーペア名（例：<code>my-key</code>）</li>
+                                    <li>キーペアの種類：RSA（推奨）</li>
+                                    <li>プライベートキーフォーマット：<code>.pem</code>（Mac / Linux）または
+                                        <code>.ppk</code>（Windows用PuTTY）
+                                    </li>
+                                </ul>
+                            </li>
+                            <li>「キーペアを作成」を押すと、秘密鍵ファイル（<code>.pem</code>）が自動的にダウンロードされる</li>
+                        </ol>
+                        <p><strong>⚠️ ダウンロードした <code>.pem</code> ファイルは後から再取得できないので、大切に保管してください！</strong></p>
+
+                        <h3>手順</h3>
+                        <ol>
+                            <li>EC2ダッシュボードに移動し「インスタンスを起動」</li>
+                            <li>AMIの選択：Amazon Linux 2を選択</li>
+                            <li>インスタンスタイプ：無料枠の <code>t2.micro</code> または <code>t3.micro</code> を選択</li>
+                            <li>キーペアの選択：作成済みのキーペアを選ぶ</li>
+                            <li>ネットワーク設定：作成したVPCとパブリックサブネットを選択</li>
+                            <li>「自動割り当てパブリックIPを有効化」</li>
+                            <li>セキュリティグループ：SSH (ポート22) を自分のIPに制限して許可</li>
+                            <li>インスタンスを起動</li>
+                        </ol>
+
+                        <h3>SSH接続</h3>
+                        <ol>
+                            <li>インスタンスの「パブリックIPv4アドレス」を確認</li>
+                            <li>ターミナルで以下のコマンドを実行（pemファイルのパスは適宜変更）</li>
+                        </ol>
+                        <pre><code>chmod 400 my-key.pem
+ssh -i my-key.pem ec2-user@<インスタンスのパブリックIP></code></pre>
+
+                        <h3>"hello world" を表示</h3>
+                        <ol>
+                            <li>ログイン後、以下のコマンドを実行</li>
+                        </ol>
+                        <pre><code>echo "hello world"</code></pre>
+
+                        <p>これでEC2ハンズオンは完了です！仮想サーバーへの接続体験ができました 🎉</p>
+                    </section>
+        </div>
+
+        <nav class="toc">
+            <h2>目次</h2>
+            <ul>
+                <li><a href="#introduction">はじめに</a></li>
+                <li><a href="#aws">1. AWSとは</a>
+                    <ul>
+                        <li><a href="#awsの概要">AWSの概要</a></li>
+                        <li><a href="#グローバルインフラストラクチャ">グローバルインフラストラクチャ</a></li>
+                        <li><a href="#リージョン">リージョン</a></li>
+                        <li><a href="#アベイラビリティーゾーン（AZ）">アベイラビリティーゾーン（AZ）</a></li>
+                        <li><a href="#エッジロケーション(CloudFront POP)">エッジロケーション</a></li>
+                        <li><a href="#従量課金">従量課金</a></li>
+                        <li><a href="#責任共有モデル">責任共有モデル</a></li>
+                        <li><a href="#クラウドコンピューティングの6つの長所">クラウドの長所</a></li>
+                        <li><a href="#クラウドコンピューティングの限界">クラウドの限界</a></li>
+                    </ul>
+                </li>
+                <li><a href="#account">2. AWSアカウント作成とセキュリティ設定</a>
+                    <ul>
+                        <li><a href="#AWSアカウント開設">AWSアカウント開設</a></li>
+                        <li><a href="#ルートユーザーログイン方法">ルートユーザーのログイン</a></li>
+                        <li><a href="#AWS課金額の確認方法">課金額の確認</a></li>
+                        <li><a href="#予算額を越えた際にメール通知する設定">予算通知設定</a></li>
+                        <li><a href="#MFA認証の設定">MFA認証</a></li>
+                        <li><a href="#管理者IAMユーザーの設定">IAMユーザー</a></li>
+                    </ul>
+                </li>
+                <li><a href="#vpc-overview">3. VPCの概要</a>
+                    <ul>
+                        <li><a href="#VPCとは">VPCとは</a></li>
+                        <li><a href="#パブリックサブネット">パブリックサブネット</a></li>
+                        <li><a href="#プライベートサブネット">プライベートサブネット</a></li>
+                        <li><a href="#マルチVPC">マルチVPC</a></li>
+                        <li><a href="#AZ-ID">AZ-ID</a></li>
+                        <li><a href="#ルートテーブル">ルートテーブル</a></li>
+                        <li><a href="#インターネットゲートウェイ（IGW）">インターネットゲートウェイ</a></li>
+                        <li><a href="#NAT Gateway">NAT Gateway</a></li>
+                        <li><a href="#ENI（Elastic Network Interface）">ENI</a></li>
+                        <li><a href="#Elastic IPアドレス">Elastic IP</a></li>
+                        <li><a href="#セキュリティグループ">セキュリティグループ</a></li>
+                        <li><a href="#ステートフル・ステートレスインスペクション">ステートフル・ステートレス</a></li>
+                    </ul>
+                </li>
+                <li><a href="#vpc-hands-on">4. VPCハンズオン</a></li>
+                <li><a href="#ec2-overview">5. EC2とは？</a>
+                    <ul>
+                        <li><a href="#仮想サーバーとは">仮想サーバー</a></li>
+                        <li><a href="#ハイパーバイザーとは">ハイパーバイザー</a></li>
+                        <li><a href="#AMI（Amazon Machine Image）">AMI</a></li>
+                        <li><a href="#インスタンスタイプ">インスタンスタイプ</a></li>
+                        <li><a href="#EBS（Elastic Block Store）">EBS</a></li>
+                        <li><a href="#キーペア">キーペア</a></li>
+                    </ul>
+                </li>
+                <li><a href="#ec2-hands-on">6. EC2ハンズオン</a></li>
+            </ul>
+        </nav>
+    </div>
+    </main>
+
+    <footer>
+        &copy; 2025 AWS勉強会. All rights reserved.
+    </footer>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // 自動で <h3> に id を追加する
+            const content = document.querySelector('.content');
+            const headings = content.querySelectorAll('h3');
+            headings.forEach(h => {
+                if (!h.id) {
+                    const id = h.textContent.trim().replace(/\s+/g, '-').replace(/[^\w\-一-龯ぁ-んァ-ヴーａ-ｚＡ-Ｚ０-９ー]/g, '');
+                    h.id = id;
+                }
+            });
+
+            const tocLinks = document.querySelectorAll('.toc a');
+            tocLinks.forEach(link => {
+                link.addEventListener('click', function (e) {
+                    const id = decodeURIComponent(this.getAttribute('href')).replace('#', '');
+                    const target = document.getElementById(id);
+                    if (target) {
+                        e.preventDefault();
+                        const topOffset = target.getBoundingClientRect().top + window.scrollY;
+                        window.scrollTo({
+                            top: topOffset - 20,
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

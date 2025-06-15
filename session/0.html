@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>第0回：はじめに | AWS勉強会</title>
+  <link rel="stylesheet" href="../common/style.css">
+  
+</head>
+
+<body>
+  <header>
+    <a href="../index.html" class="logo">AWS勉強会</a>
+  </header>
+  <main>
+  <div class="container">
+    <div class="content">
+      <h1>第0回：はじめに</h1>
+      <section id="intro">
+        <h2>※このサイトについて</h2>
+        <p>
+          このサイトは社内AWS勉強会用の学習支援サイトです。内容の正確性に努めていますが、誤りや仕様変更の可能性もあるため、詳細は公式ドキュメントをご確認ください。<br>
+          学習目的（非商用）であれば個人・企業問わず利用可能ですが、勉強会は社内限定です。<br>
+        </p>
+      </section>
+
+      <section id="aim">
+        <h2>1. 学べること</h2>
+        <p>
+          AWS（Amazon Web Services）
+          は、Amazonが提供するクラウドサービスで、サーバーやデータベースなど様々なITリソースを提供しています。この勉強会では、VPCやIAMなどの基礎に加え、可用性・スケーラビリティといったクラウド設計の考え方、主要サービスの使い方を解説とハンズオンで学びます。初心者や、AWSに少し触れたことがある方向けです。
+        </p>
+      </section>
+
+      <section id="schedule">
+        <h2>2. スケジュールとセッションの内容</h2>
+        <p>
+          本社にて月1回、第2金曜日の19:00から、1時間半ほどの長さでの開催を考えています。<br>
+          ※リモート開催は第2土曜日の朝10:30からを候補としていますが、ハイブリッドでの開催も検討中です。<br>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>回</th>
+                <th>日時</th>
+                <th>学習サービス</th>
+                <th>セッションの内容</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>第1回</td>
+                <td>7/11</td>
+                <td>VPC, EC2</td>
+                <td>AWSの基礎知識の学習。アカウント作成。<br>
+                  ハンズオン：VPCのパブリックサブネットにEC2インスタンスを作成し、SSH接続をする。</td>
+              </tr>
+              <tr>
+                <td>第2回</td>
+                <td>8/8</td>
+                <td>IAM, RDS/Aurora</td>
+                <td>IAMの基礎知識の学習。<br>
+                  ハンズオン: プライベートサブネットにRDSを作成しEC2から接続。</td>
+              </tr>
+              <tr>
+                <td>第3回</td>
+                <td>9/12</td>
+                <td>ALB, AutoScaling, CloudWatch, WAF</td>
+                <td>スケーラブル構成とモニタリングの基本<br>
+                ハンズオン: ロードバランサーとAutoScallingを使用し、2つのサブネットにまたがりEC2を自動でデプロイ。CloudWatchでログを確認。</td>
+              </tr>
+              <tr>
+                <td>第4回</td>
+                <td>10/10</td>
+                <td>S3, Route53, CloudFront, ACM, AWS Shield</td>
+                <td>S3の機能とCDNの仕組み理解<br>
+                  ハンズオン: S3に静的Webサイトをホスティングし、CloudFrontでCDNを設定</td>
+                </td>
+              </tr>
+              <tr>
+                <td>第5回</td>
+                <td>11/7</td>
+                <td>Docker</td>
+                <td>Dockerの理解と使い方<br>
+                ハンズオン：Dockerfileを定義し、それからイメージをビルド、最後にコンテナを起動してシンプルなアプリケーションをデプロイ</td>
+              </tr>
+              <tr>
+                <td>第6回</td>
+                <td>12/12</td>
+                <td>ECS/Fargate</td>
+                <td>ECSによるコンテナ運用の基礎<br>
+                ハンズオン: DockerイメージをECRにプッシュ。ECR上のイメージを使用しECS Fargateでコンテナ作成・実行</td>
+              </tr>
+              <tr>
+                <td>第7回</td>
+                <td>1/9</td>
+                <td>Lambda, API Gateway</td>
+                <td>ハンズオン: API Gatewayを使ったHTTPエンドポイントの作成。Lambdaを使用しサーバーレスAPIの作成</td>
+              </tr>
+              <tr>
+                <td>第8回</td>
+                <td>2/13</td>
+                <td>EventBridge, SQS, SNS</td>
+                <td>非同期処理とイベント駆動設計</td>
+              </tr>
+              <tr>
+                <td>第9回</td>
+                <td>3/13</td>
+                <td>CloudFormation, Terraform</td>
+                <td>IaCによるインフラ自動化入門</td>
+              </tr>
+              <tr>
+                <td>第10回</td>
+                <td>xx/xx</td>
+                <td>CodePipeline, CodeBuild, CodeDeploy</td>
+                <td>AWSで実践するCI/CDパイプライン</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>※セッションの内容は調整していきますので、参考程度にご覧ください<br>
+          ※セッションの構成はくろかわさんと小山さんの作成された <a href="https://qiita.com/KurokawaKouhei/items/7889607418e817fd1cd3"
+            target="_blank">AWS学習ロードマップ</a>を参考にしています<br>
+          *製作者：くろかわこうへい（@AwsskillC）、小山雄太（@gevanni4）copyright (c) CloudTech all right reserved.
+        </p>
+      </section>
+
+      <section id="cost">
+        <h2>3. 費用について</h2>
+        <ul>
+          <li>主に無料枠の範囲で学習できる設計（全セッションの合計費用は数百円に納めます）</li>
+          <li>各回の終了後に使用したリソースの削除確認</li>
+          <li>AWS Budgetsで意図しない課金時にメール通知を設定</li>
+          <li>二段階認証（MFA）で不正利用を防止</li>
+        </ul>
+      </section>
+
+      <section id="structure">
+        <h2>4. サイトの構成</h2>
+        <ul>
+          <li>セッション：各回の教材・操作手順・資料</li>
+          <li>ナレッジベース：AWSサービスや関連技術の補足資料</li>
+          <li>コラム：クラウド関連の情報と私見</li>
+          <li>質問板(※実装予定)：質問などを自由に投稿。大事なものはナレッジベースに追加</li>
+          <li>検索機能(※実装予定)</li>
+        </ul>
+      </section>
+
+      <section id="preparation">
+        <h2>5. 参加時に必要なもの</h2>
+        <ul>
+          <li>PC(Windows,Mac,Linux)推奨</li>
+          <li>Chrome/Firefox(拡張機能無効化)</li>
+          <li>
+            AWSアカウント作成用メールアドレス、電話番号、クレジットカード<br>
+            アカウントは初回時に作成します。既存アカウントをお持ちの方も、無料枠適用期間の関係上、新規アカウントの作成を推奨します。
+          </li>
+        </ul>
+      </section>
+
+      <section id="faq">
+        <h2>6. よくある質問（FAQ）</h2>
+
+        <p><strong>Q：途中参加でも大丈夫ですか？</strong><br>A：大歓迎です！セッションの内容はサイトで確認できるため、途中参加や、お休みしても大丈夫です！</p>
+        <p><strong>Q：質問や連絡はどこでできますか？</strong><br>A：質問板(※実装予定)やTeams?で随時対応します！</p>
+        <p>
+          <strong>Q：実務でも役立ちますか？</strong><br>A：はい、実務でも役立ちます！
+          クラウドの活用は今後さらに広がると考えられ、特にAWSは多くの現場で使われています。
+          フロントエンド・バックエンド・インフラをまたいで働く機会も増えており、学んでおいて損はありません。
+        </p>
+      </section>
+
+      <section id="closing">
+        <h2>7. 最後に</h2>
+        <p>
+          このサイトはAWSのS3とCloudFrontを使ってホスティングしています。質問版にはAPI Gateway、Lambda、RDSの使用を検討中です。<br>
+          もし時間に余裕があれば、自作したウェブサイトやウェブアプリを学習したAWS上にデプロイしてみてください。知識やスキルがより身につくだけでなく、それを証明するものとしても役に立つと思います。<br>
+          勉強会は気軽に参加でき、リラックスして学べる場になるよう心がけます。興味のある方はぜひ一緒に学んでいきましょう！気になることがあれば遠慮なくご質問ください！<br>
+
+        </p>
+      </section>
+    </div>
+
+    <nav class="toc">
+      <h2>目次</h2>
+      <ul>
+        <li><a href="#intro">※このサイトについて</a></li>
+        <li><a href="#aim">1. 学べること</a></li>
+        <li><a href="#schedule">2. スケジュールとカリキュラム</a></li>
+        <li><a href="#cost">3. 費用について</a></li>
+        <li><a href="#structure">4. サイトの構成</a></li>
+        <li><a href="#preparation">5. 参加時に必要なもの</a></li>
+        <li><a href="#faq">6. よくある質問（FAQ）</a></li>
+        <li><a href="#closing">7. 最後に</a></li>
+      </ul>
+    </nav>
+  </div>
+  </main>
+
+  <footer>
+    &copy; 2025 AWS勉強会. All rights reserved.
+  </footer>
+</body>
+
+</html>
