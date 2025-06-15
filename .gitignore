@@ -1,0 +1,8 @@
+# VSCode settings
+.vscode/
+
+# macOS metadata
+.DS_Store
+
+# Node.js dependencies
+.prettierrc
