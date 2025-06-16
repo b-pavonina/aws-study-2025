@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>質問を投稿</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 10px;
+      }
+      input,
+      textarea {
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+        font-size: 1em;
+      }
+      button {
+        margin-top: 15px;
+        padding: 10px 20px;
+        font-size: 1em;
+        background: #0066ff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      small {
+        color: #666;
+        font-size: 0.9em;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>質問を投稿</h1>
+
+    <input type="text" id="title" placeholder="タイトルを入力してください" />
+    <textarea
+      id="body"
+      rows="6"
+      placeholder="質問内容を入力してください"
+    ></textarea>
+
+    <input type="text" id="nickname" placeholder="ニックネーム（任意）" />
+    <input
+      type="password"
+      id="editPassword"
+      placeholder="（任意）編集・削除用パスワード"
+    />
+    <small>
+      この投稿はこの端末で最大1年間編集・削除できます。<br />
+      Cookieを削除すると操作できなくなります。<br />
+      不安な方はパスワードを設定してください。 </small
+    ><br />
+
+    <button id="submit">投稿する</button>
+
+    <script>
+      // --- Cookie関係ユーティリティ
+      function setCookie(name, value, days) {
+        const expires = new Date(
+          Date.now() + days * 86400 * 1000
+        ).toUTCString();
+        document.cookie = `${name}=${value}; path=/; expires=${expires}; SameSite=Lax`;
+      }
+
+      function getCookie(name) {
+        const match = document.cookie.match(new RegExp(`${name}=([^;]+)`));
+        return match ? decodeURIComponent(match[1]) : null;
+      }
+
+      function createPosterToken() {
+        const token = crypto.randomUUID();
+        setCookie('poster_token', token, 365);
+        return token;
+      }
+
+      async function hashSHA256(text) {
+        const buffer = new TextEncoder().encode(text);
+        const digest = await crypto.subtle.digest('SHA-256', buffer);
+        return [...new Uint8Array(digest)]
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('');
+      }
+
+      // --- 認証チェック（x-tokenがなければログインページへ）
+      const xToken = getCookie('token');
+      if (!xToken) {
+        location.href = 'password.html';
+      }
+
+      // --- 質問の投稿処理
+      document.getElementById('submit').onclick = async () => {
+        const title = document.getElementById('title').value.trim();
+        const body = document.getElementById('body').value.trim();
+        const nickname = document.getElementById('nickname').value.trim();
+        const editPassword = document.getElementById('editPassword').value;
+
+        if (!title || !body) {
+          alert('タイトルと内容は必須です');
+          return;
+        }
+
+        let posterToken = getCookie('poster_token');
+        if (!posterToken) {
+          posterToken = createPosterToken();
+        }
+
+        const payload = {
+          title,
+          body,
+          nickname,
+          poster_token: posterToken,
+        };
+
+        if (editPassword) {
+          payload.password_hash = await hashSHA256(editPassword);
+        }
+
+        fetch(
+          'https://xxxxx.execute-api.ap-northeast-1.amazonaws.com/dev/questions',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Secret-Token': xToken,
+            },
+            body: JSON.stringify(payload),
+          }
+        )
+          .then((res) => {
+            if (!res.ok) throw new Error('投稿エラー');
+            return res.json();
+          })
+          .then(() => {
+            alert('質問を投稿しました');
+            location.href = 'questions.html';
+          })
+          .catch((err) => {
+            alert('認証エラーまたは投稿失敗');
+            document.cookie = 'token=; Max-Age=0';
+            location.href = 'password.html';
+          });
+      };
+    </script>
+  </body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>質問一覧</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 10px;
+      }
+      .question {
+        margin-bottom: 15px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: #fff;
+      }
+      .question a {
+        text-decoration: none;
+        color: #0066ff;
+      }
+      #search,
+      #sort {
+        margin-top: 10px;
+        padding: 8px;
+        font-size: 1em;
+        width: 100%;
+        box-sizing: border-box;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>質問一覧</h1>
+    <input type="text" id="search" placeholder="キーワード検索" />
+    <select id="sort">
+      <option value="new">新しい順</option>
+      <option value="old">古い順</option>
+    </select>
+    <div id="questions">読み込み中...</div>
+
+    <script>
+      function getTokenFromCookie() {
+        const match = document.cookie.match(/(?:^|; )X-Secret-Token=([^;]*)/);
+        return match ? decodeURIComponent(match[1]) : null;
+      }
+
+      const token = getTokenFromCookie();
+      if (!token) window.location.href = 'password.html';
+
+      let allQuestions = [];
+
+      function renderQuestions(filtered = allQuestions) {
+        const sortOrder = document.getElementById('sort').value;
+        const keyword = document
+          .getElementById('search')
+          .value.trim()
+          .toLowerCase();
+        const container = document.getElementById('questions');
+
+        const matched = filtered
+          .filter(
+            (q) =>
+              q.title.toLowerCase().includes(keyword) ||
+              q.body.toLowerCase().includes(keyword)
+          )
+          .sort((a, b) => {
+            const dateA = new Date(a.created_at);
+            const dateB = new Date(b.created_at);
+            return sortOrder === 'new' ? dateB - dateA : dateA - dateB;
+          });
+
+        container.innerHTML = '';
+        if (matched.length === 0) {
+          container.textContent = '該当する質問が見つかりませんでした。';
+          return;
+        }
+
+        matched.forEach((q) => {
+          const div = document.createElement('div');
+          div.className = 'question';
+          div.innerHTML = `
+            <a href="question.html?id=${q.id}">
+              <strong>${q.title}</strong><br>
+              <small>${q.body}</small>
+            </a>
+          `;
+          container.appendChild(div);
+        });
+      }
+
+      fetch('http://localhost:3000/questions', {
+        headers: { 'X-Secret-Token': token },
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error('認証失敗');
+          return res.json();
+        })
+        .then((data) => {
+          allQuestions = data;
+          renderQuestions();
+        })
+        .catch((err) => {
+          alert('トークンが無効です。再認証してください。');
+          document.cookie = 'token=; Max-Age=0';
+          window.location.href = 'password.html';
+        });
+
+      document
+        .getElementById('search')
+        .addEventListener('input', () => renderQuestions());
+      document
+        .getElementById('sort')
+        .addEventListener('change', () => renderQuestions());
+    </script>
+  </body>
+</html>

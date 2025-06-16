@@ -6,3 +6,18 @@
 
 # Node.js dependencies
 .prettierrc
+
+# personal notes
+MEMO.md
+
+# configuration
+lambda-question-api/.env
+
+# node_modules
+lambda-question-api/node_modules
+
+# GitGuardian cache
+.cache_ggshield
+
+# express for local environment
+lambda-question-api/server.js

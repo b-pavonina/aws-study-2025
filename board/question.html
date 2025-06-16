@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>質問詳細</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 10px;
+      }
+      .answer {
+        padding: 10px;
+        margin-top: 10px;
+        background: #f1f1f1;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 id="title">読み込み中...</h1>
+    <p id="body"></p>
+
+    <h2>回答</h2>
+    <div id="answers"></div>
+
+    <h3>回答を投稿する</h3>
+    <textarea
+      id="answerBody"
+      rows="4"
+      cols="60"
+      placeholder="回答内容を入力してください"
+    ></textarea
+    ><br />
+    <button id="submit">投稿</button>
+
+    <script>
+      function getTokenFromCookie() {
+        const match = document.cookie.match(/(?:^|; )token=([^;]*)/);
+        return match ? decodeURIComponent(match[1]) : null;
+      }
+
+      const token = getTokenFromCookie();
+      if (!token) window.location.href = 'password.html';
+
+      const id = new URLSearchParams(window.location.search).get('id');
+      if (!id) location.href = 'questions.html';
+
+      fetch(
+        `https://xxxxx.execute-api.ap-northeast-1.amazonaws.com/dev/questions/${id}`,
+        {
+          headers: { 'X-Secret-Token': token },
+        }
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          document.getElementById('title').textContent = data.question.title;
+          document.getElementById('body').textContent = data.question.body;
+
+          const answersDiv = document.getElementById('answers');
+          answersDiv.innerHTML = '';
+
+          // 1階層目：parent_answer_id が null
+          const topLevel = data.answers.filter(
+            (a) => a.parent_answer_id === null
+          );
+          topLevel.forEach((answer) => {
+            const div = renderAnswer(answer, data.answers);
+            answersDiv.appendChild(div);
+          });
+        });
+
+      function renderAnswer(answer, allAnswers) {
+        const container = document.createElement('div');
+        container.className = 'answer';
+        container.style.marginTop = '10px';
+        container.style.padding = '10px';
+        container.style.border = '1px solid #ccc';
+        container.style.borderRadius = '5px';
+
+        const text = document.createElement('div');
+        text.textContent = answer.body;
+        container.appendChild(text);
+
+        const replyBtn = document.createElement('button');
+        replyBtn.textContent = '返信';
+        replyBtn.onclick = () => {
+          const replyBox = document.createElement('div');
+          replyBox.innerHTML = `
+        <textarea rows="3" cols="50" placeholder="返信を入力..."></textarea><br>
+        <button>送信</button>
+      `;
+          const btn = replyBox.querySelector('button');
+          btn.onclick = () => {
+            const body = replyBox.querySelector('textarea').value.trim();
+            if (!body) {
+              alert('内容を入力してください');
+              return;
+            }
+            fetch(
+              'https://xxxxx.execute-api.ap-northeast-1.amazonaws.com/dev/answers',
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-Secret-Token': getTokenFromCookie(),
+                },
+                body: JSON.stringify({
+                  question_id: id,
+                  body,
+                  parent_answer_id: answer.id,
+                }),
+              }
+            ).then(() => location.reload());
+          };
+          container.appendChild(replyBox);
+          replyBtn.disabled = true;
+        };
+        container.appendChild(replyBtn);
+
+        // 子コメントを表示
+        const replies = allAnswers.filter(
+          (a) => a.parent_answer_id === answer.id
+        );
+        replies.forEach((reply) => {
+          const replyDiv = document.createElement('div');
+          replyDiv.textContent = reply.body;
+          replyDiv.style.marginTop = '8px';
+          replyDiv.style.marginLeft = '20px';
+          replyDiv.style.background = '#f0f0f0';
+          replyDiv.style.padding = '8px';
+          replyDiv.style.borderRadius = '4px';
+          container.appendChild(replyDiv);
+        });
+
+        return container;
+      }
+
+      document.getElementById('submit').onclick = () => {
+        const body = document.getElementById('answerBody').value.trim();
+        if (!body) {
+          alert('回答内容を入力してください');
+          return;
+        }
+
+        fetch(
+          'https://xxxxx.execute-api.ap-northeast-1.amazonaws.com/dev/answers',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Secret-Token': token,
+            },
+            body: JSON.stringify({
+              question_id: id,
+              body,
+            }),
+          }
+        ).then(() => location.reload());
+      };
+    </script>
+  </body>
+</html>
