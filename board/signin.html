@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>パスワード認証</title>
+    <link rel="stylesheet" href="../common/style.css" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      /* signin.html override: signup.html風のシンプル＆モダンUI */
+      body .container {
+        display: block !important;
+        max-width: 380px !important;
+        margin: 60px auto 0 auto !important;
+        padding: 32px 24px 36px 24px !important;
+        background: #fff !important;
+        border-radius: 18px !important;
+        box-shadow: none !important;
+        border: 1px solid #e0e0e0 !important;
+      }
+      body .content {
+        background: none !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      body h1 {
+        font-size: 1.2em !important;
+        margin-top: 0.8em !important;
+        margin-bottom: 1em !important;
+        text-align: center !important;
+        color: #222 !important;
+        font-weight: bold !important;
+      }
+      body .info {
+        background: #f8f8f8 !important;
+        border: 1px solid #e0e0e0 !important;
+        border-radius: 0 !important;
+        padding: 10px 12px !important;
+        margin-bottom: 1.2em !important;
+        font-size: 0.97em !important;
+        color: #333 !important;
+        text-align: left !important;
+        border-radius: 6px !important;
+      }
+      body input[type='password'],
+      body input[type='UUID'] {
+        width: 100% !important;
+        padding: 10px 10px !important;
+        margin: 10px 0 18px 0 !important;
+        font-size: 1em !important;
+        border: 1px solid #bbb !important;
+        border-radius: 6px !important;
+        background: #fff !important;
+        box-shadow: none !important;
+        transition: none !important;
+        appearance: none !important;
+        outline: none !important;
+      }
+      body input[type='password']:focus,
+      body input[type='UUID']:focus {
+        border: 1.5px solid #888 !important;
+        outline: none !important;
+        background: #fff !important;
+      }
+      body .container button,
+      body .container #submitBtn,
+      body .container #signupBtn {
+        display: block !important;
+        min-width: 120px !important;
+        width: auto !important;
+        margin: 16px auto 0 auto !important;
+        padding: 8px 22px !important;
+        font-size: 1em !important;
+        background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%) !important;
+        color: #fff !important;
+        font-weight: 600 !important;
+        border-radius: 6px !important;
+        text-decoration: none !important;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.08) !important;
+        border: none !important;
+        cursor: pointer !important;
+        letter-spacing: 0.02em !important;
+        transition: background 0.2s, box-shadow 0.2s, transform 0.1s !important;
+      }
+      body .container button:hover,
+      body .container button:focus {
+        background: linear-gradient(90deg, #2563eb 0%, #1d4ed8 100%) !important;
+        box-shadow: 0 4px 16px rgba(59, 130, 246, 0.15) !important;
+        color: #fff !important;
+        text-decoration: none !important;
+      }
+      body .container #signupBtn {
+        margin-top: 28px !important;
+        background: linear-gradient(90deg, #10b981 0%, #2563eb 100%) !important;
+      }
+      body .container #signupBtn:hover {
+        background: linear-gradient(90deg, #059669 0%, #1d4ed8 100%) !important;
+      }
+
+      .line {
+        content: '';
+        display: block;
+        margin: 1em auto 0.2em auto;
+        width: 100%;
+        border-bottom: 1px solid #e0e7ef;
+      }
+      @media (max-width: 600px) {
+        body .container {
+          max-width: 98vw !important;
+          padding: 12vw 2vw 8vw 2vw !important;
+        }
+        body h1 {
+          font-size: 1em !important;
+        }
+      }
+      @media (max-width: 700px) {
+        body .container,
+        body .container > .content,
+        body .container > * {
+          display: block !important;
+          width: 100vw !important;
+          min-width: 0 !important;
+          max-width: 100vw !important;
+          margin: 0 !important;
+          box-sizing: border-box !important;
+        }
+        body .container {
+          padding: 0 !important;
+        }
+        body .container > .content {
+          padding: 8vw 2vw 8vw 2vw !important;
+          border-radius: 0 !important;
+          background: #fff !important;
+        }
+        body h1 {
+          font-size: 1em !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-wrapper">
+      <header>
+        <div class="insider-header">
+          <a href="../index.html" class="logo"
+            >勉強会 <span style="font-size: 0.8em">for</span> AWS</a
+          >
+          <span class="header-spacer"></span>
+          <a href="../board/signin.html" class="header-btn">質問板</a>
+        </div>
+      </header>
+      <main>
+        <div class="container">
+          <div class="content">
+            <h1>パスワード認証</h1>
+            <input
+              type="password"
+              id="passwordInput"
+              placeholder="パスワードを入力"
+            />
+            <button id="submitBtn">サインイン</button>
+            <p></p>
+
+            <p class="line"></p>
+            <div class="info">
+              ※ ユーザー識別にはCookieを使用しています。<br />
+              Cookie削除後や別端末では過去の投稿の編集・削除ができなくなります。<br />
+              投稿を予定している方は、サインイン後に設定から「識別キー（Cookie値）」を控えておくことをおすすめします。<br />
+              下記に識別キーを入力し利用できます。<br />
+            </div>
+            <input type="UUID" id="UUIDInput" placeholder="識別キーを入力" />
+
+            <script>
+              const apiBase =
+                location.hostname === 'localhost'
+                  ? 'http://localhost:3000'
+                  : 'https://ht3vzeoezg.execute-api.ap-northeast-1.amazonaws.com/prod';
+              // クッキー取得関数
+              function getCookie(name) {
+                const match = document.cookie.match(
+                  new RegExp(`${name}=([^;]+)`)
+                );
+                return match ? decodeURIComponent(match[1]) : null;
+              }
+              function setCookie(name, value, days) {
+                const expires = new Date(
+                  Date.now() + days * 86400 * 1000
+                ).toUTCString();
+                document.cookie = `${name}=${encodeURIComponent(
+                  value
+                )}; path=/; expires=${expires}; SameSite=Lax`;
+              }
+              function ensureUserToken() {
+                let token = getCookie('user_token');
+                if (!token) {
+                  token = crypto.randomUUID();
+                  setCookie('user_token', token, 365);
+                }
+                return token;
+              }
+              // ✅ クッキーが既にあるなら questions.html にリダイレクト
+              const token = getCookie('x-access-token');
+              if (token) {
+                window.location.href = 'questions.html';
+              }
+
+              document.getElementById('submitBtn').onclick = async function () {
+                const password = document.getElementById('passwordInput').value;
+                const uuidInput = document
+                  .getElementById('UUIDInput')
+                  .value.trim();
+
+                // UUIDバリデーション: 36文字かつ英数字+ハイフン形式
+                if (uuidInput) {
+                  const uuidPattern =
+                    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+                  if (!uuidPattern.test(uuidInput)) {
+                    alert(
+                      '識別キーは36文字の英数字とハイフン形式のUUIDで入力してください'
+                    );
+                    return;
+                  }
+                }
+
+                const res = await fetch(apiBase + '/auth', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ password }),
+                });
+
+                if (!res.ok) {
+                  alert('パスワードが違います');
+                  return;
+                }
+
+                const data = await res.json();
+                setCookie('x-access-token', data.token, 1); // Cookieを1日有効で保存
+
+                // 識別キーが有効な場合はそれをuser_tokenにセット、なければ従来通り
+                if (uuidInput) {
+                  setCookie('user_token', uuidInput, 365);
+                } else {
+                  ensureUserToken();
+                }
+                window.location.href = 'questions.html'; // 投稿ページへ遷移
+              };
+
+              function escapeHTML(str) {
+                return String(str)
+                  .replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;')
+                  .replace(/'/g, '&#39;');
+              }
+
+              // Use escapeHTML for any user-generated content if you display it in the DOM in the future.
+            </script>
+          </div>
+        </div>
+      </main>
+      <footer>
+        &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC BY-SA 4.0.
+      </footer>
+    </div>
+  </body>
+</html>

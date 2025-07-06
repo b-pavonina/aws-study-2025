@@ -2,26 +2,47 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>質問を投稿</title>
+    <link rel="stylesheet" href="../common/style.css" />
     <style>
-      body {
-        font-family: sans-serif;
-        max-width: 600px;
-        margin: 40px auto;
-        padding: 10px;
+      header .insider-header {
+        max-width: 860px;
       }
+
       input,
       textarea {
         width: 100%;
-        padding: 10px;
+        padding: 14px 12px;
         margin-top: 10px;
-        font-size: 1em;
+        font-size: 1em !important;
+        line-height: 1.7;
+        border-radius: 6px;
+        border: 1px solid #cce0ff;
+        /* background: #fafdff; */
+        resize: vertical;
+        box-sizing: border-box;
+        transition: border 0.15s;
+        font-family: 'Inter', 'Noto Sans JP', 'Segoe UI', 'Hiragino Sans',
+          'Meiryo', sans-serif;
+        font-weight: 300;
       }
+      textarea:focus,
+      input:focus {
+        border: 1.5px solid #3b82f6;
+        outline: none;
+        background: #f5faff;
+      }
+
+      #nickname {
+        padding: 5px 10px;
+      }
+
       button {
         margin-top: 15px;
         padding: 10px 20px;
         font-size: 1em;
-        background: #0066ff;
+        background: linear-gradient(90deg, #3b82f6 0%, #0338a9 100%);
         color: white;
         border: none;
         border-radius: 5px;
@@ -31,119 +52,157 @@
         color: #666;
         font-size: 0.9em;
       }
+      .back-btn {
+        display: inline-block;
+        margin-bottom: 18px;
+        background: linear-gradient(90deg, #f5f5f5 0%, #ebedf5 100%);
+        color: #0070f3;
+        border: 1px solid #cce0ff;
+        border-radius: 6px;
+        padding: 7px 18px 7px 14px;
+        font-size: 1em;
+        text-decoration: none;
+        font-weight: 500;
+        transition: background 0.15s, color 0.15s;
+      }
+      .back-btn:hover {
+        background: #e6f0ff;
+        color: #005bb5;
+      }
     </style>
   </head>
   <body>
-    <h1>質問を投稿</h1>
+    <div class="page-wrapper">
+      <header>
+        <div class="insider-header">
+          <a href="../index.html" class="logo"
+            >勉強会 <span style="font-size: 0.8em">for</span> AWS</a
+          >
+          <span class="header-spacer"></span>
+          <a href="../board/signin.html" class="header-btn">質問板</a>
+        </div>
+      </header>
+      <main>
+        <div class="container">
+          <div class="content">
+            <a href="questions.html" class="back-btn">← 質問一覧に戻る</a>
+            <!-- <h1>質問を投稿</h1> -->
 
-    <input type="text" id="title" placeholder="タイトルを入力してください" />
-    <textarea
-      id="body"
-      rows="6"
-      placeholder="質問内容を入力してください"
-    ></textarea>
+            <input type="text" id="title" placeholder="タイトル" />
+            <textarea id="body" rows="12" placeholder="質問内容"></textarea>
 
-    <input type="text" id="nickname" placeholder="ニックネーム（任意）" />
-    <input
-      type="password"
-      id="editPassword"
-      placeholder="（任意）編集・削除用パスワード"
-    />
-    <small>
-      この投稿はこの端末で最大1年間編集・削除できます。<br />
-      Cookieを削除すると操作できなくなります。<br />
-      不安な方はパスワードを設定してください。 </small
-    ><br />
+            <input
+              type="text"
+              id="nickname"
+              placeholder="ニックネーム（任意）"
+            />
+            <small> </small><br />
 
-    <button id="submit">投稿する</button>
+            <button id="submit">投稿する</button>
 
-    <script>
-      // --- Cookie関係ユーティリティ
-      function setCookie(name, value, days) {
-        const expires = new Date(
-          Date.now() + days * 86400 * 1000
-        ).toUTCString();
-        document.cookie = `${name}=${value}; path=/; expires=${expires}; SameSite=Lax`;
-      }
+            <script>
+              const apiBase =
+                location.hostname === 'localhost'
+                  ? 'http://localhost:3000'
+                  : 'https://ht3vzeoezg.execute-api.ap-northeast-1.amazonaws.com/prod';
 
-      function getCookie(name) {
-        const match = document.cookie.match(new RegExp(`${name}=([^;]+)`));
-        return match ? decodeURIComponent(match[1]) : null;
-      }
-
-      function createPosterToken() {
-        const token = crypto.randomUUID();
-        setCookie('poster_token', token, 365);
-        return token;
-      }
-
-      async function hashSHA256(text) {
-        const buffer = new TextEncoder().encode(text);
-        const digest = await crypto.subtle.digest('SHA-256', buffer);
-        return [...new Uint8Array(digest)]
-          .map((b) => b.toString(16).padStart(2, '0'))
-          .join('');
-      }
-
-      // --- 認証チェック（x-tokenがなければログインページへ）
-      const xToken = getCookie('token');
-      if (!xToken) {
-        location.href = 'password.html';
-      }
-
-      // --- 質問の投稿処理
-      document.getElementById('submit').onclick = async () => {
-        const title = document.getElementById('title').value.trim();
-        const body = document.getElementById('body').value.trim();
-        const nickname = document.getElementById('nickname').value.trim();
-        const editPassword = document.getElementById('editPassword').value;
-
-        if (!title || !body) {
-          alert('タイトルと内容は必須です');
-          return;
-        }
-
-        let posterToken = getCookie('poster_token');
-        if (!posterToken) {
-          posterToken = createPosterToken();
-        }
-
-        const payload = {
-          title,
-          body,
-          nickname,
-          poster_token: posterToken,
-        };
-
-        if (editPassword) {
-          payload.password_hash = await hashSHA256(editPassword);
-        }
-
-        fetch(
-          'https://xxxxx.execute-api.ap-northeast-1.amazonaws.com/dev/questions',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Secret-Token': xToken,
-            },
-            body: JSON.stringify(payload),
-          }
-        )
-          .then((res) => {
-            if (!res.ok) throw new Error('投稿エラー');
-            return res.json();
-          })
-          .then(() => {
-            alert('質問を投稿しました');
-            location.href = 'questions.html';
-          })
-          .catch((err) => {
-            alert('認証エラーまたは投稿失敗');
-            document.cookie = 'token=; Max-Age=0';
-            location.href = 'password.html';
-          });
-      };
-    </script>
+              function setCookie(name, value, days) {
+                const expires = new Date(
+                  Date.now() + days * 86400 * 1000
+                ).toUTCString();
+                document.cookie = `${name}=${encodeURIComponent(
+                  value
+                )}; path=/; expires=${expires}; SameSite=Lax; Secure`;
+              }
+              function getCookie(name) {
+                const match = document.cookie.match(
+                  new RegExp(`${name}=([^;]+)`)
+                );
+                return match ? decodeURIComponent(match[1]) : null;
+              }
+              function ensureUserToken() {
+                let token = getCookie('user_token');
+                if (!token) {
+                  token = crypto.randomUUID();
+                  setCookie('user_token', token, 365);
+                }
+                return token;
+              }
+              function escapeHTML(str) {
+                return String(str)
+                  .replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;')
+                  .replace(/'/g, '&#39;');
+              }
+              // ページロード時に必ずuser_tokenをセット
+              ensureUserToken();
+              // --- 投稿処理
+              document.getElementById('submit').onclick = async () => {
+                const xToken = getCookie('x-access-token');
+                if (!xToken) {
+                  alert('認証トークンが見つかりません。ログインしてください。');
+                  location.href = 'signin.html';
+                  return;
+                }
+                const title = document.getElementById('title').value.trim();
+                const body = document.getElementById('body').value.trim();
+                const nickname = document
+                  .getElementById('nickname')
+                  .value.trim();
+                if (!title || !body) {
+                  alert('タイトルと内容は必須です');
+                  return;
+                }
+                const userToken = ensureUserToken();
+                const payload = {
+                  title,
+                  body,
+                  nickname,
+                  user_token: userToken,
+                };
+                fetch(apiBase + '/questions', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-access-token': xToken,
+                  },
+                  body: JSON.stringify(payload),
+                })
+                  .then(async (res) => {
+                    if (!res.ok) {
+                      let msg = '投稿エラー';
+                      try {
+                        const data = await res.json();
+                        if (data && data.error) msg = data.error;
+                      } catch (e) {}
+                      throw new Error(msg);
+                    }
+                    return res.json();
+                  })
+                  .then(() => {
+                    alert('質問を投稿しました');
+                    location.href = 'questions.html';
+                  })
+                  .catch((err) => {
+                    alert('投稿失敗: ' + err.message);
+                    if (
+                      err.message.includes('token') ||
+                      err.message.includes('認証')
+                    ) {
+                      document.cookie = 'x-access-token=; Max-Age=0';
+                      location.href = 'signin.html';
+                    }
+                  });
+              };
+            </script>
+          </div>
+        </div>
+      </main>
+      <footer>
+        &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC BY-SA 4.0.
+      </footer>
+    </div>
   </body>
 </html>

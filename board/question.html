@@ -2,163 +2,595 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>質問詳細</title>
+    <link rel="stylesheet" href="../common/style.css" />
     <style>
-      body {
-        font-family: sans-serif;
-        max-width: 600px;
-        margin: 40px auto;
-        padding: 10px;
+      header .insider-header {
+        max-width: 860px;
       }
-      .answer {
-        padding: 10px;
+
+      input,
+      textarea {
+        width: 100%;
+        padding: 14px 12px;
         margin-top: 10px;
-        background: #f1f1f1;
+        font-size: 1em !important;
+        line-height: 1.7;
         border-radius: 6px;
+        border: 1px solid #cce0ff;
+        /* background: #fafdff; */
+        resize: vertical;
+        box-sizing: border-box;
+        transition: border 0.15s;
+        font-family: 'Inter', 'Noto Sans JP', 'Segoe UI', 'Hiragino Sans',
+          'Meiryo', sans-serif;
+        font-weight: 300;
+      }
+      textarea:focus,
+      input:focus {
+        border: 1.5px solid #3b82f6;
+        outline: none;
+        background: #f5faff;
+      }
+
+      #nickname {
+        padding: 5px 10px;
+      }
+
+      main {
+        min-height: 70vh;
+      }
+      button {
+        background: #f5faff;
+        color: #0070f3;
+        border: none;
+        border-radius: 4px;
+        padding: 6px 18px;
+        font-size: 1em;
+        cursor: pointer;
+        margin-bottom: 8px;
+        margin-right: 8px;
+        font-weight: 500;
+        transition: background 0.15s;
+      }
+      button:hover {
+        background: #cbe3ff;
+      }
+
+      .back-btn {
+        display: inline-block;
+        margin-bottom: 22px;
+        background: linear-gradient(90deg, #f5f5f5 0%, #ebedf5 100%);
+        color: #0070f3;
+        border: 1px solid #cce0ff;
+        border-radius: 6px;
+        padding: 8px 20px 8px 16px;
+        font-size: 1em;
+        text-decoration: none;
+        font-weight: 500;
+        transition: background 0.15s, color 0.15s;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      }
+      .back-btn:hover {
+        background: #e6f0ff;
+        color: #005bb5;
+      }
+      .question-card {
+        background: #fff;
+        border-radius: 14px;
+        border: 1px solid #cce0ff;
+        padding: 30px 26px 20px 26px;
+        margin-bottom: 32px;
+        position: relative;
+      }
+      .question-title {
+        font-size: 1.3em;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: #1a2233;
+        letter-spacing: 0.01em;
+        line-height: 1.3;
+      }
+      .question-title-hr {
+        border: none;
+        border-top: 2px solid #e0e7ef;
+        width: 100%;
+        margin: 0 0 20px 0;
+        box-sizing: border-box;
+      }
+      .question-body {
+        font-size: 1em;
+        margin-bottom: 16px;
+        color: #2d3748;
+        white-space: pre-wrap;
+        line-height: 1.7;
+      }
+      .question-meta {
+        color: #7b8794;
+        font-size: 0.98em;
+        margin-bottom: 4px;
+      }
+      .edit-btn {
+        background: #e3f0ff;
+        color: #0070f3;
+        border: none;
+        border-radius: 4px;
+        padding: 6px 18px;
+        font-size: 1em;
+        cursor: pointer;
+        margin-bottom: 8px;
+        margin-right: 8px;
+        font-weight: 500;
+        transition: background 0.15s;
+      }
+      .edit-btn:hover {
+        background: #cbe3ff;
+      }
+      .answers-section {
+        margin-bottom: 20px;
+      }
+      .answers-section h2 {
+        font-size: 1.12em;
+        color: #0070f3;
+        margin-bottom: 12px;
+        margin-top: 0;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
+      .answer-card {
+        background: #fff;
+        border-radius: 8px;
+        padding: 14px 16px 10px 16px;
+        margin-bottom: 14px;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+        border: 1px solid #e5e8ef;
+        transition: box-shadow 0.15s, border-color 0.15s;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .answer-card:hover {
+        box-shadow: 0 2px 12px rgba(59, 130, 246, 0.1);
+        border-color: #bcd0ee;
+      }
+      .answer-content {
+        font-size: 1em;
+        color: #232e3a;
+        line-height: 1.7;
+        margin-bottom: 0;
+        word-break: break-word;
+      }
+      .answer-meta {
+        color: #a0aec0;
+        font-size: 0.91em;
+        margin-top: 0;
+        letter-spacing: 0.01em;
+      }
+      .answer-actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 2px;
+      }
+      .answer-edit-btn {
+        background: none;
+        color: #3b82f6;
+        border: 1px solid #e0e7ef;
+        border-radius: 4px;
+        padding: 3px 14px;
+        font-size: 0.97em;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background 0.13s, color 0.13s, border 0.13s;
+        box-shadow: none;
+        height: 30px;
+        line-height: 1.1;
+      }
+      .answer-edit-btn:hover {
+        background: #f0f6ff;
+        color: #2563eb;
+        border: 1.5px solid #3b82f6;
+      }
+      .answer-edit-btn.delete {
+        color: #d32f2f;
+        border: 1px solid #ffd6d6;
+      }
+      .answer-edit-btn.delete:hover {
+        background: #fff0f0;
+        color: #b71c1c;
+        border: 1.5px solid #ffbdbd;
+      }
+      .answer-form {
+        /* background: #f8fafc; */
+        border-radius: 10px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+        padding: 18px 16px 12px 16px;
+        margin-bottom: 28px;
+        border: 1px solid #e5e8ef;
+      }
+      .answer-form-title {
+        font-size: 1.08em;
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: #222;
+      }
+      .answer-form-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .answer-form button {
+        background: #0070f3;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        padding: 8px 22px;
+        font-size: 1em;
+        cursor: pointer;
+        font-weight: 600;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        transition: background 0.13s;
+        margin-top: 2px;
+      }
+      .answer-form button:hover {
+        background: linear-gradient(90deg, #3b82f6 0%, #0338a9 100%);
+      }
+      .answer-form small {
+        color: #888;
+        font-size: 0.93em;
+        margin-bottom: 8px;
+        display: block;
+      }
+      /* footer {
+        text-align: center;
+        margin-top: 48px;
+        color: #888;
+        font-size: 0.97em;
+        background: none;
+        padding-bottom: 24px;
+      } */
+      @media (max-width: 600px) {
+        .container {
+          padding: 0 4vw 40px 4vw;
+        }
+        .question-card,
+        .answer-form {
+          padding: 18px 6vw 14px 6vw;
+        }
       }
     </style>
   </head>
   <body>
-    <h1 id="title">読み込み中...</h1>
-    <p id="body"></p>
+    <header>
+      <div class="insider-header">
+        <a href="../index.html" class="logo"
+          >勉強会 <span style="font-size: 0.8em">for</span> AWS</a
+        >
+        <span class="header-spacer"></span>
+        <a href="../board/signin.html" class="header-btn">質問板</a>
+      </div>
+    </header>
+    <main>
+      <div class="container">
+        <div class="content">
+          <a href="questions.html" class="back-btn">← 質問一覧に戻る</a>
+          <div class="question-card">
+            <div class="question-title" id="title">読み込み中...</div>
+            <hr class="question-title-hr" />
+            <div class="question-body" id="body"></div>
+            <div class="question-meta" id="meta"></div>
+            <div id="editBtnContainer"></div>
+          </div>
+          <div class="answers-section">
+            <h2>返信</h2>
+            <div id="answers"></div>
+          </div>
+          <form
+            class="answer-form"
+            id="answerForm"
+            autocomplete="off"
+            onsubmit="return false;"
+          >
+            <textarea id="answerBody" rows="4" placeholder="内容"></textarea>
+            <div class="answer-form-row">
+              <input
+                type="text"
+                id="nickname"
+                placeholder="ニックネーム（任意）"
+              />
+            </div>
+            <button id="submit">投稿</button>
+          </form>
 
-    <h2>回答</h2>
-    <div id="answers"></div>
+          <script>
+            const apiBase =
+              location.hostname === 'localhost'
+                ? 'http://localhost:3000'
+                : 'https://ht3vzeoezg.execute-api.ap-northeast-1.amazonaws.com/prod';
 
-    <h3>回答を投稿する</h3>
-    <textarea
-      id="answerBody"
-      rows="4"
-      cols="60"
-      placeholder="回答内容を入力してください"
-    ></textarea
-    ><br />
-    <button id="submit">投稿</button>
-
-    <script>
-      function getTokenFromCookie() {
-        const match = document.cookie.match(/(?:^|; )token=([^;]*)/);
-        return match ? decodeURIComponent(match[1]) : null;
-      }
-
-      const token = getTokenFromCookie();
-      if (!token) window.location.href = 'password.html';
-
-      const id = new URLSearchParams(window.location.search).get('id');
-      if (!id) location.href = 'questions.html';
-
-      fetch(
-        `https://xxxxx.execute-api.ap-northeast-1.amazonaws.com/dev/questions/${id}`,
-        {
-          headers: { 'X-Secret-Token': token },
-        }
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          document.getElementById('title').textContent = data.question.title;
-          document.getElementById('body').textContent = data.question.body;
-
-          const answersDiv = document.getElementById('answers');
-          answersDiv.innerHTML = '';
-
-          // 1階層目：parent_answer_id が null
-          const topLevel = data.answers.filter(
-            (a) => a.parent_answer_id === null
-          );
-          topLevel.forEach((answer) => {
-            const div = renderAnswer(answer, data.answers);
-            answersDiv.appendChild(div);
-          });
-        });
-
-      function renderAnswer(answer, allAnswers) {
-        const container = document.createElement('div');
-        container.className = 'answer';
-        container.style.marginTop = '10px';
-        container.style.padding = '10px';
-        container.style.border = '1px solid #ccc';
-        container.style.borderRadius = '5px';
-
-        const text = document.createElement('div');
-        text.textContent = answer.body;
-        container.appendChild(text);
-
-        const replyBtn = document.createElement('button');
-        replyBtn.textContent = '返信';
-        replyBtn.onclick = () => {
-          const replyBox = document.createElement('div');
-          replyBox.innerHTML = `
-        <textarea rows="3" cols="50" placeholder="返信を入力..."></textarea><br>
-        <button>送信</button>
-      `;
-          const btn = replyBox.querySelector('button');
-          btn.onclick = () => {
-            const body = replyBox.querySelector('textarea').value.trim();
-            if (!body) {
-              alert('内容を入力してください');
-              return;
+            function escapeHTML(str) {
+              return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
             }
-            fetch(
-              'https://xxxxx.execute-api.ap-northeast-1.amazonaws.com/dev/answers',
-              {
+
+            function setCookie(name, value, days) {
+              const expires = new Date(
+                Date.now() + days * 86400 * 1000
+              ).toUTCString();
+              document.cookie = `${name}=${encodeURIComponent(
+                value
+              )}; path=/; expires=${expires}; SameSite=Lax`;
+            }
+            function getCookie(name) {
+              const match = document.cookie.match(
+                new RegExp(`${name}=([^;]+)`)
+              );
+              return match ? decodeURIComponent(match[1]) : null;
+            }
+            function ensureUserToken() {
+              let token = getCookie('user_token');
+              if (!token) {
+                token = crypto.randomUUID();
+                setCookie('user_token', token, 365);
+              }
+              return token;
+            }
+            // ページロード時に必ずuser_tokenをセット
+            const userToken = ensureUserToken();
+
+            async function hashSHA256(text) {
+              const buffer = new TextEncoder().encode(text);
+              const digest = await crypto.subtle.digest('SHA-256', buffer);
+              return [...new Uint8Array(digest)]
+                .map((b) => b.toString(16).padStart(2, '0'))
+                .join('');
+            }
+            const token = getCookie('x-access-token');
+            if (!token) window.location.href = 'signin.html';
+            const id = new URLSearchParams(window.location.search).get('id');
+            if (!id) location.href = 'questions.html';
+            fetch(apiBase + `/questions/${id}`, {
+              headers: { 'x-access-token': token },
+            })
+              .then((res) => res.json())
+              .then(async (data) => {
+                const question = data.question;
+                const tokenHash = userToken
+                  ? await hashSHA256(userToken)
+                  : null;
+                const isQuestionOwner =
+                  tokenHash && question.user_token_hash === tokenHash;
+                document.getElementById('title').textContent = question.title;
+                document.getElementById('body').textContent = question.body;
+                document.getElementById('meta').innerHTML = `${
+                  question.nickname || '匿名'
+                } asked ${formatJPDate(question.created_at)}`;
+                // 編集ボタン
+                const editBtnContainer =
+                  document.getElementById('editBtnContainer');
+                editBtnContainer.innerHTML = '';
+                if (isQuestionOwner) {
+                  const editBtn = document.createElement('button');
+                  editBtn.textContent = '編集';
+                  editBtn.className = 'edit-btn';
+                  editBtn.onclick = () => {
+                    const bodyDiv = document.getElementById('body');
+                    bodyDiv.innerHTML = '';
+
+                    const titleInput = document.createElement('input');
+                    titleInput.type = 'text';
+                    titleInput.value = question.title;
+                    titleInput.style.width = '100%';
+                    titleInput.style.fontSize = '1.2em';
+                    titleInput.style.marginBottom = '10px';
+
+                    const bodyTextarea = document.createElement('textarea');
+                    bodyTextarea.rows = 6;
+                    bodyTextarea.style.width = '100%';
+                    bodyTextarea.value = question.body;
+
+                    const saveBtn = document.createElement('button');
+                    saveBtn.textContent = '保存';
+                    saveBtn.style.marginRight = '10px';
+
+                    const cancelBtn = document.createElement('button');
+                    cancelBtn.textContent = 'キャンセル';
+
+                    saveBtn.onclick = async () => {
+                      const newTitle = titleInput.value.trim();
+                      const newBody = bodyTextarea.value.trim();
+                      if (!newTitle || !newBody) {
+                        alert('タイトルと本文は必須です');
+                        return;
+                      }
+                      const payload = {
+                        title: newTitle,
+                        body: newBody,
+                        user_token: userToken,
+                      };
+                      const res = await fetch(apiBase + `/questions/${id}`, {
+                        method: 'PUT',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'x-access-token': token,
+                        },
+                        body: JSON.stringify(payload),
+                      });
+                      if (!res.ok) return alert('更新に失敗しました');
+                      alert('更新しました');
+                      location.reload();
+                    };
+                    cancelBtn.onclick = () => location.reload();
+
+                    bodyDiv.appendChild(titleInput);
+                    bodyDiv.appendChild(bodyTextarea);
+                    bodyDiv.appendChild(saveBtn);
+                    bodyDiv.appendChild(cancelBtn);
+                  };
+                  editBtnContainer.appendChild(editBtn);
+                  // 削除ボタン
+                  const deleteBtn = document.createElement('button');
+                  deleteBtn.textContent = '削除';
+                  deleteBtn.className = 'edit-btn';
+                  deleteBtn.style.background = '#ffe3e3';
+                  deleteBtn.style.color = '#d32f2f';
+                  deleteBtn.onclick = async () => {
+                    if (!confirm('本当にこの質問を削除しますか？')) return;
+                    const res = await fetch(apiBase + `/questions/${id}`, {
+                      method: 'DELETE',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'x-access-token': token,
+                      },
+                      body: JSON.stringify({ user_token: userToken }),
+                    });
+                    if (!res.ok) return alert('削除に失敗しました');
+                    alert('削除しました');
+                    location.href = 'questions.html';
+                  };
+                  editBtnContainer.appendChild(deleteBtn);
+                }
+                // 回答表示
+                const answersDiv = document.getElementById('answers');
+                answersDiv.innerHTML = '';
+                const topLevel = data.answers.filter(
+                  (a) => a.parent_answer_id === null
+                );
+                for (const answer of topLevel) {
+                  const div = await renderAnswer(
+                    answer,
+                    data.answers,
+                    tokenHash
+                  );
+                  answersDiv.appendChild(div);
+                }
+              });
+            // 日付フォーマット関数
+            function formatJPDate(dateStr) {
+              const d = new Date(dateStr);
+              const y = d.getFullYear();
+              const m = (d.getMonth() + 1).toString().padStart(2, '0');
+              const day = d.getDate().toString().padStart(2, '0');
+              const h = d.getHours().toString().padStart(2, '0');
+              const min = d.getMinutes().toString().padStart(2, '0');
+              return `${y}-${m}-${day} ${h}:${min}`;
+            }
+            async function renderAnswer(answer, allAnswers, tokenHash) {
+              const container = document.createElement('div');
+              container.className = 'answer-card';
+              const isOwner = tokenHash && answer.user_token_hash === tokenHash;
+              // Modern content layout
+              const content = document.createElement('div');
+              content.className = 'answer-content';
+              content.textContent = answer.body;
+              container.appendChild(content);
+              const meta = document.createElement('div');
+              meta.className = 'answer-meta';
+              meta.textContent = `${
+                answer.nickname || '匿名'
+              } answered ${formatJPDate(answer.created_at)}`;
+              container.appendChild(meta);
+              if (isOwner) {
+                const actions = document.createElement('div');
+                actions.className = 'answer-actions';
+                const editBtn = document.createElement('button');
+                editBtn.textContent = '編集';
+                editBtn.className = 'answer-edit-btn';
+                editBtn.onclick = () => {
+                  container.innerHTML = '';
+                  const textarea = document.createElement('textarea');
+                  textarea.rows = 5;
+                  textarea.style.width = '100%';
+                  textarea.value = answer.body;
+
+                  const saveBtn = document.createElement('button');
+                  saveBtn.textContent = '保存';
+                  saveBtn.className = 'answer-edit-btn';
+                  saveBtn.style.marginRight = '10px';
+
+                  const cancelBtn = document.createElement('button');
+                  cancelBtn.textContent = 'キャンセル';
+                  cancelBtn.className = 'answer-edit-btn';
+
+                  saveBtn.onclick = async () => {
+                    const newBody = textarea.value.trim();
+                    if (!newBody) return alert('内容を入力してください');
+                    const payload = {
+                      body: newBody,
+                      user_token: userToken,
+                    };
+                    const res = await fetch(apiBase + `/answers/${answer.id}`, {
+                      method: 'PUT',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'x-access-token': token,
+                      },
+                      body: JSON.stringify(payload),
+                    });
+                    if (!res.ok) return alert('編集に失敗しました');
+                    alert('編集が完了しました');
+                    location.reload();
+                  };
+
+                  cancelBtn.onclick = () => location.reload();
+
+                  container.appendChild(textarea);
+                  container.appendChild(saveBtn);
+                  container.appendChild(cancelBtn);
+                };
+                actions.appendChild(editBtn);
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '削除';
+                deleteBtn.className = 'answer-edit-btn delete';
+                deleteBtn.onclick = async () => {
+                  if (!confirm('本当にこの回答を削除しますか？')) return;
+                  const res = await fetch(apiBase + `/answers/${answer.id}`, {
+                    method: 'DELETE',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'x-access-token': token,
+                    },
+                    body: JSON.stringify({ user_token: userToken }),
+                  });
+                  if (!res.ok) return alert('削除に失敗しました');
+                  alert('削除しました');
+                  location.reload();
+                };
+                actions.appendChild(deleteBtn);
+                container.appendChild(actions);
+              }
+              return container;
+            }
+            document.getElementById('submit').onclick = async () => {
+              const body = document.getElementById('answerBody').value.trim();
+              const nickname = document.getElementById('nickname').value.trim();
+              if (!body) return alert('回答内容を入力してください');
+              await fetch(apiBase + '/answers', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  'X-Secret-Token': getTokenFromCookie(),
+                  'x-access-token': token,
                 },
                 body: JSON.stringify({
                   question_id: id,
                   body,
-                  parent_answer_id: answer.id,
+                  nickname,
+                  user_token: userToken,
                 }),
-              }
-            ).then(() => location.reload());
-          };
-          container.appendChild(replyBox);
-          replyBtn.disabled = true;
-        };
-        container.appendChild(replyBtn);
-
-        // 子コメントを表示
-        const replies = allAnswers.filter(
-          (a) => a.parent_answer_id === answer.id
-        );
-        replies.forEach((reply) => {
-          const replyDiv = document.createElement('div');
-          replyDiv.textContent = reply.body;
-          replyDiv.style.marginTop = '8px';
-          replyDiv.style.marginLeft = '20px';
-          replyDiv.style.background = '#f0f0f0';
-          replyDiv.style.padding = '8px';
-          replyDiv.style.borderRadius = '4px';
-          container.appendChild(replyDiv);
-        });
-
-        return container;
-      }
-
-      document.getElementById('submit').onclick = () => {
-        const body = document.getElementById('answerBody').value.trim();
-        if (!body) {
-          alert('回答内容を入力してください');
-          return;
-        }
-
-        fetch(
-          'https://xxxxx.execute-api.ap-northeast-1.amazonaws.com/dev/answers',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Secret-Token': token,
-            },
-            body: JSON.stringify({
-              question_id: id,
-              body,
-            }),
-          }
-        ).then(() => location.reload());
-      };
-    </script>
+              });
+              location.reload();
+            };
+          </script>
+        </div>
+      </div>
+    </main>
+    <footer>
+      &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC BY-SA 4.0.
+    </footer>
   </body>
 </html>

@@ -4,23 +4,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>第0回：はじめに | AWS勉強会</title>
+  <title>第0回：はじめに | 勉強会 for AWS</title>
   <link rel="stylesheet" href="../common/style.css">
-  
+  <style>
+      header .insider-header {
+        max-width: 1160px;
+      }
+    </style>
 </head>
 
 <body>
   <header>
-    <a href="../index.html" class="logo">AWS勉強会</a>
+        <div class="insider-header">
+          <a href="../index.html" class="logo">勉強会 <span style="font-size: 0.8em">for</span> AWS</a
+          >
+          <span class="header-spacer"></span>
+          <a href="../board/signin.html" class="header-btn">質問板</a>
+        </div>
   </header>
   <main>
   <div class="container">
     <div class="content">
-      <h1>第0回：はじめに</h1>
+      <h1>はじめに：勉強会の紹介</h1>
       <section id="intro">
         <h2>※このサイトについて</h2>
         <p>
-          このサイトは社内AWS勉強会用の学習支援サイトです。内容の正確性に努めていますが、誤りや仕様変更の可能性もあるため、詳細は公式ドキュメントをご確認ください。<br>
+          このサイトは社内勉強会 for AWS用の学習支援サイトです。内容の正確性に努めていますが、誤りや仕様変更の可能性もあるため、詳細は公式ドキュメントをご確認ください。<br>
           学習目的（非商用）であれば個人・企業問わず利用可能ですが、勉強会は社内限定です。<br>
         </p>
       </section>
@@ -36,8 +45,10 @@
       <section id="schedule">
         <h2>2. スケジュールとセッションの内容</h2>
         <p>
-          本社にて月1回、第2金曜日の19:00から、1時間半ほどの長さでの開催を考えています。<br>
-          ※リモート開催は第2土曜日の朝10:30からを候補としていますが、ハイブリッドでの開催も検討中です。<br>
+          リモートにて以下の日時で開催いたします。<br>
+          ・第2金曜日の20:00<br>
+          ・第2土曜日の10:30<br>
+          1時間から1時間半程度の長さを予定しております。残業などにより時間変更のお願いをさせていただくことが発生するかもしれません。<br>
         <div class="table-scroll">
           <table>
             <thead>
@@ -51,67 +62,74 @@
             <tbody>
               <tr>
                 <td>第1回</td>
-                <td>7/11</td>
-                <td>VPC, EC2</td>
-                <td>AWSの基礎知識の学習。アカウント作成。<br>
-                  ハンズオン：VPCのパブリックサブネットにEC2インスタンスを作成し、SSH接続をする。</td>
+                <td>7/11<br>7/12</td>
+                <td>アカウント設定</td>
+                <td>AWSの特徴とアカウント作成、簡易EC2ハンズオン<br>
+                  ハンズオン：AWSアカウントを作成し、Budgets作成、IAMユーザー作成、MFA設定</td>
               </tr>
               <tr>
                 <td>第2回</td>
-                <td>8/8</td>
+                <td>8/8<br>8/9</td>
+                <td>VPC, EC2</td>
+                <td>VPC設計とEC2へのSSH接続<br>
+                  ハンズオン: VPCの作成、EC2インスタンスの作成、SSH接続</td>
+              </tr>
+              <tr>
+                <td>第3回</td>
+                <td>9/12<br>9/13</td>
                 <td>IAM, RDS/Aurora</td>
                 <td>IAMの基礎知識の学習。<br>
                   ハンズオン: プライベートサブネットにRDSを作成しEC2から接続。</td>
               </tr>
               <tr>
-                <td>第3回</td>
-                <td>9/12</td>
+                <td>第4回</td>
+                <td>10/10<br>10/11</td>
                 <td>ALB, AutoScaling, CloudWatch, WAF</td>
                 <td>スケーラブル構成とモニタリングの基本<br>
                 ハンズオン: ロードバランサーとAutoScallingを使用し、2つのサブネットにまたがりEC2を自動でデプロイ。CloudWatchでログを確認。</td>
               </tr>
               <tr>
-                <td>第4回</td>
-                <td>10/10</td>
+                <td>第5回</td>
+                <td>11/14<br>11/15</td>
                 <td>S3, Route53, CloudFront, ACM, AWS Shield</td>
                 <td>S3の機能とCDNの仕組み理解<br>
                   ハンズオン: S3に静的Webサイトをホスティングし、CloudFrontでCDNを設定</td>
                 </td>
               </tr>
               <tr>
-                <td>第5回</td>
-                <td>11/7</td>
-                <td>Docker</td>
+                <td>第6回</td>
+                <td>12/12<br>12/13</td>
+                <td>Docker(非AWSサービス)</td>
                 <td>Dockerの理解と使い方<br>
                 ハンズオン：Dockerfileを定義し、それからイメージをビルド、最後にコンテナを起動してシンプルなアプリケーションをデプロイ</td>
               </tr>
               <tr>
-                <td>第6回</td>
-                <td>12/12</td>
+                <td>第7回</td>
+                <td>1/9<br>1/10</td>
                 <td>ECS/Fargate</td>
                 <td>ECSによるコンテナ運用の基礎<br>
                 ハンズオン: DockerイメージをECRにプッシュ。ECR上のイメージを使用しECS Fargateでコンテナ作成・実行</td>
               </tr>
               <tr>
-                <td>第7回</td>
-                <td>1/9</td>
+                <td>第8回</td>
+                <td>2/13<br>2/14</td>
                 <td>Lambda, API Gateway</td>
                 <td>ハンズオン: API Gatewayを使ったHTTPエンドポイントの作成。Lambdaを使用しサーバーレスAPIの作成</td>
               </tr>
               <tr>
-                <td>第8回</td>
-                <td>2/13</td>
+                <td>第9回</td>
+                <td>3/13<br>3/14</td>
                 <td>EventBridge, SQS, SNS</td>
                 <td>非同期処理とイベント駆動設計</td>
               </tr>
               <tr>
-                <td>第9回</td>
-                <td>3/13</td>
-                <td>CloudFormation, Terraform</td>
+                <td>extra</td>
+                <td>xx/xx</td>
+                <td>CloudFormation, Terraform(非AWSサービス)</td>
                 <td>IaCによるインフラ自動化入門</td>
               </tr>
               <tr>
-                <td>第10回</td>
+                <td>extra</td>
                 <td>xx/xx</td>
                 <td>CodePipeline, CodeBuild, CodeDeploy</td>
                 <td>AWSで実践するCI/CDパイプライン</td>
@@ -142,7 +160,7 @@
           <li>セッション：各回の教材・操作手順・資料</li>
           <li>ナレッジベース：AWSサービスや関連技術の補足資料</li>
           <li>コラム：クラウド関連の情報と私見</li>
-          <li>質問板(※実装予定)：質問などを自由に投稿。大事なものはナレッジベースに追加</li>
+          <li>質問板(※実装予定)：質問などを自由に投稿。共有すべきものはナレッジベースに追加</li>
           <li>検索機能(※実装予定)</li>
         </ul>
       </section>
@@ -199,7 +217,8 @@
   </main>
 
   <footer>
-    &copy; 2025 AWS勉強会. All rights reserved.
+    &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC
+          BY-SA 4.0.
   </footer>
 </body>
 

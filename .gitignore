@@ -21,3 +21,30 @@ lambda-question-api/node_modules
 
 # express for local environment
 lambda-question-api/server.js
+
+# backup css
+.style2.css
+
+# spec for question page
+question_page_spec.md
+
+# old signin page
+signin_old.html
+
+# old signup page
+signup_old.html
+
+# environment variables for local development
+.env_dev.txt
+
+# serverless framework
+serverless.yml.bak
+
+# environment variables
+.env.bak
+
+# backup files
+backup/
+
+# serverless framework deployment
+lambda-question-api/.serverless/

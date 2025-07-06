@@ -2,63 +2,415 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>質問一覧</title>
+    <link rel="stylesheet" href="../common/style.css" />
     <style>
-      body {
-        font-family: sans-serif;
-        max-width: 600px;
-        margin: 40px auto;
-        padding: 10px;
+      header .insider-header {
+        max-width: 860px;
       }
+
       .question {
         margin-bottom: 15px;
         padding: 10px;
         border: 1px solid #ddd;
         border-radius: 6px;
         background: #fff;
+        transition: background-color 0.3s, color 0.3s;
       }
+
+      .question:hover {
+        background-color: #f0f3f6;
+        color: #333;
+      }
+
       .question a {
         text-decoration: none;
         color: #0066ff;
       }
-      #search,
-      #sort {
-        margin-top: 10px;
+      .search-sort-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 0.5em;
+      }
+      #search {
         padding: 8px;
         font-size: 1em;
-        width: 100%;
+        flex: 1 1 0%;
         box-sizing: border-box;
+        margin-top: 0;
+        width: auto;
+      }
+      .sort-btn {
+        background: linear-gradient(90deg, #f5f5f5 0%, #ebedf5 100%);
+        border: 1px solid #ccc;
+        padding: 8px 16px;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 1em;
+        width: 6.5em;
+        margin-top: 0;
+        text-align: center;
+        box-sizing: border-box;
+      }
+      .question-meta {
+        color: #888;
+        font-size: 0.92em;
+        margin-top: 4px;
+      }
+      .header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.5em;
+      }
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+        position: relative;
+      }
+      .ask-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(90deg, #3b82f6 0%, #0338a9 100%);
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        padding: 8px 18px;
+        font-size: 1em;
+        text-decoration: none;
+        cursor: pointer;
+        height: 2.5em;
+        line-height: normal;
+        box-sizing: border-box;
+        text-align: center;
+        white-space: nowrap;
+        font-weight: 600;
+        transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+      }
+      .ask-btn:hover {
+        background: #005bb5;
+      }
+      .settings-btn {
+        background: none;
+        border: none;
+        padding: 0 0 0 4px;
+        margin-left: 2px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        height: 2.5em;
+        transition: background 0.15s;
+        border-radius: 50%;
+        position: relative;
+        z-index: 2;
+      }
+      .settings-btn:hover {
+        background: #f0f3f6;
+      }
+      .settings-btn svg,
+      .settings-btn img {
+        display: block;
+      }
+      .question-title-list {
+        font-size: 1.13em;
+        font-weight: bold;
+        color: #222;
+        margin-bottom: 2px;
+      }
+      .question-title-hr-list {
+        border: none;
+        border-top: 2px solid #e0e7ef;
+        width: 100%;
+        margin: 0 0 10px 0;
+        box-sizing: border-box;
+      }
+      @media (max-width: 600px) {
+        .header-row {
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .header-actions {
+          margin-left: 0;
+          margin-top: 0;
+          flex-direction: row;
+          gap: 8px;
+          justify-content: flex-end;
+          width: auto;
+        }
+        .header-row h1 {
+          font-size: 1.05em;
+          margin-bottom: 0;
+        }
+      }
+      #settingsMenu {
+        min-width: 160px;
+      }
+      #userTokenModal {
+        display: none;
+        position: fixed;
+        z-index: 2000;
+        left: 0;
+        top: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.18);
+        align-items: center;
+        justify-content: center;
+      }
+      #userTokenModal .modal-content {
+        background: #fff;
+        border-radius: 10px;
+        padding: 28px 24px 18px 24px;
+        max-width: 500px;
+        margin: 120px auto 0 auto;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.13);
+        text-align: center;
+      }
+      #userTokenModal .modal-content p {
+        margin-bottom: 1.2em;
+        font-size: 1.05em;
+      }
+      #userTokenModal .token-box {
+        font-family: monospace;
+        font-size: 1.1em;
+        background: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 8px 10px;
+        margin-bottom: 1em;
+        word-break: break-all;
+      }
+      #userTokenModal .close-btn {
+        margin-top: 8px;
+        background: #3b82f6;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 7px 22px;
+        font-size: 1em;
+        cursor: pointer;
+      }
+      #userTokenModal .close-btn:hover {
+        background: #2563eb;
       }
     </style>
   </head>
   <body>
-    <h1>質問一覧</h1>
-    <input type="text" id="search" placeholder="キーワード検索" />
-    <select id="sort">
-      <option value="new">新しい順</option>
-      <option value="old">古い順</option>
-    </select>
-    <div id="questions">読み込み中...</div>
+    <div class="page-wrapper">
+      <header>
+        <div class="insider-header">
+          <a href="../index.html" class="logo"
+            >勉強会 <span style="font-size: 0.8em">for</span> AWS</a
+          >
+          <span class="header-spacer"></span>
+          <a href="../board/signin.html" class="header-btn">質問板</a>
+        </div>
+      </header>
+      <main>
+        <div class="container">
+          <div class="content">
+            <div class="header-row">
+              <h1>質問一覧</h1>
+              <div class="header-actions">
+                <a href="post.html" class="ask-btn">質問する</a>
+                <button
+                  id="settingsBtn"
+                  class="settings-btn"
+                  title="設定"
+                  aria-label="設定"
+                >
+                  <img
+                    src="../image/board/questions/kkrn_icon_haguruma_1.svg"
+                    alt="設定"
+                    style="
+                      width: 24px;
+                      height: 24px;
+                      display: block;
+                      filter: grayscale(1) brightness(0.7);
+                    "
+                  />
+                </button>
+                <div
+                  id="settingsMenu"
+                  style="
+                    display: none;
+                    position: absolute;
+                    z-index: 10;
+                    top: calc(100% + 8px);
+                    right: 0;
+                    background: #fff;
+                    border: 1px solid #ccc;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                    min-width: 160px;
+                    padding: 0;
+                  "
+                >
+                  <button
+                    id="showUserTokenBtn"
+                    style="
+                      width: 100%;
+                      background: none;
+                      border: none;
+                      padding: 10px 18px;
+                      margin: 0;
+                      text-align: center;
+                      cursor: pointer;
+                      font-size: 1.04em;
+                      font-weight: 500;
+                      color: #333;
+                      border-radius: 6px;
+                      transition: background 0.15s;
+                      box-sizing: border-box;
+                    "
+                    onmouseover="this.style.background='#f5f7fa'"
+                    onmouseout="this.style.background='none'"
+                  >
+                    識別キー確認
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="search-sort-row">
+              <button id="sort-toggle" class="sort-btn" type="button">
+                <span id="sort-arrow">New</span>
+              </button>
+              <input type="text" id="search" placeholder="キーワード検索" />
+            </div>
+            <div id="questions">読み込み中...</div>
+
+            <div id="userTokenModal">
+              <div class="modal-content">
+                <p>あなたの識別キー</p>
+                <!-- コピーアイコンを左、その隣にトークン表示 -->
+                <div
+                  style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    margin-bottom: 1em;
+                    position: relative;
+                  "
+                >
+                  <button
+                    id="copyUserTokenBtn"
+                    class="copy-btn"
+                    style="
+                      position: static;
+                      background: #f3f4f6;
+                      color: #333;
+                      border: none;
+                      border-radius: 6px;
+                      padding: 6px 14px;
+                      font-size: 1em;
+                      cursor: pointer;
+                      transition: background 0.15s;
+                      display: flex;
+                      align-items: center;
+                      transform: translateY(-7px);
+                    "
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#666"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <rect x="9" y="9" width="15" height="13" rx="2" />
+                      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+                    </svg>
+                  </button>
+                  <div class="token-box" id="userTokenValue"></div>
+                </div>
+                <div
+                  style="
+                    color: #10b981;
+                    font-size: 0.98em;
+                    margin-bottom: 0.7em;
+                  "
+                  id="copyMsg"
+                ></div>
+                <button class="close-btn" id="closeUserTokenModal">
+                  閉じる
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+      <footer>
+        &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC BY-SA 4.0.
+      </footer>
+    </div>
 
     <script>
-      function getTokenFromCookie() {
-        const match = document.cookie.match(/(?:^|; )X-Secret-Token=([^;]*)/);
+      const apiBase =
+        location.hostname === 'localhost'
+          ? 'http://localhost:3000'
+          : 'https://ht3vzeoezg.execute-api.ap-northeast-1.amazonaws.com/prod';
+      function setCookie(name, value, days) {
+        const expires = new Date(
+          Date.now() + days * 86400 * 1000
+        ).toUTCString();
+        document.cookie = `${name}=${encodeURIComponent(
+          value
+        )}; path=/; expires=${expires}; SameSite=Lax; Secure`;
+      }
+      function getCookie(name) {
+        const match = document.cookie.match(new RegExp(`${name}=([^;]+)`));
         return match ? decodeURIComponent(match[1]) : null;
       }
-
+      function ensureUserToken() {
+        let token = getCookie('user_token');
+        if (!token) {
+          token = crypto.randomUUID();
+          setCookie('user_token', token, 365);
+        }
+        return token;
+      }
+      ensureUserToken();
+      function getTokenFromCookie() {
+        const match = document.cookie.match(/(?:^|; )x-access-token=([^;]*)/);
+        return match ? decodeURIComponent(match[1]) : null;
+      }
       const token = getTokenFromCookie();
-      if (!token) window.location.href = 'password.html';
-
+      if (!token) window.location.href = 'signin.html';
       let allQuestions = [];
-
+      let sortOrder = 'desc';
+      function formatJPDate(dateStr) {
+        const d = new Date(dateStr);
+        const y = d.getFullYear();
+        const m = (d.getMonth() + 1).toString().padStart(2, '0');
+        const day = d.getDate().toString().padStart(2, '0');
+        const h = d.getHours().toString().padStart(2, '0');
+        const min = d.getMinutes().toString().padStart(2, '0');
+        return `${y}-${m}-${day} ${h}:${min}`;
+      }
+      function escapeHTML(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
       function renderQuestions(filtered = allQuestions) {
-        const sortOrder = document.getElementById('sort').value;
         const keyword = document
           .getElementById('search')
           .value.trim()
           .toLowerCase();
         const container = document.getElementById('questions');
-
         const matched = filtered
           .filter(
             (q) =>
@@ -68,51 +420,110 @@
           .sort((a, b) => {
             const dateA = new Date(a.created_at);
             const dateB = new Date(b.created_at);
-            return sortOrder === 'new' ? dateB - dateA : dateA - dateB;
+            return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
           });
-
         container.innerHTML = '';
         if (matched.length === 0) {
           container.textContent = '該当する質問が見つかりませんでした。';
           return;
         }
-
         matched.forEach((q) => {
           const div = document.createElement('div');
           div.className = 'question';
+          const timeString = formatJPDate(q.created_at);
           div.innerHTML = `
-            <a href="question.html?id=${q.id}">
-              <strong>${q.title}</strong><br>
-              <small>${q.body}</small>
-            </a>
+            <div class="question-title-list">${escapeHTML(q.title)}</div>
+            <hr class="question-title-hr-list">
+            <small>${escapeHTML(q.body)}</small>
+            <div class="question-meta">投稿者: ${
+              typeof q.nickname === 'string' &&
+              q.nickname.trim() &&
+              q.nickname.trim().toLowerCase() !== 'null'
+                ? escapeHTML(q.nickname.trim())
+                : q.nickname
+                ? String(q.nickname)
+                : '匿名'
+            } ／ 投稿日: ${timeString}</div>
           `;
+          div.style.cursor = 'pointer';
+          div.onclick = () => {
+            window.location.href = `question.html?id=${q.id}`;
+          };
           container.appendChild(div);
         });
       }
-
-      fetch('http://localhost:3000/questions', {
-        headers: { 'X-Secret-Token': token },
+      fetch(apiBase + '/questions', {
+        headers: { 'x-access-token': token },
       })
         .then((res) => {
-          if (!res.ok) throw new Error('認証失敗');
+          if (!res.ok) {
+            alert('トークンが無効です。再認証してください。');
+            document.cookie = 'x-access-token=; Max-Age=0';
+            window.location.href = 'signin.html';
+            throw new Error('認証失敗');
+          }
           return res.json();
         })
         .then((data) => {
           allQuestions = data;
           renderQuestions();
         })
-        .catch((err) => {
-          alert('トークンが無効です。再認証してください。');
-          document.cookie = 'token=; Max-Age=0';
-          window.location.href = 'password.html';
-        });
-
+        .catch(() => {});
       document
         .getElementById('search')
         .addEventListener('input', () => renderQuestions());
-      document
-        .getElementById('sort')
-        .addEventListener('change', () => renderQuestions());
+      document.getElementById('sort-toggle').addEventListener('click', () => {
+        sortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
+        document.getElementById('sort-arrow').textContent =
+          sortOrder === 'desc' ? 'New' : 'Old';
+        renderQuestions();
+      });
+      const settingsBtn = document.getElementById('settingsBtn');
+      const settingsMenu = document.getElementById('settingsMenu');
+      settingsBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        settingsMenu.style.display =
+          settingsMenu.style.display === 'block' ? 'none' : 'block';
+      });
+      document.body.addEventListener('click', function () {
+        settingsMenu.style.display = 'none';
+      });
+      settingsMenu.addEventListener('click', function (e) {
+        e.stopPropagation();
+      });
+      const showUserTokenBtn = document.getElementById('showUserTokenBtn');
+      const userTokenModal = document.getElementById('userTokenModal');
+      const userTokenValue = document.getElementById('userTokenValue');
+      const copyMsg = document.getElementById('copyMsg');
+      const closeUserTokenModal = document.getElementById(
+        'closeUserTokenModal'
+      );
+      const copyUserTokenBtn = document.getElementById('copyUserTokenBtn');
+      showUserTokenBtn.addEventListener('click', function () {
+        const token = getCookie('user_token');
+        userTokenValue.textContent = token || '(未発行)';
+        userTokenModal.style.display = 'flex';
+        settingsMenu.style.display = 'none';
+        copyMsg.textContent = '';
+      });
+      copyUserTokenBtn.addEventListener('click', function () {
+        const token = userTokenValue.textContent;
+        if (token && token !== '(未発行)') {
+          navigator.clipboard.writeText(token).then(
+            function () {
+              copyMsg.textContent = '識別キーをコピーしました';
+            },
+            function () {
+              copyMsg.textContent = 'コピーに失敗しました';
+            }
+          );
+        } else {
+          copyMsg.textContent = '';
+        }
+      });
+      closeUserTokenModal.addEventListener('click', function () {
+        userTokenModal.style.display = 'none';
+      });
     </script>
   </body>
 </html>

@@ -1,0 +1,169 @@
+service: question-board-api
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ap-northeast-1
+  stage: '' # ステージ名を空にしてルートパスにする
+  vpc:
+    securityGroupIds:
+      - sg-024d4121429e1ce26
+    subnetIds:
+      - subnet-02390afaeb9d2c57a
+  environment:
+    DB_HOST: ${env:DB_HOST}
+    DB_USER: ${env:DB_USER}
+    DB_PASSWORD: ${env:DB_PASSWORD}
+    SHARED_SECRET_KEY: ${env:SHARED_SECRET_KEY}
+    ACCESS_PASSWORD: ${env:ACCESS_PASSWORD}
+
+plugins:
+  - serverless-offline
+
+custom:
+  serverless-offline:
+    noPrependStageInUrl: true
+
+functions:
+  auth:
+    handler: handler.auth
+    events:
+      - http:
+          path: auth
+          method: post
+          cors: true
+
+  getQuestions:
+    handler: handler.getQuestions
+    events:
+      - http:
+          path: questions
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - x-access-token
+              - Content-Type
+              - Authorization
+              - Origin
+              - Accept
+
+  createQuestion:
+    handler: handler.createQuestion
+    events:
+      - http:
+          path: questions
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - x-access-token
+              - Content-Type
+              - Authorization
+              - Origin
+              - Accept
+
+  getQuestionDetail:
+    handler: handler.getQuestionDetail
+    events:
+      - http:
+          path: questions/{id}
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - x-access-token
+              - Content-Type
+              - Authorization
+              - Origin
+              - Accept
+
+  postAnswer:
+    handler: handler.postAnswer
+    events:
+      - http:
+          path: answers
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - x-access-token
+              - Content-Type
+              - Authorization
+              - Origin
+              - Accept
+
+  updateQuestion:
+    handler: handler.updateQuestion
+    events:
+      - http:
+          path: questions/{id}
+          method: put
+          cors:
+            origin: '*'
+            headers:
+              - x-access-token
+              - Content-Type
+              - Authorization
+              - Origin
+              - Accept
+
+  updateAnswer:
+    handler: handler.updateAnswer
+    events:
+      - http:
+          path: answers/{id}
+          method: put
+          cors:
+            origin: '*'
+            headers:
+              - x-access-token
+              - Content-Type
+              - Authorization
+              - Origin
+              - Accept
+
+  createUser:
+    handler: handler.createUser
+    events:
+      - http:
+          path: users
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - x-access-token
+              - Content-Type
+              - Authorization
+              - Origin
+              - Accept
+
+  deleteQuestion:
+    handler: handler.deleteQuestion
+    events:
+      - http:
+          path: questions/{id}
+          method: delete
+          cors:
+            origin: '*'
+            headers:
+              - x-access-token
+              - Content-Type
+              - Authorization
+              - Origin
+              - Accept
+
+  deleteAnswer:
+    handler: handler.deleteAnswer
+    events:
+      - http:
+          path: answers/{id}
+          method: delete
+          cors:
+            origin: '*'
+            headers:
+              - x-access-token
+              - Content-Type
+              - Authorization
+              - Origin
+              - Accept
