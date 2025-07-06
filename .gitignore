@@ -43,6 +43,9 @@ serverless.yml.bak
 # environment variables
 .env.bak
 
+# local environment variables
+.env_local.bak
+
 # backup files
 backup/
 

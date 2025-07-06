@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>管理者用 質問詳細</title>
+    <link rel="stylesheet" href="../common/style.css" />
+    <style>
+      header .insider-header {
+        max-width: 860px;
+      }
+      .question-card {
+        background: #fff;
+        border-radius: 14px;
+        border: 1px solid #cce0ff;
+        padding: 30px 26px 20px 26px;
+        margin-bottom: 32px;
+        position: relative;
+      }
+      .question-title {
+        font-size: 1.3em;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: #1a2233;
+        letter-spacing: 0.01em;
+        line-height: 1.3;
+      }
+      .question-title-hr {
+        border: none;
+        border-top: 2px solid #e0e7ef;
+        width: 100%;
+        margin: 0 0 20px 0;
+        box-sizing: border-box;
+      }
+      .question-body {
+        font-size: 1em;
+        margin-bottom: 16px;
+        color: #2d3748;
+        white-space: pre-wrap;
+        line-height: 1.7;
+      }
+      .question-meta {
+        color: #7b8794;
+        font-size: 0.98em;
+        margin-bottom: 4px;
+      }
+      .admin-actions {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .admin-btn {
+        background: #e3f0ff;
+        color: #0070f3;
+        border: none;
+        border-radius: 4px;
+        padding: 6px 18px;
+        font-size: 1em;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background 0.15s;
+      }
+      .admin-btn.delete {
+        background: #fff0f0;
+        color: #d32f2f;
+        border: 1px solid #ffd6d6;
+      }
+      .admin-btn:hover {
+        background: #cbe3ff;
+      }
+      .admin-btn.delete:hover {
+        background: #ffd6d6;
+        color: #b71c1c;
+      }
+      .answers-section {
+        margin-bottom: 20px;
+      }
+      .answers-section h2 {
+        font-size: 1.12em;
+        color: #0070f3;
+        margin-bottom: 12px;
+        margin-top: 0;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
+      .answer-card {
+        background: #fff;
+        border-radius: 8px;
+        padding: 14px 16px 10px 16px;
+        margin-bottom: 14px;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+        border: 1px solid #e5e8ef;
+        transition: box-shadow 0.15s, border-color 0.15s;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .answer-content {
+        font-size: 1em;
+        color: #232e3a;
+        line-height: 1.7;
+        margin-bottom: 0;
+        word-break: break-word;
+      }
+      .answer-meta {
+        color: #a0aec0;
+        font-size: 0.91em;
+        margin-top: 0;
+        letter-spacing: 0.01em;
+      }
+      .answer-actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 2px;
+      }
+      .admin-btn {
+        background: #e3f0ff;
+        color: #0070f3;
+        border: none;
+        border-radius: 4px;
+        padding: 6px 18px;
+        font-size: 1em;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background 0.15s;
+      }
+      .admin-btn.delete {
+        background: #fff0f0;
+        color: #d32f2f;
+        border: 1px solid #ffd6d6;
+      }
+      .admin-btn:hover {
+        background: #cbe3ff;
+      }
+      .admin-btn.delete:hover {
+        background: #ffd6d6;
+        color: #b71c1c;
+      }
+      @media (max-width: 600px) {
+        .container {
+          padding: 0 4vw 40px 4vw;
+        }
+        .question-card {
+          padding: 18px 6vw 14px 6vw;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="insider-header">
+        <a href="../index.html" class="logo"
+          >勉強会 <span style="font-size: 0.8em">for</span> AWS</a
+        >
+        <span class="header-spacer"></span>
+        <a href="questions.html" class="header-btn">一覧</a>
+      </div>
+    </header>
+    <main>
+      <div class="container">
+        <div class="content">
+          <a href="questions.html" class="back-btn">← 投稿一覧に戻る</a>
+          <div class="question-card" id="questionCard">
+            <div class="question-title" id="title">読み込み中...</div>
+            <hr class="question-title-hr" />
+            <div class="question-body" id="body"></div>
+            <div class="question-meta" id="meta"></div>
+            <div class="admin-actions">
+              <button class="admin-btn" id="editQuestionBtn">編集</button>
+              <button class="admin-btn delete" id="deleteQuestionBtn">
+                削除
+              </button>
+            </div>
+          </div>
+          <div class="answers-section">
+            <h2>返信</h2>
+            <div id="answers"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <footer>
+      &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC BY-SA 4.0.
+    </footer>
+    <script>
+      // 認証チェック
+      function getCookie(name) {
+        const match = document.cookie.match(new RegExp(`${name}=([^;]+)`));
+        return match ? decodeURIComponent(match[1]) : null;
+      }
+      const adminToken = getCookie('admin-token');
+      if (!adminToken) {
+        window.location.href = 'signin.html';
+      }
+      const apiBase =
+        location.hostname === 'localhost'
+          ? 'http://localhost:3000'
+          : 'https://ht3vzeoezg.execute-api.ap-northeast-1.amazonaws.com/prod';
+      const id = new URLSearchParams(window.location.search).get('id');
+      if (!id) location.href = 'questions.html';
+      function formatJPDate(dateStr) {
+        const d = new Date(dateStr);
+        const y = d.getFullYear();
+        const m = (d.getMonth() + 1).toString().padStart(2, '0');
+        const day = d.getDate().toString().padStart(2, '0');
+        const h = d.getHours().toString().padStart(2, '0');
+        const min = d.getMinutes().toString().padStart(2, '0');
+        return `${y}-${m}-${day} ${h}:${min}`;
+      }
+      function escapeHTML(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+      let currentQuestion = null;
+      let currentAnswers = [];
+      // 管理者専用APIに修正
+      fetch(apiBase + `/admin-questions/${id}`, {
+        headers: { 'x-admin-token': adminToken },
+      })
+        .then((res) => {
+          if (!res.ok) {
+            handleApiError(res, '認証エラーまたは取得失敗');
+            throw new Error('認証失敗');
+          }
+          return res.json();
+        })
+        .then((data) => {
+          currentQuestion = data.question;
+          currentAnswers = data.answers;
+          document.getElementById('title').textContent = currentQuestion.title;
+          document.getElementById('body').textContent = currentQuestion.body;
+          document.getElementById('meta').textContent = `${
+            currentQuestion.nickname || '匿名'
+          } ／ ${formatJPDate(currentQuestion.created_at)}`;
+          renderAnswers(currentAnswers);
+        })
+        .catch((e) => {
+          showError('サーバー通信に失敗しました');
+        });
+      function showEditQuestionForm() {
+        const card = document.getElementById('questionCard');
+        card.innerHTML = `
+          <div class="question-title">質問編集</div>
+          <hr class="question-title-hr" />
+          <textarea id="editTitle" style="width:100%;margin-bottom:10px;">${escapeHTML(
+            currentQuestion.title
+          )}</textarea>
+          <textarea id="editBody" style="width:100%;height:120px;">${escapeHTML(
+            currentQuestion.body
+          )}</textarea>
+          <div style="margin-top:12px;display:flex;gap:8px;">
+            <button class="admin-btn" id="saveEditQuestionBtn">保存</button>
+            <button class="admin-btn delete" id="cancelEditQuestionBtn">キャンセル</button>
+          </div>
+        `;
+        document.getElementById('saveEditQuestionBtn').onclick =
+          async function () {
+            const newTitle = document.getElementById('editTitle').value.trim();
+            const newBody = document.getElementById('editBody').value.trim();
+            if (!newTitle || !newBody) {
+              alert('タイトルと本文は必須です');
+              return;
+            }
+            try {
+              const res = await fetch(apiBase + `/admin-questions/${id}`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-admin-token': adminToken,
+                },
+                body: JSON.stringify({ title: newTitle, body: newBody }),
+              });
+              if (!res.ok) throw new Error('更新失敗');
+              location.reload();
+            } catch (e) {
+              alert('更新に失敗しました');
+            }
+          };
+        document.getElementById('cancelEditQuestionBtn').onclick = function () {
+          location.reload();
+        };
+      }
+      function renderAnswers(answers) {
+        const answersDiv = document.getElementById('answers');
+        answersDiv.innerHTML = '';
+        if (!answers || answers.length === 0) {
+          answersDiv.textContent = '返信はありません。';
+          return;
+        }
+        answers.forEach((answer) => {
+          const container = document.createElement('div');
+          container.className = 'answer-card';
+          const content = document.createElement('div');
+          content.className = 'answer-content';
+          content.textContent = answer.body;
+          container.appendChild(content);
+          const meta = document.createElement('div');
+          meta.className = 'answer-meta';
+          meta.textContent = `${answer.nickname || '匿名'} ／ ${formatJPDate(
+            answer.created_at
+          )}`;
+          container.appendChild(meta);
+          // 管理者用アクション
+          const actions = document.createElement('div');
+          actions.className = 'answer-actions';
+          const editBtn = document.createElement('button');
+          editBtn.textContent = '編集';
+          editBtn.className = 'admin-btn';
+          editBtn.onclick = () => showEditAnswerForm(answer, container);
+          actions.appendChild(editBtn);
+          const deleteBtn = document.createElement('button');
+          deleteBtn.textContent = '削除';
+          deleteBtn.className = 'admin-btn delete';
+          deleteBtn.onclick = async () => {
+            if (!confirm('この返信を本当に削除しますか？')) return;
+            try {
+              const res = await fetch(apiBase + `/admin-answers/${answer.id}`, {
+                method: 'DELETE',
+                headers: { 'x-admin-token': adminToken },
+              });
+              if (!res.ok) return handleApiError(res, '削除に失敗しました');
+              location.reload();
+            } catch (e) {
+              showError('サーバー通信に失敗しました');
+            }
+          };
+          actions.appendChild(deleteBtn);
+          container.appendChild(actions);
+          answersDiv.appendChild(container);
+        });
+      }
+      function showEditAnswerForm(answer, container) {
+        container.innerHTML = `
+          <div class="answer-content">返信編集</div>
+          <textarea id="editAnswerBody" style="width:100%;height:80px;">${escapeHTML(
+            answer.body
+          )}</textarea>
+          <div style="margin-top:10px;display:flex;gap:8px;">
+            <button class="admin-btn" id="saveEditAnswerBtn">保存</button>
+            <button class="admin-btn delete" id="cancelEditAnswerBtn">キャンセル</button>
+          </div>
+        `;
+        document.getElementById('saveEditAnswerBtn').onclick =
+          async function () {
+            const newBody = document
+              .getElementById('editAnswerBody')
+              .value.trim();
+            if (!newBody) {
+              alert('内容は必須です');
+              return;
+            }
+            try {
+              const res = await fetch(apiBase + `/admin-answers/${answer.id}`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-admin-token': adminToken,
+                },
+                body: JSON.stringify({ body: newBody }),
+              });
+              if (!res.ok) throw new Error('更新失敗');
+              location.reload();
+            } catch (e) {
+              alert('更新に失敗しました');
+            }
+          };
+        document.getElementById('cancelEditAnswerBtn').onclick = function () {
+          location.reload();
+        };
+      }
+      document.getElementById('editQuestionBtn').onclick = showEditQuestionForm;
+      // 質問編集・削除ボタン
+      document.getElementById('deleteQuestionBtn').onclick = async function () {
+        if (!confirm('この質問を本当に削除しますか？')) return;
+        try {
+          const res = await fetch(apiBase + `/admin-questions/${id}`, {
+            method: 'DELETE',
+            headers: { 'x-admin-token': adminToken },
+          });
+          if (!res.ok) return handleApiError(res, '削除に失敗しました');
+          window.location.href = 'questions.html';
+        } catch (e) {
+          showError('サーバー通信に失敗しました');
+        }
+      };
+    </script>
+  </body>
+</html>

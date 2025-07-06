@@ -369,7 +369,7 @@
                 document.getElementById('body').textContent = question.body;
                 document.getElementById('meta').innerHTML = `${
                   question.nickname || '匿名'
-                } asked ${formatJPDate(question.created_at)}`;
+                } ${formatJPDate(question.created_at)}`;
                 // 編集ボタン
                 const editBtnContainer =
                   document.getElementById('editBtnContainer');
@@ -491,9 +491,9 @@
               container.appendChild(content);
               const meta = document.createElement('div');
               meta.className = 'answer-meta';
-              meta.textContent = `${
-                answer.nickname || '匿名'
-              } answered ${formatJPDate(answer.created_at)}`;
+              meta.textContent = `${answer.nickname || '匿名'} ${formatJPDate(
+                answer.created_at
+              )}`;
               container.appendChild(meta);
               if (isOwner) {
                 const actions = document.createElement('div');

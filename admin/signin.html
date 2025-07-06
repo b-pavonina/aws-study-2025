@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>管理者サインイン</title>
+    <link rel="stylesheet" href="../common/style.css" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      /* board/signin.htmlと同じデザイン */
+      body .container {
+        display: block !important;
+        max-width: 380px !important;
+        margin: 60px auto 0 auto !important;
+        padding: 32px 24px 36px 24px !important;
+        background: #fff !important;
+        border-radius: 18px !important;
+        box-shadow: none !important;
+        border: 1px solid #e0e0e0 !important;
+      }
+      body .content {
+        background: none !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      body h1 {
+        font-size: 1.2em !important;
+        margin-top: 0.8em !important;
+        margin-bottom: 1em !important;
+        text-align: center !important;
+        color: #222 !important;
+        font-weight: bold !important;
+      }
+      body input[type='password'] {
+        width: 100% !important;
+        padding: 10px 10px !important;
+        margin: 10px 0 18px 0 !important;
+        font-size: 1em !important;
+        border: 1px solid #bbb !important;
+        border-radius: 6px !important;
+        background: #fff !important;
+        box-shadow: none !important;
+        transition: none !important;
+        appearance: none !important;
+        outline: none !important;
+      }
+      body input[type='password']:focus {
+        border: 1.5px solid #888 !important;
+        outline: none !important;
+        background: #fff !important;
+      }
+      body .container button,
+      body .container #submitBtn {
+        display: block !important;
+        min-width: 120px !important;
+        width: auto !important;
+        margin: 16px auto 0 auto !important;
+        padding: 8px 22px !important;
+        font-size: 1em !important;
+        background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%) !important;
+        color: #fff !important;
+        font-weight: 600 !important;
+        border-radius: 6px !important;
+        text-decoration: none !important;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.08) !important;
+        border: none !important;
+        cursor: pointer !important;
+        letter-spacing: 0.02em !important;
+        transition: background 0.2s, box-shadow 0.2s, transform 0.1s !important;
+      }
+      body .container button:hover,
+      body .container button:focus {
+        background: linear-gradient(90deg, #2563eb 0%, #1d4ed8 100%) !important;
+        box-shadow: 0 4px 16px rgba(59, 130, 246, 0.15) !important;
+        color: #fff !important;
+        text-decoration: none !important;
+      }
+      .line {
+        content: '';
+        display: block;
+        margin: 1em auto 0.2em auto;
+        width: 100%;
+        border-bottom: 1px solid #e0e7ef;
+      }
+      @media (max-width: 600px) {
+        body .container {
+          max-width: 98vw !important;
+          padding: 12vw 2vw 8vw 2vw !important;
+        }
+        body h1 {
+          font-size: 1em !important;
+        }
+      }
+      @media (max-width: 700px) {
+        body .container,
+        body .container > .content,
+        body .container > * {
+          display: block !important;
+          width: 100vw !important;
+          min-width: 0 !important;
+          max-width: 100vw !important;
+          margin: 0 !important;
+          box-sizing: border-box !important;
+        }
+        body .container {
+          padding: 0 !important;
+        }
+        body .container > .content {
+          padding: 8vw 2vw 8vw 2vw !important;
+          border-radius: 0 !important;
+          background: #fff !important;
+        }
+        body h1 {
+          font-size: 1em !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-wrapper">
+      <header>
+        <div class="insider-header">
+          <a href="../index.html" class="logo"
+            >勉強会 <span style="font-size: 0.8em">for</span> AWS</a
+          >
+          <span class="header-spacer"></span>
+          <a href="../admin/signin.html" class="header-btn">管理</a>
+        </div>
+      </header>
+      <main>
+        <div class="container">
+          <div class="content">
+            <h1>管理者サインイン</h1>
+            <input
+              type="password"
+              id="passwordInput"
+              placeholder="管理者パスワードを入力"
+            />
+            <button id="submitBtn">サインイン</button>
+            <p id="errorMsg" style="color: #d32f2f; text-align: center"></p>
+            <script>
+              const apiBase =
+                location.hostname === 'localhost'
+                  ? 'http://localhost:3000'
+                  : 'https://ht3vzeoezg.execute-api.ap-northeast-1.amazonaws.com/prod';
+              document.getElementById('submitBtn').onclick = async function () {
+                const password = document.getElementById('passwordInput').value;
+                if (!password) {
+                  document.getElementById('errorMsg').textContent =
+                    'パスワードを入力してください';
+                  return;
+                }
+                const res = await fetch(apiBase + '/admin-auth', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ password }),
+                });
+                if (!res.ok) {
+                  document.getElementById('errorMsg').textContent =
+                    'パスワードが違います';
+                  return;
+                }
+                const data = await res.json();
+                // x-admin-tokenとして保存
+                document.cookie = `admin-token=${data.token}; path=/; max-age=86400; SameSite=Lax`;
+                window.location.href = 'questions.html';
+              };
+            </script>
+          </div>
+        </div>
+      </main>
+      <footer>
+        &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC BY-SA 4.0.
+      </footer>
+    </div>
+  </body>
+</html>

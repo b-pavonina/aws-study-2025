@@ -41,6 +41,8 @@
         box-sizing: border-box;
         margin-top: 0;
         width: auto;
+        border-radius: 4px;
+        border: 1px solid #ccc;
       }
       .sort-btn {
         background: linear-gradient(90deg, #f5f5f5 0%, #ebedf5 100%);
@@ -435,7 +437,7 @@
             <div class="question-title-list">${escapeHTML(q.title)}</div>
             <hr class="question-title-hr-list">
             <small>${escapeHTML(q.body)}</small>
-            <div class="question-meta">投稿者: ${
+            <div class="question-meta"> ${
               typeof q.nickname === 'string' &&
               q.nickname.trim() &&
               q.nickname.trim().toLowerCase() !== 'null'
@@ -443,7 +445,7 @@
                 : q.nickname
                 ? String(q.nickname)
                 : '匿名'
-            } ／ 投稿日: ${timeString}</div>
+            }  ${timeString}</div>
           `;
           div.style.cursor = 'pointer';
           div.onclick = () => {

@@ -16,6 +16,7 @@ provider:
     DB_PASSWORD: ${env:DB_PASSWORD}
     SHARED_SECRET_KEY: ${env:SHARED_SECRET_KEY}
     ACCESS_PASSWORD: ${env:ACCESS_PASSWORD}
+    ADMIN_PASSWORD: ${env:ADMIN_PASSWORD}
 
 plugins:
   - serverless-offline
@@ -163,6 +164,111 @@ functions:
             origin: '*'
             headers:
               - x-access-token
+              - Content-Type
+              - Authorization
+              - Origin
+              - Accept
+
+  adminAuth:
+    handler: handler.adminAuth
+    events:
+      - http:
+          path: admin-auth
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - x-admin-token
+              - Content-Type
+              - Authorization
+              - Origin
+              - Accept
+
+  adminGetQuestions:
+    handler: handler.adminGetQuestions
+    events:
+      - http:
+          path: admin-questions
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - x-admin-token
+              - Content-Type
+              - Authorization
+              - Origin
+              - Accept
+
+  adminGetQuestionDetail:
+    handler: handler.adminGetQuestionDetail
+    events:
+      - http:
+          path: admin-questions/{id}
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - x-admin-token
+              - Content-Type
+              - Authorization
+              - Origin
+              - Accept
+
+  adminUpdateQuestion:
+    handler: handler.adminUpdateQuestion
+    events:
+      - http:
+          path: admin-questions/{id}
+          method: put
+          cors:
+            origin: '*'
+            headers:
+              - x-admin-token
+              - Content-Type
+              - Authorization
+              - Origin
+              - Accept
+
+  adminDeleteQuestion:
+    handler: handler.adminDeleteQuestion
+    events:
+      - http:
+          path: admin-questions/{id}
+          method: delete
+          cors:
+            origin: '*'
+            headers:
+              - x-admin-token
+              - Content-Type
+              - Authorization
+              - Origin
+              - Accept
+
+  adminUpdateAnswer:
+    handler: handler.adminUpdateAnswer
+    events:
+      - http:
+          path: admin-answers/{id}
+          method: put
+          cors:
+            origin: '*'
+            headers:
+              - x-admin-token
+              - Content-Type
+              - Authorization
+              - Origin
+              - Accept
+
+  adminDeleteAnswer:
+    handler: handler.adminDeleteAnswer
+    events:
+      - http:
+          path: admin-answers/{id}
+          method: delete
+          cors:
+            origin: '*'
+            headers:
+              - x-admin-token
               - Content-Type
               - Authorization
               - Origin

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>管理者用 質問一覧</title>
+    <link rel="stylesheet" href="../common/style.css" />
+    <style>
+      header .insider-header {
+        max-width: 860px;
+      }
+      .question {
+        margin-bottom: 15px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: #fff;
+        transition: background-color 0.3s, color 0.3s;
+      }
+      .question:hover {
+        background-color: #f0f3f6;
+        color: #333;
+      }
+      .question-title-list {
+        font-size: 1.13em;
+        font-weight: bold;
+        color: #222;
+        margin-bottom: 2px;
+      }
+      .question-title-hr-list {
+        border: none;
+        border-top: 2px solid #e0e7ef;
+        width: 100%;
+        margin: 0 0 10px 0;
+        box-sizing: border-box;
+      }
+      .question-meta {
+        color: #888;
+        font-size: 0.92em;
+        margin-top: 4px;
+      }
+      .header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.5em;
+      }
+      @media (max-width: 600px) {
+        .header-row {
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .header-row h1 {
+          font-size: 1.05em;
+          margin-bottom: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-wrapper">
+      <header>
+        <div class="insider-header">
+          <a href="../index.html" class="logo"
+            >勉強会 <span style="font-size: 0.8em">for</span> AWS</a
+          >
+          <span class="header-spacer"></span>
+          <a href="signin.html" class="header-btn">管理</a>
+        </div>
+      </header>
+      <main>
+        <div class="container">
+          <div class="content">
+            <div class="header-row">
+              <h1>投稿一覧（管理者）</h1>
+            </div>
+            <div id="questions">読み込み中...</div>
+          </div>
+        </div>
+      </main>
+      <footer>
+        &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC BY-SA 4.0.
+      </footer>
+    </div>
+    <script>
+      // 認証チェック
+      function getCookie(name) {
+        const match = document.cookie.match(new RegExp(`${name}=([^;]+)`));
+        return match ? decodeURIComponent(match[1]) : null;
+      }
+      const adminToken = getCookie('admin-token');
+      if (!adminToken) {
+        window.location.href = 'signin.html';
+      }
+      const apiBase =
+        location.hostname === 'localhost'
+          ? 'http://localhost:3000'
+          : 'https://ht3vzeoezg.execute-api.ap-northeast-1.amazonaws.com/prod';
+      function formatJPDate(dateStr) {
+        const d = new Date(dateStr);
+        const y = d.getFullYear();
+        const m = (d.getMonth() + 1).toString().padStart(2, '0');
+        const day = d.getDate().toString().padStart(2, '0');
+        const h = d.getHours().toString().padStart(2, '0');
+        const min = d.getMinutes().toString().padStart(2, '0');
+        return `${y}-${m}-${day} ${h}:${min}`;
+      }
+      function escapeHTML(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+      function renderQuestions(questions) {
+        const container = document.getElementById('questions');
+        container.innerHTML = '';
+        if (!questions || questions.length === 0) {
+          container.textContent = '投稿がありません。';
+          return;
+        }
+        questions.forEach((q) => {
+          const div = document.createElement('div');
+          div.className = 'question';
+          const timeString = formatJPDate(q.created_at);
+          div.innerHTML = `
+            <div class="question-title-list">${escapeHTML(q.title)}</div>
+            <hr class="question-title-hr-list">
+            <small>${escapeHTML(q.body)}</small>
+            <div class="question-meta">投稿者: ${
+              q.nickname ? escapeHTML(q.nickname) : '匿名'
+            } ／ 投稿日: ${timeString}</div>
+          `;
+          div.style.cursor = 'pointer';
+          div.onclick = () => {
+            window.location.href = `question.html?id=${q.id}`;
+          };
+          container.appendChild(div);
+        });
+      }
+      function showError(msg) {
+        const el = document.getElementById('questions');
+        el.textContent = msg;
+        el.style.color = '#d32f2f';
+        el.style.textAlign = 'center';
+      }
+      function handleApiError(res, fallbackMsg) {
+        if (res.status === 401 || res.status === 403) {
+          document.cookie = 'admin-token=; Max-Age=0; path=/';
+          window.location.href = 'signin.html';
+        } else {
+          showError(fallbackMsg || 'APIエラーが発生しました');
+        }
+      }
+      fetch(apiBase + '/admin-questions', {
+        headers: { 'x-admin-token': adminToken },
+      })
+        .then((res) => {
+          if (!res.ok) {
+            handleApiError(res, '認証エラーまたは取得失敗');
+            throw new Error('認証失敗');
+          }
+          return res.json();
+        })
+        .then((data) => {
+          renderQuestions(data);
+        })
+        .catch((e) => {
+          showError('サーバー通信に失敗しました');
+        });
+    </script>
+  </body>
+</html>
