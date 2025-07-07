@@ -125,8 +125,29 @@
         transition: background 0.15s;
       }
       .edit-btn:hover {
-        background: #cbe3ff;
+        background: #f0f6ff;
+        color: #2563eb;
+        border: 1.5px solid #3b82f6;
       }
+
+      .delete-btn {
+        background: #fff0f0;
+        color: #d32f2f;
+        border: 1px solid #ffd6d6;
+        padding: 6px 18px;
+        font-size: 1em;
+        cursor: pointer;
+        margin-bottom: 8px;
+        margin-right: 8px;
+        font-weight: 500;
+        transition: background 0.15s, color 0.15s, border-color 0.15s;
+      }
+      .delete-btn:hover {
+        background: #fff0f0;
+        color: #b71c1c;
+        border: 1.5px solid #ffbdbd;
+      }
+
       .answers-section {
         margin-bottom: 20px;
       }
@@ -173,18 +194,17 @@
         margin-top: 2px;
       }
       .answer-edit-btn {
-        background: none;
-        color: #3b82f6;
-        border: 1px solid #e0e7ef;
+        background: #e3f0ff;
+        color: #0070f3;
+        border: none;
         border-radius: 4px;
-        padding: 3px 14px;
-        font-size: 0.97em;
+        padding: 6px 18px;
+        font-size: 1em;
         cursor: pointer;
+        margin-bottom: 8px;
+        margin-right: 8px;
         font-weight: 500;
-        transition: background 0.13s, color 0.13s, border 0.13s;
-        box-shadow: none;
-        height: 30px;
-        line-height: 1.1;
+        transition: background 0.15s;
       }
       .answer-edit-btn:hover {
         background: #f0f6ff;
@@ -192,6 +212,7 @@
         border: 1.5px solid #3b82f6;
       }
       .answer-edit-btn.delete {
+        background: #fff0f0;
         color: #d32f2f;
         border: 1px solid #ffd6d6;
       }
@@ -379,6 +400,10 @@
                   editBtn.textContent = '編集';
                   editBtn.className = 'edit-btn';
                   editBtn.onclick = () => {
+                    // 編集・削除ボタンを非表示にする
+                    editBtn.style.display = 'none';
+                    if (deleteBtn) deleteBtn.style.display = 'none';
+
                     const bodyDiv = document.getElementById('body');
                     bodyDiv.innerHTML = '';
 
@@ -394,12 +419,23 @@
                     bodyTextarea.style.width = '100%';
                     bodyTextarea.value = question.body;
 
+                    const btnRow = document.createElement('div');
+                    btnRow.style.display = 'flex';
+                    btnRow.style.gap = '10px';
+                    btnRow.style.marginTop = '8px';
+                    btnRow.style.justifyContent = 'flex-start';
+
                     const saveBtn = document.createElement('button');
                     saveBtn.textContent = '保存';
-                    saveBtn.style.marginRight = '10px';
+                    saveBtn.className = 'edit-btn';
+                    saveBtn.style.minWidth = '90px';
+                    saveBtn.style.flex = 'none';
 
                     const cancelBtn = document.createElement('button');
                     cancelBtn.textContent = 'キャンセル';
+                    cancelBtn.className = 'edit-btn';
+                    cancelBtn.style.minWidth = '90px';
+                    cancelBtn.style.flex = 'none';
 
                     saveBtn.onclick = async () => {
                       const newTitle = titleInput.value.trim();
@@ -427,18 +463,17 @@
                     };
                     cancelBtn.onclick = () => location.reload();
 
+                    btnRow.appendChild(saveBtn);
+                    btnRow.appendChild(cancelBtn);
                     bodyDiv.appendChild(titleInput);
                     bodyDiv.appendChild(bodyTextarea);
-                    bodyDiv.appendChild(saveBtn);
-                    bodyDiv.appendChild(cancelBtn);
+                    bodyDiv.appendChild(btnRow);
                   };
                   editBtnContainer.appendChild(editBtn);
                   // 削除ボタン
                   const deleteBtn = document.createElement('button');
                   deleteBtn.textContent = '削除';
-                  deleteBtn.className = 'edit-btn';
-                  deleteBtn.style.background = '#ffe3e3';
-                  deleteBtn.style.color = '#d32f2f';
+                  deleteBtn.className = 'delete-btn';
                   deleteBtn.onclick = async () => {
                     if (!confirm('本当にこの質問を削除しますか？')) return;
                     const res = await fetch(apiBase + `/questions/${id}`, {
@@ -508,14 +543,23 @@
                   textarea.style.width = '100%';
                   textarea.value = answer.body;
 
+                  const btnRow = document.createElement('div');
+                  btnRow.style.display = 'flex';
+                  btnRow.style.gap = '10px';
+                  btnRow.style.marginTop = '8px';
+                  btnRow.style.justifyContent = 'flex-start';
+
                   const saveBtn = document.createElement('button');
                   saveBtn.textContent = '保存';
                   saveBtn.className = 'answer-edit-btn';
-                  saveBtn.style.marginRight = '10px';
+                  saveBtn.style.minWidth = '90px';
+                  saveBtn.style.flex = 'none';
 
                   const cancelBtn = document.createElement('button');
                   cancelBtn.textContent = 'キャンセル';
                   cancelBtn.className = 'answer-edit-btn';
+                  cancelBtn.style.minWidth = '90px';
+                  cancelBtn.style.flex = 'none';
 
                   saveBtn.onclick = async () => {
                     const newBody = textarea.value.trim();
@@ -539,9 +583,10 @@
 
                   cancelBtn.onclick = () => location.reload();
 
+                  btnRow.appendChild(saveBtn);
+                  btnRow.appendChild(cancelBtn);
                   container.appendChild(textarea);
-                  container.appendChild(saveBtn);
-                  container.appendChild(cancelBtn);
+                  container.appendChild(btnRow);
                 };
                 actions.appendChild(editBtn);
                 const deleteBtn = document.createElement('button');

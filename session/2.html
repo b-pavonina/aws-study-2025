@@ -1,414 +1,634 @@
 <!DOCTYPE html>
 <html lang="ja">
-
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>第2回：VPC設計とEC2へのSSH接続 | 勉強会 for AWS</title>
-    <link rel="stylesheet" href="../common/style.css">
+    <link rel="stylesheet" href="../common/style.css" />
     <style>
       header .insider-header {
         max-width: 1160px;
       }
     </style>
-</head>
+  </head>
 
-<body>
+  <body>
     <header>
-        <div class="insider-header">
-          <a href="../index.html" class="logo">勉強会 <span style="font-size: 0.8em">for</span> AWS</a
-          >
-          <span class="header-spacer"></span>
-          <a href="../board/signin.html" class="header-btn">質問板</a>
-        </div>
-      </header>
+      <div class="insider-header">
+        <a href="../index.html" class="logo"
+          >勉強会 <span style="font-size: 0.8em">for</span> AWS</a
+        >
+        <span class="header-spacer"></span>
+        <a href="../board/signin.html" class="header-btn">質問板</a>
+      </div>
+    </header>
     <main>
-
-    <div class="container">
+      <div class="container">
         <div class="content">
-            <h1>第2回：VPC設計とEC2へのSSH接続</h1>
-            <div class="post-date">Posted at 2025-06-19</div>
-            <section id="introduction">
-                <h2>はじめに</h2>
+          <h1 id="title">第2回：VPC設計とEC2へのSSH接続</h1>
+          <div class="post-date">Posted at 2025-06-19</div>
+          <section id="introduction">
+            <h2 id="introduction">はじめに</h2>
+            <h3 id="learn-goal">このセッションで学べること</h3>
+            <p>このセッションでは以下を学びます。</p>
+            <ul>
+              <li>AWSにおけるVPC（仮想ネットワーク）の基本理解</li>
+              <li>VPCの設計・作成のハンズオン</li>
+              <li>EC2（仮想サーバー）の基本理解</li>
+              <li>EC2インスタンスの作成方法</li>
+              <li>EC2インスタンスへのSSH接続（ハンズオン）</li>
+            </ul>
+            <p>ハンズオンで製作する構成図は以下になります。</p>
+            <img
+              src="../image/session/1/introduction.png"
+              alt="AWS構成図"
+              style="width: 100%; max-width: 400px; margin-top: 15px"
+            />
+          </section>
 
-                <h3>このセッションで学べること</h3>
+          <section id="vpc-overview">
+            <h2 id="vpc-overview">1. VPCの概要と構成要素</h2>
+            <p>
+              AWSではEC2などを立ち上げる際、以下のリソースを利用しインフラを作ります。
+            </p>
+            <ul>
+              <li>VPC</li>
+              <li>サブネット</li>
+              <li>インターネットゲートウェイ（IGW）</li>
+              <li>ルートテーブル</li>
+              <li>NATゲートウェイ</li>
+              <li>セキュリティグループ（SG）</li>
+              <li>ネットワークACL（NACL）</li>
+              <li>Elastic IP（EIP）</li>
+              <li>Elastic Network Interface（ENI）</li>
+            </ul>
+
+            <article class="vpc-block">
+              <h3 id="vpc">1. VPCとは？</h3>
+              <p>
+                Amazon VPC（Virtual Private
+                Cloud）は、AWS内で自由に構築できる仮想的なネットワーク環境です。企業が自社専用ネットワークを構築するように、IPアドレス範囲やサブネット、ルート、セキュリティ設定などを柔軟に設計できます。
+              </p>
+              <img
+                src="../image/session/1/vpc1.drawio.png"
+                alt="vpc構成図"
+                style="
+                  width: 100%;
+                  max-width: 200px;
+                  display: block;
+                  margin-top: 10px;
+                "
+              />
+              <p
+                style="
+                  text-align: center;
+                  font-size: 0.9em;
+                  color: #555;
+                  margin-top: 15px;
+                "
+              >
+                VPCのみ作成した状態ではインターネットとは接続しておらず、VPC内は完全にプライベートな状態です
+              </p>
+              <p>
+                VPCのネットワーク範囲はCIDR（Classless Inter-Domain
+                Routing）で指定します。CIDRは、IPアドレスとサブネットマスクを一緒に記述する方法です。
+              </p>
+              <ul>
+                <li>
+                  例：10.0.0.0/16
+                  （ネットワークアドレスは10.0.0.0、サブネットマスクは16ビット）
+                </li>
+              </ul>
+              <p>
+                VPCに使用するCIDRは以下の範囲に収まる値が推奨されています。<br />
+                ハンズオンでは10.0.0.0/16を使用します。
+              </p>
+              <table
+                style="border-collapse: collapse; width: 100%; max-width: 600px"
+              >
+                <thead>
+                  <tr>
+                    <th
+                      style="
+                        border: 1px solid #ccc;
+                        padding: 8px;
+                        background: #f2f2f2;
+                      "
+                    >
+                      CIDR
+                    </th>
+                    <th
+                      style="
+                        border: 1px solid #ccc;
+                        padding: 8px;
+                        background: #f2f2f2;
+                      "
+                    >
+                      IPアドレス範囲
+                    </th>
+                    <th
+                      style="
+                        border: 1px solid #ccc;
+                        padding: 8px;
+                        background: #f2f2f2;
+                      "
+                    >
+                      IPアドレス数
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="border: 1px solid #ccc; padding: 8px">
+                      <code>10.0.0.0/8</code>
+                    </td>
+                    <td style="border: 1px solid #ccc; padding: 8px">
+                      <code>10.0.0.0 ～ 10.255.255.255</code>
+                    </td>
+                    <td style="border: 1px solid #ccc; padding: 8px">
+                      約1,670万
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="border: 1px solid #ccc; padding: 8px">
+                      <code>172.16.0.0/12</code>
+                    </td>
+                    <td style="border: 1px solid #ccc; padding: 8px">
+                      <code>172.16.0.0 ～ 172.31.255.255</code>
+                    </td>
+                    <td style="border: 1px solid #ccc; padding: 8px">
+                      約104万
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="border: 1px solid #ccc; padding: 8px">
+                      <code>192.168.0.0/16</code>
+                    </td>
+                    <td style="border: 1px solid #ccc; padding: 8px">
+                      <code>192.168.0.0 ～ 192.168.255.255</code>
+                    </td>
+                    <td style="border: 1px solid #ccc; padding: 8px">
+                      約6.5万
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </article>
+
+            <article class="vpc-block">
+              <h3 id="network-structure">2. ネットワーク構成の基本</h3>
+
+              <h4>サブネット（Subnet）</h4>
+              <p>
+                VPCを小さく分割したネットワーク。EC2などのリソースはサブネット内に作成します。
+              </p>
+              <p>サブネットの図を挿入</p>
+              <p>
+                サブネットにも「10.0.1.0/24」、「10.0.2.0/24」などCIDRを指定します。VPCのCIDR範囲に収まる値を使用します。
+              </p>
+              <p>
+                上記図の状態ではまだインターネットとサブネットはつながっていません。インターネットと繋がっていないサブネットはプライベートサブネットと呼ばれます。
+              </p>
+              <p>
+                インターネットと接続するためには必要なものがいくつかあります。
+              </p>
+
+              <h4>🌐 インターネットゲートウェイ（IGW）</h4>
+              <p>VPC図を挿入</p>
+              <p>
+                VPCをインターネットに接続するための出入口。VPCにアタッチします。<br />
+                出入り口がつきましたが、インターネットに接続するにはまだ必要なものがあります。
+              </p>
+
+              <h4>🛣 ルートテーブル（Route Table）</h4>
+              <p>
+                サブネットの通信経路(ルート)を定義する設定。ルートには、送信先となるIPアドレスの範囲(CIDR)と、通信が経由するリソースをターゲットとして指定します。
+              </p>
+              <p>ルートテーブルの図を挿入</p>
+              <p>
+                サブネットをインターネットと接続させる場合、送信先を0.0.0.0./0とし、ターゲットにインターネットゲートウェイを指定します。
+              </p>
+              <p>ルートテーブルの図を挿入</p>
+              <p>
+                サブネットに上記のルートテーブルがアタッチされているものは、インターネット接続ができるため、パブリックサブネット呼ばれます。
+              </p>
+              <p>
+                ルートテーブルにはデフォルトで送信先：10.0.0.0/16、ターゲット：localが設定されています。これは、VPCのCIDR範囲内への通信がVPC内部(local)で行われるようにするものであり、削除することはできません。
+              </p>
+              <ul>
+                <li>
+                  <strong>パブリックサブネット：</strong
+                  >インターネットとの通信が可能なサーバー向け（例：Webサーバー）
+                </li>
+                <li>
+                  <strong>プライベートサブネット：</strong
+                  >外部アクセス不可。内部処理向け（例：DB）
+                </li>
+              </ul>
+
+              <h4>🔁 NAT Gateway</h4>
+              <p>
+                プライベートサブネットのインスタンスが外部と通信するために必要なリソースです。
+              </p>
+              <p>NAT Gatewayの構成図</p>
+              <p>
+                NAT
+                Gatewayを使用することで、プライベートサブネット内のインスタンスはインターネットへのアウトバウンド通信が可能になります。インバウンド通信はできません。
+              </p>
+            </article>
+
+            <article class="vpc-block">
+              <h3 id="security-ip">3. セキュリティとIP管理</h3>
+
+              <h4>🔐 セキュリティグループ（SG）</h4>
+              <p>
+                EC2など、インスタンスレベルで動作するファイアウォールです。<br />
+                通信のルール（インバウンドとアウトバウンド）を設定し、どんな通信を許可するかを決めます。<br />
+                具体的には、「どんな通信か（プロトコルやポート番号）」と「どこから・どこへの通信か（CIDRや他のセキュリティグループ）」を指定します。<br />
+              </p>
+              <p>セキュリティグループの参考画面の図</p>
+              <p>
+                上の図ではインバウンドルールで自宅のIPアドレスからSSH接続を許可しています。
+              </p>
+              <p>
+                セキュリティグループはステートフルという特徴があります。インバウンド通信を許可すると、アウトバウンドの許可ルールがない場合でも、応答は自動的に許可されます。逆も同様です。ただ自動許可されるのは応答に限ります。
+              </p>
+
+              <h4>📜 ネットワークACL（NACL）</h4>
+              <p>
+                サブネット単位でアクセス制御をします。<br />
+                インバウンドルールとアウトバウンドルールを設定します。<br />
+                許可と拒否の両方の設定ができます。<br />
+                ステートレスであり、応答通信が必要な場合インバウンドルールとアウトバウンドルールの両方に許可ルールを設定する必要があります。<br />
+              </p>
+              <p>デフォルトネットワークACLの参考図</p>
+              <p>
+                デフォルトでは全ての通信が許可されている状態です。<br />
+                ルール番号が小さいものから順に評価され、最初にマッチしたルールが適用されます。<br />
+                ルール番号 *
+                は暗黙のDenyと呼ばれ、削除することできず、何もルールを設定しない場合は全ての通信が拒否される仕組みになっています。<br />
+              </p>
+
+              <h4>🧠 SGとNACLの違い</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>項目</th>
+                    <th>セキュリティグループ</th>
+                    <th>ネットワークACL</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>適用単位</td>
+                    <td>EC2インスタンス</td>
+                    <td>サブネット</td>
+                  </tr>
+                  <tr>
+                    <td>通信の状態</td>
+                    <td>ステートフル</td>
+                    <td>ステートレス</td>
+                  </tr>
+                  <tr>
+                    <td>許可・拒否</td>
+                    <td>許可のみ</td>
+                    <td>許可・拒否両方</td>
+                  </tr>
+                </tbody>
+              </table>
+            </article>
+
+            <article class="vpc-block">
+              <h3 id="availability">4. 可用性と拡張性</h3>
+
+              <h4>🏢 アベイラビリティゾーン（AZ）</h4>
+              <p>
+                リージョン内の物理的に分離されたデータセンター群。AZ単位でサブネットを配置することで、冗長構成と高可用性を実現できます。
+              </p>
+              <p>AZの構成図</p>
+
+              <h4>🌉 マルチVPCと接続</h4>
+              <p>
+                数のVPCを連携させて、それぞれのVPCが持つネットワークリソースを共有したり、相互に通信できるようにする仕組み。<br />
+                VPCを用途や部門ごとに分け、VPCピアリングやTransit
+                Gatewayで接続することで、大規模なネットワーク設計が可能です。
+              </p>
+            </article>
+          </section>
+          <section id="vpc-hands-on">
+            <h2 id="vpc-hands-on">2. VPCハンズオン</h2>
+
+            <p>
+              このハンズオンでは、EC2インスタンスを配置するための最小構成のVPCを作成します。パブリックサブネットを1つ持ち、インターネット接続が可能な構成を用意します。
+            </p>
+
+            <h3>構成概要</h3>
+            <ul>
+              <li>VPC（10.0.0.0/16）</li>
+              <li>パブリックサブネット（10.0.1.0/24）</li>
+              <li>インターネットゲートウェイ</li>
+              <li>ルートテーブル（0.0.0.0/0 → IGW）</li>
+              <li>セキュリティグループ（SSH: 22番ポートを自分のIPから許可）</li>
+            </ul>
+
+            <h3>作成の流れ</h3>
+            <ol>
+              <li>VPCを作成（10.0.0.0/16）</li>
+              <li>サブネットを作成（10.0.1.0/24、パブリック）</li>
+              <li>インターネットゲートウェイ（IGW）を作成してVPCにアタッチ</li>
+              <li>ルートテーブルを作成し、0.0.0.0/0 に IGW を設定</li>
+              <li>ルートテーブルをサブネットに関連付け</li>
+              <li>サブネットの「自動割り当てパブリックIP」を有効にする</li>
+              <li>セキュリティグループを作成し、SSH(22)を許可</li>
+            </ol>
+
+            <h3>手順</h3>
+            <h4>VPCを作成（10.0.0.0/16）</h4>
+            <p>VPCを検索</p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <h4>サブネットを作成（10.0.1.0/24、パブリック）</h4>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <h4>インターネットゲートウェイ（IGW）を作成してVPCにアタッチ</h4>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <h4>ルートテーブルを作成し、0.0.0.0/0 に IGW を設定</h4>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <h4>ルートテーブルをサブネットに関連付け</h4>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <h4>サブネットの「自動割り当てパブリックIP」を有効にする</h4>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <h4>セキュリティグループを作成し、SSH(22)を許可</h4>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <h4></h4>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+
+            <p>
+              この構成で、次のEC2ハンズオンでパブリックIPからSSH接続が可能になります。
+            </p>
+          </section>
+          <section id="ec2-overview">
+            <h2 id="ec2-overview">3. EC2とは？</h2>
+
+            <p>物理サーバーは、一般的に次のような要素を備えています：</p>
+            <ul>
+              <li>
+                OS（オペレーティングシステム）（サーバーを動かす基本ソフトウェア）
+              </li>
+              <li>CPU（処理を行う頭脳部分）</li>
+              <li>メモリ（一時的なデータを保持する場所）</li>
+              <li>ハードディスク（OSやデータを保存する場所）</li>
+              <li>
+                NIC（ネットワークインターフェースカード）（ネットワーク通信を行う）
+              </li>
+            </ul>
+            <p>
+              EC2（仮想サーバー）は、このような物理サーバーの機能をソフトウェア的に実現したものです。<br />
+              物理的なサーバーを複数に分割し、それぞれを独立した『仮想サーバー（EC2インスタンス）』として利用可能にしています。<br />
+              AWSでは、このサービスを Amazon EC2（Elastic Compute Cloud）
+              と呼んでいます。
+            </p>
+
+            <h3 id="ami">AMI（Amazon Machine Image）</h3>
+            <p>
+              仮想サーバー（EC2インスタンス）を立ち上げる際に使う
+              「OSとソフトウェアが含まれたテンプレート」 です。Amazon
+              LinuxやWindowsなど、用途に応じたAMIを選んでサーバーを立ち上げます。
+            </p>
+
+            <h3 id="instance-type">インスタンスタイプ</h3>
+            <p>
+              EC2インスタンスの性能を決める「CPU、メモリ、ネットワーク性能などのスペック」であり、様々なタイプ（例：t3.micro,
+              m5.largeなど）があります。
+            </p>
+
+            <h3 id="ebs">EBS（Elastic Block Store）</h3>
+            <p>
+              EC2にアタッチする仮想ハードディスクです。OSやデータの保存場所として使い、インスタンスを停止してもデータを維持できます。
+            </p>
+            <h3>ENI（Elastic Network Interface）</h3>
+            <p>EC2にアタッチできる仮想ネットワークインターフェース。</p>
+
+            <h3>Elastic IP（EIP）</h3>
+            <p>
+              アタッチ可能な固定グローバルIP。EC2インスタンスは再起動するたびにIPアドレスが変わるが、Elastic
+              IPを使用することで固定IPにすることができます。
+            </p>
+
+            <h3 id="keypair">キーペア</h3>
+            <p>
+              SSH接続のための公開鍵と秘密鍵のセットです。インスタンス作成時に登録し、秘密鍵（.pemファイル）を使って安全にリモート接続します。
+            </p>
+          </section>
+
+          <section id="ec2-hands-on">
+            <h2 id="ec2-hands-on">4. EC2ハンズオン</h2>
+
+            <p>
+              このハンズオンでは、VPC上にEC2インスタンスを作成し、SSH接続を行って
+              "hello world" を表示するまでの手順を体験します。
+            </p>
+
+            <h3>前提</h3>
+            <ul>
+              <li>VPCとパブリックサブネットが作成済み</li>
+              <li>インターネットゲートウェイが設定済み</li>
+              <li>キーペア（.pemファイル）を事前に作成しておく</li>
+            </ul>
+
+            <h4>✅ キーペアの作成方法（AWSマネジメントコンソール）</h4>
+            <ol>
+              <li>AWSマネジメントコンソールにログイン</li>
+              <li>サービスメニューから「EC2」を選択</li>
+              <li>左メニューで「キーペア」をクリック</li>
+              <li>「キーペアを作成」を押す</li>
+              <li>
+                下記の項目を入力または選択：
                 <ul>
-                    <li>VPC(仮想ネットワーク)の基本構成</li>
-                    <li>ハンズオン: VPCの作成</li>
-                    <li>EC2の基本理解</li>
-                    <li>EC2インスタンス(仮想サーバー)の立ち上げ方法</li>
-                    <li>EC2インスタンスへのSSHリモート接続</li>
+                  <li>キーペア名（例：<code>my-key</code>）</li>
+                  <li>キーペアの種類：RSA（推奨）</li>
+                  <li>
+                    プライベートキーフォーマット：<code>.pem</code>（Mac /
+                    Linux）または <code>.ppk</code>（Windows用PuTTY）
+                  </li>
                 </ul>
-                <p>ハンズオンで製作する構成図は以下になります。</p>
-                <img src="../image/session/1/introduction.png" alt="AWS構成図"
-                    style="width:100%; max-width:400px; margin-top: 15px; ">
-                
+              </li>
+              <li>
+                「キーペアを作成」を押すと、秘密鍵ファイル（<code>.pem</code>）が自動的にダウンロードされる
+              </li>
+            </ol>
+            <p>
+              <strong
+                >⚠️ ダウンロードした
+                <code>.pem</code>
+                ファイルは後から再取得できないので、大切に保管してください！</strong
+              >
+            </p>
 
-                <section id="vpc-overview">
-                
-                        <h2>1. VPCの概要と構成要素</h2>
-                        <p>AWSではEC2などの仮想サーバーを立ち上げる際、自分でインフラを作る必要があります。<br><strong>VPC、サブネット、インターネットゲートウェイ、ルートテーブル、セキュリティーグループ</strong>などたくさんの用語が出てきます。あとのハンズオンで使う為、この5つは理解しましょう。
-                        </p>
+            <h3>手順</h3>
+            <ol>
+              <li>EC2ダッシュボードに移動し「インスタンスを起動」</li>
+              <li>AMIの選択：Amazon Linux 2を選択</li>
+              <li>
+                インスタンスタイプ：無料枠の <code>t2.micro</code> または
+                <code>t3.micro</code> を選択
+              </li>
+              <li>キーペアの選択：作成済みのキーペアを選ぶ</li>
+              <li>ネットワーク設定：作成したVPCとパブリックサブネットを選択</li>
+              <li>「自動割り当てパブリックIPを有効化」</li>
+              <li>
+                セキュリティグループ：SSH (ポート22) を自分のIPに制限して許可
+              </li>
+              <li>インスタンスを起動</li>
+            </ol>
 
-                        <article class="vpc-block">
-                            <h3>1. VPCとは？</h3>
-                            <p><strong>Amazon VPC（Amazon Virtual Private
-                                    Cloud）</strong>は、AWS上に構築する自分専用の仮想ネットワーク空間です。企業ネットワークのように、サブネット、ルート、セキュリティなどを自由に設計できます。
-                            </p>
-                            <img src="../image/session/1/vpc1.drawio.png" alt="vpc構成図"
-                                style="width:100%; max-width:200px; display: block; margin-top: 10px; ">
-                            <p style="text-align: center; font-size: 0.9em; color: #555; margin-top: 15px;">
-                                VPCイメージ：VPCのみ作成した状態ではインターネットとは接続しておらず、VPC内は完全にプライベートな状態です
-                            </p>
-                            <p>VPCのIPアドレスの範囲は、CIDR(Classless Inter-Domain Routing)を使用し設定します。</p>
-                            <p>CIDRとは？
-                                10.0.0.0/24のような形式で、IPアドレスとサブネットマスクを組み合わせた表記法です。<br>
-                                まずIPアドレス(IPv4)について理解しましょう。<br>
-                                10.0.0.0や192.0.2.1のような形式のネットワーク上のデバイスを識別するための一意の番号です。<br>
-                                IPv4は32ビットです。４バイト(8ビット×4)ですね。そのため00001010.00000000.00000000.00000000のように8ビットを4つに分けて表記できます。<br>
-                                ただ見づらいため、00001010.00000000.00000000.00000000なら、各8ビットを10進数にし、10.0.0.0のように通常は書きます。<br>
-                                ちなみにIPv4の数は、2の32乗で計算でき、約42億個あります。人口に比べて少ないため枯渇が叫ばれています。<br>
-
-                                10.0.0.0/24のように「/」の後に数字が続く場合、これはサブネットマスクを表します。<br>
-                                
-
-                            </p>
-                            <p>以下のCIDR(Classless Inter-Domain Routing)範囲内から任意のCIDRを指定します(/16〜/28のCIDRブロックを使用)。仮想であるため、0.0.0.0から255.255.255.255まで全ての範囲のプライベートIP(約40億個)を設定可能ですが、グローバルIPと重複する範囲の設定は推奨されません。
-                            </p>
-                            <table style="border-collapse: collapse; width: 100%; max-width: 600px;">
-                                <thead>
-                                    <tr>
-                                        <th style="border: 1px solid #ccc; padding: 8px; background: #f2f2f2;">範囲</th>
-                                        <th style="border: 1px solid #ccc; padding: 8px; background: #f2f2f2;">
-                                            実際のIPアドレス範囲</th>
-                                        <th style="border: 1px solid #ccc; padding: 8px; background: #f2f2f2;">
-                                            利用可能IPアドレス数（理論値）</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td style="border: 1px solid #ccc; padding: 8px;"><code>10.0.0.0/8</code></td>
-                                <td style="border: 1px solid #ccc; padding: 8px;">
-                                    <code>10.0.0.0 ～ 10.255.255.255</code>
-                                </td>
-                                <td style="border: 1px solid #ccc; padding: 8px;">16,777,216 個（約1,670万）</td>
-                                </tr>
-                                <tr>
-                                    <td style="border: 1px solid #ccc; padding: 8px;"><code>172.16.0.0/12</code>
-                                    </td>
-                                    <td style="border: 1px solid #ccc; padding: 8px;">
-                                        <code>172.16.0.0 ～ 172.31.255.255</code>
-                                    </td>
-                                    <td style="border: 1px solid #ccc; padding: 8px;">1,048,576 個（約104万）</td>
-                                </tr>
-                                <tr>
-                                    <td style="border: 1px solid #ccc; padding: 8px;"><code>192.168.0.0/16</code>
-                                    </td>
-                                    <td style="border: 1px solid #ccc; padding: 8px;">
-                                        <code>192.168.0.0 ～ 192.168.255.255</code>
-                                    </td>
-                                    <td style="border: 1px solid #ccc; padding: 8px;">65,536 個（約6.5万）</td>
-                                </tr>
-                                </tbody>
-                                </table>
-                            <p>あとのVPC作成のハンズオンでは「10.0.0.0/16」を指定します。
-                            </p>
-                        </article>
-
-                        <article class="vpc-block">
-                            <h3>2. ネットワーク構成の基本</h3>
-
-                            <h4>🧱 サブネット（Subnet）</h4>
-                            <p>VPC内のネットワークを小さく分割したものサブネットです。EC2などのリソースはVPCに直接はおけず、サブネットの中に作成します。</p>
-                            <p>サブネットの図を挿入</p>
-                            <p>サブネットにもCIDRを割り当てます。例えば「10.0.1.0/24」や「10.0.2.0/24」など、VPC全体のCIDR内で範囲を区切ります。</p>
-                            <p>上記図の状態ではまだインターネットとサブネットはつながっていません。プライベートサブネットと呼ばれます。</p>
-                            <p>ではどうしたらインターネットとの通信ができるのでしょうか？必要なものがあります。</p>
-
-
-                            <h4>🌐 インターネットゲートウェイ（IGW）</h4>
-                            <p>VPC図を挿入</p>
-                            <p>VPCをインターネットに接続するための出入口。VPCにアタッチします。<br>
-                                これでサブネットはインターネットに接続可能になりますか？まだです、出入り口をつけただけではサブネットはインターネットに接続できません。</p>
-                            </p>
-
-                            <h4>🛣 ルートテーブル（Route Table）</h4>
-                            <p>通信経路を定義する設定。各サブネットにアタッチし、宛先CIDRとターゲット（IGW/NATなど）を指定します。</p>
-                            <p>ルートテーブルの図を挿入</p>
-                            <p>ルートテーブルでIGWを経由するルート（例：<code>0.0.0.0/0 → IGW</code>）を設定することで、サブネットがパブリックになります</p>
-                            <p>その設定のないものはプライベートなままです。</p>
-                            <ul>
-                                <li><strong>パブリックサブネット：</strong>インターネットとの通信が可能なサーバー向け（例：Webサーバー）</li>
-                                <li><strong>プライベートサブネット：</strong>外部アクセス不可。内部処理向け（例：DB）</li>
-                            </ul>
-
-                            <h4>🔁 NAT Gateway</h4>
-                            <p>プライベートサブネットのインスタンスが外部通信するためのゲートウェイ。外部からのアクセスは不可です。</p>
-
-
-                        </article>
-
-                        <article class="vpc-block">
-                            <h3>3. セキュリティとIP管理</h3>
-
-                            <h4>🔐 セキュリティグループ（SG）</h4>
-                            <p>EC2などに適用する仮想ファイアウォール。インバウンド/アウトバウンドで許可ルールのみ設定し、返答通信は自動的に許可されます（ステートフル）。</p>
-
-                            <h4>📜 ネットワークACL（NACL）</h4>
-                            <p>サブネット単位のアクセス制御。許可・拒否の両ルールを設定します（ステートレス）。</p>
-
-                            <h4>🧠 SGとNACLの違い</h4>
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>項目</th>
-                                        <th>セキュリティグループ</th>
-                                        <th>ネットワークACL</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>適用単位</td>
-                                        <td>EC2インスタンス</td>
-                                        <td>サブネット</td>
-                                    </tr>
-                                    <tr>
-                                        <td>通信の状態</td>
-                                        <td>ステートフル</td>
-                                        <td>ステートレス</td>
-                                    </tr>
-                                    <tr>
-                                        <td>許可・拒否</td>
-                                        <td>許可のみ</td>
-                                        <td>許可・拒否両方</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-
-                            <h4>🧩 Elastic IP（EIP）</h4>
-                            <p>EC2インスタンスなどに割り当て可能な固定グローバルIP。再起動時でもIPが変わらないため、外部公開用途に便利です。</p>
-
-                            <h4>📶 ENI（Elastic Network Interface）</h4>
-                            <p>EC2にアタッチできる仮想ネットワークカード。IPアドレスやセキュリティグループの設定を柔軟に扱えます。</p>
-                        </article>
-
-                        <article class="vpc-block">
-                            <h3>4. 可用性と拡張性</h3>
-
-                            <h4>🏢 アベイラビリティゾーン（AZ）</h4>
-                            <p>リージョン内の物理的に分離されたデータセンター群。AZ単位でサブネットを配置することで、冗長構成と高可用性を実現できます。</p>
-
-                            <h4>🌉 マルチVPCと接続</h4>
-                            <p>VPCを用途や部門ごとに分け、VPCピアリングやTransit Gatewayで接続することで、大規模なネットワーク設計が可能です。</p>
-                        </article>
-                    </section>
-
-
-                    <section id="vpc-hands-on">
-                        <h2>4. VPCハンズオン</h2>
-
-                        <p>このハンズオンでは、EC2インスタンスを配置するための最小構成のVPCを作成します。パブリックサブネットを1つ持ち、インターネット接続が可能な構成を用意します。</p>
-
-                        <h3>構成概要</h3>
-                        <ul>
-                            <li>VPC（10.0.0.0/16）</li>
-                            <li>パブリックサブネット（10.0.1.0/24）</li>
-                            <li>インターネットゲートウェイ</li>
-                            <li>ルートテーブル（0.0.0.0/0 → IGW）</li>
-                            <li>セキュリティグループ（SSH: 22番ポートを自分のIPから許可）</li>
-                        </ul>
-
-                        <h3>手順</h3>
-                        <ol>
-                            <li>VPCを作成（10.0.0.0/16）</li>
-                            <li>サブネットを作成（10.0.1.0/24、パブリック）</li>
-                            <li>インターネットゲートウェイ（IGW）を作成してVPCにアタッチ</li>
-                            <li>ルートテーブルを作成し、0.0.0.0/0 に IGW を設定</li>
-                            <li>ルートテーブルをサブネットに関連付け</li>
-                            <li>サブネットの「自動割り当てパブリックIP」を有効にする</li>
-                            <li>セキュリティグループを作成し、SSH(22)を許可</li>
-                        </ol>
-
-                        <p>この構成で、次のEC2ハンズオンでパブリックIPからSSH接続が可能になります。</p>
-                    </section>
-
-                    <section id="ec2-overview">
-                        <h2>5. EC2とは？</h2>
-
-                        <h3>仮想サーバーとは</h3>
-                        <p>物理的なサーバーを仮想的に分割し、複数の利用者がそれぞれ独立した環境として利用できるようにしたものです。AWSではEC2というサービスで仮想サーバーを提供しています。</p>
-
-                        <h3>ハイパーバイザーとは</h3>
-                        <p>仮想化を実現するソフトウェアのことです。物理マシンの上で複数の仮想マシンを動かす仕組みを提供し、AWSではXenやNitroといった技術が使われています。</p>
-
-                        <h3>AMI（Amazon Machine Image）</h3>
-                        <p>EC2インスタンスを起動するための「OSとソフトウェアのセット」です。UbuntuやAmazon Linuxなど、用途に応じたAMIを選んでサーバーを立ち上げます。</p>
-
-                        <h3>インスタンスタイプ</h3>
-                        <p>仮想サーバーのスペックを表します。CPU・メモリ・ネットワーク帯域などに応じて様々なタイプ（例：t3.micro, m5.largeなど）があります。</p>
-
-                        <h3>EBS（Elastic Block Store）</h3>
-                        <p>EC2にアタッチする仮想ハードディスクです。インスタンスのストレージとしてOSやデータを保存します。停止してもデータが保持されます。</p>
-
-                        <h3>キーペア</h3>
-                        <p>SSH接続のための公開鍵と秘密鍵のセットです。インスタンス作成時に登録し、秘密鍵（.pemファイル）を使って安全にリモート接続します。</p>
-                    </section>
-
-                    <section id="ec2-hands-on">
-                        <h2>6. EC2ハンズオン</h2>
-
-                        <p>このハンズオンでは、VPC上にEC2インスタンスを作成し、SSH接続を行って "hello world" を表示するまでの手順を体験します。</p>
-
-                        <h3>前提</h3>
-                        <ul>
-                            <li>VPCとパブリックサブネットが作成済み</li>
-                            <li>インターネットゲートウェイが設定済み</li>
-                            <li>キーペア（.pemファイル）を事前に作成しておく</li>
-                        </ul>
-
-                        <h4>✅ キーペアの作成方法（AWSマネジメントコンソール）</h4>
-                        <ol>
-                            <li>AWSマネジメントコンソールにログイン</li>
-                            <li>サービスメニューから「EC2」を選択</li>
-                            <li>左メニューで「キーペア」をクリック</li>
-                            <li>「キーペアを作成」を押す</li>
-                            <li>
-                                下記の項目を入力または選択：
-                                <ul>
-                                    <li>キーペア名（例：<code>my-key</code>）</li>
-                                    <li>キーペアの種類：RSA（推奨）</li>
-                                    <li>プライベートキーフォーマット：<code>.pem</code>（Mac / Linux）または
-                                        <code>.ppk</code>（Windows用PuTTY）
-                                    </li>
-                                </ul>
-                            </li>
-                            <li>「キーペアを作成」を押すと、秘密鍵ファイル（<code>.pem</code>）が自動的にダウンロードされる</li>
-                        </ol>
-                        <p><strong>⚠️ ダウンロードした <code>.pem</code> ファイルは後から再取得できないので、大切に保管してください！</strong></p>
-
-                        <h3>手順</h3>
-                        <ol>
-                            <li>EC2ダッシュボードに移動し「インスタンスを起動」</li>
-                            <li>AMIの選択：Amazon Linux 2を選択</li>
-                            <li>インスタンスタイプ：無料枠の <code>t2.micro</code> または <code>t3.micro</code> を選択</li>
-                            <li>キーペアの選択：作成済みのキーペアを選ぶ</li>
-                            <li>ネットワーク設定：作成したVPCとパブリックサブネットを選択</li>
-                            <li>「自動割り当てパブリックIPを有効化」</li>
-                            <li>セキュリティグループ：SSH (ポート22) を自分のIPに制限して許可</li>
-                            <li>インスタンスを起動</li>
-                        </ol>
-
-                        <h3>SSH接続</h3>
-                        <ol>
-                            <li>インスタンスの「パブリックIPv4アドレス」を確認</li>
-                            <li>ターミナルで以下のコマンドを実行（pemファイルのパスは適宜変更）</li>
-                        </ol>
-                        <pre><code>chmod 400 my-key.pem
+            <h3>SSH接続</h3>
+            <ol>
+              <li>インスタンスの「パブリックIPv4アドレス」を確認</li>
+              <li>
+                ターミナルで以下のコマンドを実行（pemファイルのパスは適宜変更）
+              </li>
+            </ol>
+            <pre><code>chmod 400 my-key.pem
                             ssh -i my-key.pem ec2-user@<インスタンスのパブリックIP></code></pre>
 
-                        <h3>"hello world" を表示</h3>
-                        <ol>
-                            <li>ログイン後、以下のコマンドを実行</li>
-                        </ol>
-                        <pre><code>echo "hello world"</code></pre>
+            <h3>"hello world" を表示</h3>
+            <ol>
+              <li>ログイン後、以下のコマンドを実行</li>
+            </ol>
+            <pre><code>echo "hello world"</code></pre>
 
-                        <p>これでEC2ハンズオンは完了です！仮想サーバーへの接続体験ができました 🎉</p>
-                    </section>
+            <p>
+              これでEC2ハンズオンは完了です！仮想サーバーへの接続体験ができました
+              🎉
+            </p>
+          </section>
         </div>
 
         <nav class="toc">
-            <h2>目次</h2>
-            <ul>
-                <li><a href="#introduction">はじめに</a></li>
-                <li><a href="#aws">1. AWSとは</a>
-                    <ul>
-                        <li><a href="#awsの概要">AWSの概要</a></li>
-                        <li><a href="#グローバルインフラストラクチャ">グローバルインフラストラクチャ</a></li>
-                        <li><a href="#リージョン">リージョン</a></li>
-                        <li><a href="#アベイラビリティーゾーン（AZ）">アベイラビリティーゾーン（AZ）</a></li>
-                        <li><a href="#エッジロケーション(CloudFront POP)">エッジロケーション</a></li>
-                        <li><a href="#従量課金">従量課金</a></li>
-                        <li><a href="#責任共有モデル">責任共有モデル</a></li>
-                        <li><a href="#クラウドコンピューティングの6つの長所">クラウドの長所</a></li>
-                        <li><a href="#クラウドコンピューティングの限界">クラウドの限界</a></li>
-                    </ul>
-                </li>
-                <li><a href="#account">2. AWSアカウント作成とセキュリティ設定</a>
-                    <ul>
-                        <li><a href="#AWSアカウント開設">AWSアカウント開設</a></li>
-                        <li><a href="#ルートユーザーログイン方法">ルートユーザーのログイン</a></li>
-                        <li><a href="#AWS課金額の確認方法">課金額の確認</a></li>
-                        <li><a href="#予算額を越えた際にメール通知する設定">予算通知設定</a></li>
-                        <li><a href="#MFA認証の設定">MFA認証</a></li>
-                        <li><a href="#管理者IAMユーザーの設定">IAMユーザー</a></li>
-                    </ul>
-                </li>
-                <li><a href="#vpc-overview">3. VPCの概要</a>
-                    <ul>
-                        <li><a href="#VPCとは">VPCとは</a></li>
-                        <li><a href="#パブリックサブネット">パブリックサブネット</a></li>
-                        <li><a href="#プライベートサブネット">プライベートサブネット</a></li>
-                        <li><a href="#マルチVPC">マルチVPC</a></li>
-                        <li><a href="#AZ-ID">AZ-ID</a></li>
-                        <li><a href="#ルートテーブル">ルートテーブル</a></li>
-                        <li><a href="#インターネットゲートウェイ（IGW）">インターネットゲートウェイ</a></li>
-                        <li><a href="#NAT Gateway">NAT Gateway</a></li>
-                        <li><a href="#ENI（Elastic Network Interface）">ENI</a></li>
-                        <li><a href="#Elastic IPアドレス">Elastic IP</a></li>
-                        <li><a href="#セキュリティグループ">セキュリティグループ</a></li>
-                        <li><a href="#ステートフル・ステートレスインスペクション">ステートフル・ステートレス</a></li>
-                    </ul>
-                </li>
-                <li><a href="#vpc-hands-on">4. VPCハンズオン</a></li>
-                <li><a href="#ec2-overview">5. EC2とは？</a>
-                    <ul>
-                        <li><a href="#仮想サーバーとは">仮想サーバー</a></li>
-                        <li><a href="#ハイパーバイザーとは">ハイパーバイザー</a></li>
-                        <li><a href="#AMI（Amazon Machine Image）">AMI</a></li>
-                        <li><a href="#インスタンスタイプ">インスタンスタイプ</a></li>
-                        <li><a href="#EBS（Elastic Block Store）">EBS</a></li>
-                        <li><a href="#キーペア">キーペア</a></li>
-                    </ul>
-                </li>
-                <li><a href="#ec2-hands-on">6. EC2ハンズオン</a></li>
-            </ul>
+          <h2>目次</h2>
+          <ul>
+            <li><a href="#introduction">はじめに</a></li>
+            <li>
+              <a href="#vpc-overview">1. VPCの概要と構成要素</a>
+              <ul>
+                <li><a href="#vpc">VPCとは？</a></li>
+                <li><a href="#network-structure">ネットワーク構成の基本</a></li>
+                <li><a href="#security-ip">セキュリティとIP管理</a></li>
+                <li><a href="#availability">可用性と拡張性</a></li>
+              </ul>
+            </li>
+            <li><a href="#vpc-hands-on">2. VPCハンズオン</a></li>
+            <li>
+              <a href="#ec2-overview">3. EC2とは？</a>
+              <ul>
+                <li><a href="#virtual-server">仮想サーバーとは</a></li>
+                <li><a href="#hypervisor">ハイパーバイザーとは</a></li>
+                <li><a href="#ami">AMI</a></li>
+                <li><a href="#instance-type">インスタンスタイプ</a></li>
+                <li><a href="#ebs">EBS</a></li>
+                <li><a href="#keypair">キーペア</a></li>
+              </ul>
+            </li>
+            <li><a href="#ec2-hands-on">4. EC2ハンズオン</a></li>
+          </ul>
         </nav>
-    </div>
+      </div>
     </main>
 
     <footer>
-        &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC
-          BY-SA 4.0.
+      &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC BY-SA 4.0.
     </footer>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // 自動で <h3> に id を追加する
-            const content = document.querySelector('.content');
-            const headings = content.querySelectorAll('h3');
-            headings.forEach(h => {
-                if (!h.id) {
-                    const id = h.textContent.trim().replace(/\s+/g, '-').replace(/[^\w\-一-龯ぁ-んァ-ヴーａ-ｚＡ-Ｚ０-９ー]/g, '');
-                    h.id = id;
-                }
-            });
-
-            const tocLinks = document.querySelectorAll('.toc a');
-            tocLinks.forEach(link => {
-                link.addEventListener('click', function (e) {
-                    const id = decodeURIComponent(this.getAttribute('href')).replace('#', '');
-                    const target = document.getElementById(id);
-                    if (target) {
-                        e.preventDefault();
-                        const topOffset = target.getBoundingClientRect().top + window.scrollY;
-                        window.scrollTo({
-                            top: topOffset - 20,
-                            behavior: 'smooth'
-                        });
-                    }
-                });
-            });
-        });
+      document.addEventListener('DOMContentLoaded', function () {
+        // 目次のhrefと本文idが一致するように明示的にidを付与したため、自動id付与処理は不要
+      });
     </script>
-</body>
-
+  </body>
 </html>
