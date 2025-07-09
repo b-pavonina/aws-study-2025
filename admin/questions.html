@@ -45,6 +45,18 @@
         justify-content: space-between;
         margin-bottom: 0.5em;
       }
+      /* 2行で省略表示するCSSを追加 */
+      .question-body-preview {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: normal;
+        font-size: 0.98em;
+        color: #444;
+        margin-bottom: 2px;
+      }
       @media (max-width: 600px) {
         .header-row {
           flex-direction: row;
@@ -125,10 +137,19 @@
           const div = document.createElement('div');
           div.className = 'question';
           const timeString = formatJPDate(q.created_at);
+          // 本文を2行で省略表示
+          let body = escapeHTML(q.body || '');
+          // 改行をスペースに
+          body = body.replace(/\n/g, ' ');
+          // 2行分の文字数でカット（全角対応）
+          const maxLen = 60;
+          if (body.length > maxLen) {
+            body = body.slice(0, maxLen) + '...';
+          }
           div.innerHTML = `
             <div class="question-title-list">${escapeHTML(q.title)}</div>
             <hr class="question-title-hr-list">
-            <small>${escapeHTML(q.body)}</small>
+            <small class="question-body-preview">${body}</small>
             <div class="question-meta">投稿者: ${
               q.nickname ? escapeHTML(q.nickname) : '匿名'
             } ／ 投稿日: ${timeString}</div>

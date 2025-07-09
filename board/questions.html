@@ -201,6 +201,18 @@
       #userTokenModal .close-btn:hover {
         background: #2563eb;
       }
+      /* 2行で省略表示するCSSを追加 */
+      .question-body-preview {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: normal;
+        font-size: 0.98em;
+        color: #444;
+        margin-bottom: 2px;
+      }
     </style>
   </head>
   <body>
@@ -433,10 +445,17 @@
           const div = document.createElement('div');
           div.className = 'question';
           const timeString = formatJPDate(q.created_at);
+          // 本文を2行で省略表示
+          let body = escapeHTML(q.body || '');
+          body = body.replace(/\n/g, ' ');
+          const maxLen = 60;
+          if (body.length > maxLen) {
+            body = body.slice(0, maxLen) + '...';
+          }
           div.innerHTML = `
             <div class="question-title-list">${escapeHTML(q.title)}</div>
             <hr class="question-title-hr-list">
-            <small>${escapeHTML(q.body)}</small>
+            <small class="question-body-preview">${body}</small>
             <div class="question-meta"> ${
               typeof q.nickname === 'string' &&
               q.nickname.trim() &&
