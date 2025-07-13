@@ -331,124 +331,412 @@
               <li>セキュリティグループ（SSH: 22番ポートを自分のIPから許可）</li>
             </ul>
 
-            <h3>作成の流れ</h3>
+            <h3>設定手順</h3>
             <ol>
-              <li>VPCを作成（10.0.0.0/16）</li>
-              <li>サブネットを作成（10.0.1.0/24、パブリック）</li>
-              <li>インターネットゲートウェイ（IGW）を作成してVPCにアタッチ</li>
-              <li>ルートテーブルを作成し、0.0.0.0/0 に IGW を設定</li>
-              <li>ルートテーブルをサブネットに関連付け</li>
-              <li>サブネットの「自動割り当てパブリックIP」を有効にする</li>
-              <li>セキュリティグループを作成し、SSH(22)を許可</li>
+              <li>VPC作成（10.0.0.0/16）</li>
+              <li>サブネット作成（10.0.1.0/24）</li>
+              <li>インターネットゲートウェイ（IGW）作成、VPCへアタッチ</li>
+              <li>ルートテーブル作成、ルート(0.0.0.0/0 → IGW)の設定</li>
+              <li>ルートテーブルのサブネットへの関連付け</li>
+              <li>SSH接続を許可するセキュリティグループの作成</li>
             </ol>
 
-            <h3>手順</h3>
-            <h4>VPCを作成（10.0.0.0/16）</h4>
-            <p>VPCを検索</p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <h4>サブネットを作成（10.0.1.0/24、パブリック）</h4>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <h4>インターネットゲートウェイ（IGW）を作成してVPCにアタッチ</h4>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <h4>ルートテーブルを作成し、0.0.0.0/0 に IGW を設定</h4>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <h4>ルートテーブルをサブネットに関連付け</h4>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <h4>サブネットの「自動割り当てパブリックIP」を有効にする</h4>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <h4>セキュリティグループを作成し、SSH(22)を許可</h4>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <h4></h4>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
-            <p></p>
+            <h4 id="vpc-create">VPC作成（10.0.0.0/16）</h4>
+            <ol>
+              <li>
+                <strong>AWSマネジメントコンソールで「VPC」を開く</strong><br />
 
+                <ul>
+                  <li>「VPC」を検索し、選択</li>
+                  <img
+                    src="../image/session/2/vpc/1-search.png"
+                    alt="VPCサービスを検索して選択するAWSマネジメントコンソールの画面"
+                    class="img-w800"
+                  />
+                  <li>
+                    VPCダッシュボードが表示され、関連するリソース一覧が確認できる<br />その中から「VPC」をクリック
+                  </li>
+                  <img
+                    src="../image/session/2/vpc/2-dashboard.png"
+                    alt="VPCダッシュボードでVPCリソース一覧を表示している画面"
+                    class="img-w800"
+                  />
+                  <li>VPCのリソース画面が表示される<br /></li>
+                  <img
+                    src="../image/session/2/vpc/3-console.png"
+                    alt="VPCリソース一覧画面（VPCの詳細が表示されている画面）"
+                    class="img-w800"
+                  />
+                  <p>
+                    ※
+                    赤線のフィルターは画面に表示されていなくて大丈夫です。画像では関係のないリソースを含めないよう使用しています
+                  </p>
+                </ul>
+              </li>
+              <li>
+                <strong>デフォルトVPCの削除</strong><br />
+                <p>
+                  デフォルトVPCは自動で作成されるVPCですが、ハンズオンでは新しいVPCを作成するために削除します。
+                </p>
+                <ul>
+                  <li>
+                    「アクション」から「VPCの削除」を選択<br />※
+                    「デフォルトVPCを作成」から元に戻すことができます
+                  </li>
+                  <img
+                    src="../image/session/2/vpc/4-delete-default.png"
+                    alt="VPC一覧画面でデフォルトVPCを選択し、アクションからVPCの削除を選ぶ操作画面"
+                    class="img-w800"
+                  />
+                  <li>
+                    確認ダイアログが開きます<br />チェックを入れ、「デフォルトVPCの削除」を入力し削除<br />※
+                    関連するサブネットやIGWなどのリソースも自動で削除されます
+                  </li>
+                  <img
+                    src="../image/session/2/vpc/5-delete-default2.png"
+                    alt="デフォルトVPC削除の確認ダイアログでチェックと入力欄に値を入れて削除ボタンを押す画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+              <li>
+                <strong>新しいVPCの作成</strong><br />
+                <ul>
+                  <li>「VPCを作成」を押す</li>
+                  <img
+                    src="../image/session/2/vpc/6-create.png"
+                    alt="VPC作成画面で新規作成ボタンを押す操作画面"
+                    class="img-w800"
+                  />
+                  <li>
+                    VPCの設定をします<br />名前タグ : 任意(session2-vpcなど)<br />IPv4
+                    CIDRブロック : 10.0.0.0/16<br />
+                  </li>
+                  <img
+                    src="../image/session/2/vpc/7-create.png"
+                    alt="VPC作成フォームで名前タグとCIDRを入力する画面"
+                    class="img-w800"
+                  />
+                  <li>「VPCを作成」を押す</li>
+                  <img
+                    src="../image/session/2/vpc/8-launch.png"
+                    alt="VPC作成後、VPC一覧に新しいVPCが表示されている画面"
+                    class="img-w800"
+                  />
+                  <li>
+                    作成されたVPCを確認。「アクション」から「VPC設定を編集」を選択
+                  </li>
+                  <img
+                    src="../image/session/2/vpc/9-dnsname.png"
+                    alt="VPC一覧からVPC設定を編集する操作画面"
+                    class="img-w800"
+                  />
+                  <li>「DNSホスト名を有効化」にチェックを入れ、保存</li>
+                  <img
+                    src="../image/session/2/vpc/10-dnsname2.png"
+                    alt="VPC設定編集画面でDNSホスト名を有効化するチェックボックスにチェックを入れる画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+            </ol>
+
+            <h4 id="subnet-create">サブネット作成（10.0.1.0/24）</h4>
+            <ol>
+              <li>
+                <strong>サブネット作成画面を開く</strong><br />
+                <ul>
+                  <li>
+                    左メニューから「サブネット」を選択し、「サブネットを作成」を押す
+                  </li>
+                  <img
+                    src="../image/session/2/subnet/1-console.png"
+                    alt="VPCダッシュボードでサブネットメニューを選択し、サブネット作成ボタンを押す画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+              <li>
+                <strong>サブネットの設定</strong><br />
+                <ul>
+                  <li>
+                    先ほど作成したVPCを選択。その中にサブネットが作成されます。
+                  </li>
+                  <img
+                    src="../image/session/2/subnet/2-create.png"
+                    alt="サブネット作成フォームでVPCを選択する画面"
+                    class="img-w800"
+                  />
+                  <li>サブネットの設定内容を指定</li>
+                  サブネット名 : 任意（例 : session2-subnet)<br />アベイラビリティゾーン
+                  : ap-northeast-1a<br />IPv4 CIDRブロック : 10.0.1.0/24
+                  <img
+                    src="../image/session/2/subnet/3-create.png"
+                    alt="サブネット作成フォームでサブネット名・AZ・CIDRを入力する画面"
+                    class="img-w800"
+                  />
+                  <li>「サブネットを作成」を押す</li>
+                  <img
+                    src="../image/session/2/subnet/4-launch.png"
+                    alt="サブネット作成後、サブネット一覧に新しいサブネットが表示されている画面"
+                    class="img-w800"
+                  />
+                  <li>
+                    作成したサブネットを選択し、内容を確認<br />
+                    ・利用可能なIPアドレスは256ではなく、251になります<br />
+                    ・「パブリックIPv4アドレスを自動割り当て」はデフォルトで無効化されています。次のステップで有効化します。
+                  </li>
+                  <img
+                    src="../image/session/2/subnet/5-check-ip.png"
+                    alt="サブネット詳細画面で利用可能なIPアドレスやパブリックIPv4割り当て状況を確認する画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+              <li>
+                <strong
+                  >作成したサブネットの自動割り当てパブリックIPを有効化</strong
+                ><br />
+                <ul>
+                  <li>
+                    作成したサブネットを選択し、「アクション」から「サブネットの設定を編集」に進む
+                  </li>
+                  <img
+                    src="../image/session/2/subnet/6-enable-publicip.png"
+                    alt="サブネット一覧からサブネットの設定を編集する操作画面"
+                    class="img-w300"
+                  />
+                  <li>
+                    「パブリック IPv4
+                    アドレスの自動割り当てを有効化」にチェックを入れ保存
+                  </li>
+                  <img
+                    src="../image/session/2/subnet/7-enable-publicip2.png"
+                    alt="サブネット設定編集画面で自動割り当てパブリックIPを有効化するチェックボックスにチェックを入れる画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+            </ol>
+
+            <h4 id="igw-create">
+              インターネットゲートウェイ（IGW）作成、VPCへアタッチ
+            </h4>
+            <ol>
+              <li>
+                <strong>インターネットゲートウェイの作成画面を開く</strong
+                ><br />
+                <ul>
+                  <li>
+                    左メニューから「インターネットゲートウェイ」を選択し、「インターネットゲートウェイの作成」を押す
+                  </li>
+                  <img
+                    src="../image/session/2/igw/1-console.png"
+                    alt="インターネットゲートウェイ一覧画面で作成ボタンを押す操作画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+              <li>
+                <strong>インターネットゲートウェイの設定</strong><br />
+                <ul>
+                  <li>
+                    名前タグに任意の名前（例:
+                    session2-igw）を入力し、「インターネットゲートウェイの作成」を押す
+                  </li>
+                  <img
+                    src="../image/session/2/igw/2-create.png"
+                    alt="インターネットゲートウェイ作成フォームで名前タグを入力する画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+              <li>
+                <strong>作成したIGWをVPCにアタッチ</strong><br />
+                <ul>
+                  <li>
+                    作成直後は「Detached」状態なので、「アクション」から「VPCにアタッチ」に進む
+                  </li>
+                  <img
+                    src="../image/session/2/igw/3-attach.png"
+                    alt="IGW詳細画面でアクションからVPCにアタッチを選択する画面"
+                    class="img-w800"
+                  />
+                  <li>
+                    アタッチ先のVPC（例:
+                    session2-vpc）を選択し、「インターネットゲートウェイのアタッチ」を押す
+                  </li>
+                  <img
+                    src="../image/session/2/igw/4-attach.png"
+                    alt="VPC選択画面でVPCを選びアタッチする操作画面"
+                    class="img-w800"
+                  />
+                  <li>
+                    画面上部に「VPCにアタッチしました」と緑色の通知が表示されれば完了
+                  </li>
+                </ul>
+              </li>
+            </ol>
+
+            <h4 id="rtb-create">
+              ルートテーブル作成、ルート(0.0.0.0/0 → IGW) の設定
+            </h4>
+            <ol>
+              <li>
+                <strong>ルートテーブルの作成画面を開く</strong><br />
+                <ul>
+                  <li>
+                    左メニューから「ルートテーブル」を選択し、「ルートテーブルの作成」に進む
+                  </li>
+                  <img
+                    src="../image/session/2/rtb/1-console.png"
+                    alt="ルートテーブル一覧画面で作成ボタンを押す操作画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+              <li>
+                <strong>ルートテーブルの作成</strong><br />
+                <ul>
+                  <li>
+                    任意の名前（例:
+                    session2-rtb）を入力し、VPCは作成済みのVPC（session2-vpcなど）を選択、「ルートテーブルを作成」ボタンを押す
+                  </li>
+                  <img
+                    src="../image/session/2/rtb/2-create.png"
+                    alt="ルートテーブル作成フォームで名前タグとVPCを選択する画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+              <li>
+                <strong>ルート(0.0.0.0/0 → IGW)の追加</strong><br />
+                <ul>
+                  <li>
+                    作成したルートテーブルを選択し、「ルート」タブから「ルートを編集」をクリック
+                  </li>
+                  <img
+                    src="../image/session/2/rtb/3-result.png"
+                    alt="ルートテーブル詳細画面でルートの編集を選択する画面"
+                    class="img-w800"
+                  />
+                  <li>「ルートを追加」ボタンを押す<br /></li>
+                  <img
+                    src="../image/session/2/rtb/4-edit-route.png"
+                    alt="ルート追加画面で0.0.0.0/0とIGWを指定する操作画面"
+                    class="img-w800"
+                  />
+                  <li>
+                    追加したルートに以下の設定をし、「変更を保存」を押す<br />
+
+                    ・送信先: 0.0.0.0/0
+                    <br />
+                    ・ターゲット:
+                    「インターネットゲートウェイ」を選択。選択後に「igw-」というボックスが表示されるので、クリックし作成済みのIGW（session2-igwなど）を選択<br />
+                  </li>
+                  <img
+                    src="../image/session/2/rtb/5-edit-route.png"
+                    alt="ルートテーブルに0.0.0.0/0→IGWが追加されたことを確認する画面"
+                    class="img-w800"
+                  />
+                  <li>ルートに0.0.0.0/0 → IGWの行が追加されていればOK</li>
+                  <img
+                    src="../image/session/2/rtb/6-edit-result.png"
+                    alt="ルートテーブルに0.0.0.0/0→IGWが追加されたことを確認する画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+            </ol>
+            <h4 id="rtb-attach">ルートテーブルのサブネットへの関連付け</h4>
+            <ol>
+              <li>
+                <strong>サブネットの関連付け編集画面を開く</strong><br />
+                <ul>
+                  <li>
+                    作成したルートテーブルを選択し、「サブネットの関連付け」タブをクリック、「サブネットの関連付けを編集」を押す
+                  </li>
+                  <img
+                    src="../image/session/2/rtb/7-attach.png"
+                    alt="ルートテーブル詳細画面でサブネットの関連付けタブを選択する画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+              <li>
+                <strong>関連付けるサブネットの選択</strong><br />
+                <ul>
+                  <li>
+                    作成したサブネット（例:
+                    session2-subnet）にチェックを入れ、「保存」を押す
+                  </li>
+                  <img
+                    src="../image/session/2/rtb/8-attach.png"
+                    alt="サブネット選択画面で関連付けたいサブネットにチェックを入れる操作画面"
+                    class="img-w800"
+                  />
+                  <li>
+                    明示的なサブネットの関連付け一覧に、選択したサブネットが表示されていればOK
+                  </li>
+                  <img
+                    src="../image/session/2/rtb/9-attach-result.png"
+                    alt="ルートテーブルのサブネット関連付け一覧にサブネットが表示されている画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+            </ol>
+            <h4 id="sg-create">セキュリティグループ(SSH接続許可)の作成</h4>
+            <ol>
+              <li>
+                <strong>セキュリティグループの作成画面を開く</strong><br />
+                <ul>
+                  <li>
+                    左メニューから「セキュリティグループ」を選択し、「セキュリティグループを作成」を押す
+                  </li>
+                  <img
+                    src="../image/session/2/sg/1-console.png"
+                    alt="セキュリティグループ一覧画面で作成ボタンを押す操作画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+              <li>
+                <strong
+                  >セキュリティグループの設定、インバウンドルールでSSH(22)を許可</strong
+                ><br />
+                <ul>
+                  <li>
+                    セキュリティグループ名（例:
+                    session2-sg）を入力し、VPCは作成済みのVPC（session2-vpcなど）を選択
+                  </li>
+                  <li>
+                    インバウンドルールの「ルールを追加」ボタンを押し、タイプに「SSH」、ソースに「マイIP」を指定
+                  </li>
+
+                  <img
+                    src="../image/session/2/sg/2-create.png"
+                    alt="セキュリティグループ作成フォームで名前タグとVPCを選択する画面"
+                    class="img-w800"
+                  />
+                  <li>
+                    今回アウトバウンドルールはデフォルトの設定(全ての通信が許可)で良いため、変更無し<br />
+                    「セキュリティグループを作成」ボタンを押す
+                  </li>
+                  <img
+                    src="../image/session/2/sg/3-create.png"
+                    alt="インバウンドルール追加画面でSSH(22)を自分のIPまたは0.0.0.0/0で許可する操作画面"
+                    class="img-w800"
+                  />
+                  <li>インバウンドルールにSSHが表示されていればOK</li>
+                  <img
+                    src="../image/session/2/sg/4-confirm.png"
+                    alt="セキュリティグループのインバウンドルール一覧にSSH(22)が表示されている画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+            </ol>
             <p>
               この構成で、次のEC2ハンズオンでパブリックIPからSSH接続が可能になります。
             </p>
@@ -591,6 +879,7 @@
           </section>
         </div>
 
+        <!-- 目次：2. VPCハンズオンの小目次をh4から自動生成 -->
         <nav class="toc">
           <h2>目次</h2>
           <ul>
@@ -604,12 +893,38 @@
                 <li><a href="#availability">可用性と拡張性</a></li>
               </ul>
             </li>
-            <li><a href="#vpc-hands-on">2. VPCハンズオン</a></li>
+            <li>
+              <a href="#vpc-hands-on">2. VPCハンズオン</a>
+              <ul>
+                <li><a href="#vpc-create">VPC作成（10.0.0.0/16）</a></li>
+                <li>
+                  <a href="#subnet-create">サブネット作成（10.0.1.0/24）</a>
+                </li>
+                <li>
+                  <a href="#igw-create"
+                    >インターネットゲートウェイ（IGW）作成、VPCへアタッチ</a
+                  >
+                </li>
+                <li>
+                  <a href="#rtb-create"
+                    >ルートテーブル作成、ルート(0.0.0.0/0 → IGW) の設定</a
+                  >
+                </li>
+                <li>
+                  <a href="#rtb-attach"
+                    >ルートテーブルのサブネットへの関連付け</a
+                  >
+                </li>
+                <li>
+                  <a href="#sg-create"
+                    >セキュリティグループ(SSH接続許可)の作成</a
+                  >
+                </li>
+              </ul>
+            </li>
             <li>
               <a href="#ec2-overview">3. EC2とは？</a>
               <ul>
-                <li><a href="#virtual-server">仮想サーバーとは</a></li>
-                <li><a href="#hypervisor">ハイパーバイザーとは</a></li>
                 <li><a href="#ami">AMI</a></li>
                 <li><a href="#instance-type">インスタンスタイプ</a></li>
                 <li><a href="#ebs">EBS</a></li>
@@ -619,6 +934,7 @@
             <li><a href="#ec2-hands-on">4. EC2ハンズオン</a></li>
           </ul>
         </nav>
+        <!-- /目次 -->
       </div>
     </main>
 
