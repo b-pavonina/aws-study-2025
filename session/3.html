@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>第3回：IAMによるアクセス管理、RDSによるDB構築と接続 | 勉強会 for AWS</title>
+    <link rel="stylesheet" href="../common/style.css" />
+    <style>
+      header .insider-header {
+        max-width: 1160px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="insider-header">
+        <a href="../index.html" class="logo">勉強会 <span style="font-size: 0.8em">for</span> AWS</a>
+        <span class="header-spacer"></span>
+        <a href="../board/signin.html" class="header-btn">質問板</a>
+      </div>
+    </header>
+    <main>
+      <div class="container">
+        <div class="content">
+          <h1 id="title">第3回：IAMによるアクセス管理、RDSによるDB構築と接続</h1>
+          <div class="post-date">Posted at 2025-06-19</div>
+          <section id="introduction">
+            <h2>はじめに</h2>
+            <h3>このセッションで学べること</h3>
+            <p>このセッションでは以下を学びます。</p>
+            <ul>
+              <li>AWSにおけるIAMの役割</li>
+              <li>IAMユーザー、IAMロール、IAMポリシーの違い</li>
+              <li>RDSおよびAuroraの概要</li>
+              <li>パブリックサブネット上のEC2からプライベートサブネットのRDSへ接続するハンズオン</li>
+            </ul>
+          </section>
+          <section id="iam-overview">
+            <h2>1. IAMによるアクセス管理</h2>
+            <h3 id="iam-what">IAMとは</h3>
+            <p>IAM(Identity and Access Management)はAWSリソースへの認証と認可を管理するサービスです。ユーザーやロールにポリシーを割り当てることでアクセス権限を細かく制御できます。</p>
+            <h3 id="iam-user">IAMユーザー</h3>
+            <p>個々の人やアプリケーションを表すエンティティです。アクセスキーやパスワードを使ってAWSにアクセスします。</p>
+            <h3 id="iam-role">IAMロール</h3>
+            <p>一時的に権限を付与するための仕組みで、AWSサービスや外部IDプロバイダーから利用されます。</p>
+            <h3 id="iam-policy">IAMポリシー</h3>
+            <p>JSON形式で権限を記述したドキュメントです。ユーザーやロールにアタッチして、アクセスできるアクションやリソースを制限します。</p>
+          </section>
+          <section id="rds-overview">
+            <h2>2. RDSとAurora</h2>
+            <h3 id="rds-what">RDSとは</h3>
+            <p>AWSが提供するマネージドデータベースサービスで、バックアップやパッチ適用などの運用を自動化できます。MySQLやPostgreSQLなど複数のエンジンを選択可能です。</p>
+            <h3 id="aurora">Amazon Aurora</h3>
+            <p>RDSのデータベースエンジンの一つで、高い性能と可用性を提供します。MySQL互換とPostgreSQL互換の二種類があります。</p>
+            <h3 id="rds-connect">RDSへの接続</h3>
+            <p>RDSインスタンスを作成するとエンドポイントが発行されます。アプリケーションやCLIからこのエンドポイントを使って接続します。</p>
+          </section>
+          <section id="hands-on">
+            <h2>3. ハンズオン：EC2からRDSへ接続</h2>
+            <h3 id="architecture">構成概要</h3>
+            <p>以下のようにパブリックサブネットにEC2を、プライベートサブネットにRDSを配置します。EC2からのみRDSへアクセスできるようにセキュリティグループを設定します。</p>
+            <h3 id="steps">手順</h3>
+            <ol>
+              <li>VPCと2つのサブネット（パブリック用・プライベート用）を作成</li>
+              <li>パブリックサブネットにEC2インスタンスを起動し、キーペアでSSH接続できるようにする</li>
+              <li>プライベートサブネットにRDS（MySQL/Aurora）を作成。セキュリティグループでEC2からの接続を許可</li>
+              <li>EC2へSSH接続し、mysqlクライアントでRDSエンドポイントへ接続</li>
+              <li>接続後、<code>SHOW DATABASES;</code>などのSQLを実行してみる</li>
+            </ol>
+            <p>これにより、プライベートサブネットに配置したRDSへ安全にアクセスする方法を体験できます。</p>
+          </section>
+          <!-- 目次 -->
+          <nav class="toc">
+            <h2>目次</h2>
+            <ul>
+              <li><a href="#introduction">はじめに</a></li>
+              <li>
+                <a href="#iam-overview">1. IAMによるアクセス管理</a>
+                <ul>
+                  <li><a href="#iam-what">IAMとは</a></li>
+                  <li><a href="#iam-user">IAMユーザー</a></li>
+                  <li><a href="#iam-role">IAMロール</a></li>
+                  <li><a href="#iam-policy">IAMポリシー</a></li>
+                </ul>
+              </li>
+              <li>
+                <a href="#rds-overview">2. RDSとAurora</a>
+                <ul>
+                  <li><a href="#rds-what">RDSとは</a></li>
+                  <li><a href="#aurora">Amazon Aurora</a></li>
+                  <li><a href="#rds-connect">RDSへの接続</a></li>
+                </ul>
+              </li>
+              <li>
+                <a href="#hands-on">3. ハンズオン：EC2からRDSへ接続</a>
+                <ul>
+                  <li><a href="#architecture">構成概要</a></li>
+                  <li><a href="#steps">手順</a></li>
+                </ul>
+              </li>
+            </ul>
+          </nav>
+          <!-- /目次 -->
+        </div>
+      </div>
+    </main>
+    <footer>
+      &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC BY-SA 4.0.
+    </footer>
+    <script src="../common/script.js"></script>
+  </body>
+</html>
