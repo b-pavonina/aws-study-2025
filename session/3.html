@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>第3回：IAMとRDS/Aurora | 勉強会 for AWS</title>
+    <link rel="stylesheet" href="../common/style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="insider-header">
+        <a href="../index.html" class="logo"
+          >勉強会 <span style="font-size: 0.8em">for</span> AWS</a
+        >
+        <span class="header-spacer"></span>
+        <a href="../board/signin.html" class="header-btn">質問板</a>
+      </div>
+    </header>
+    <main>
+      <div class="container">
+        <div class="content">
+          <h1>第3回 学習内容：IAM と RDS / Aurora</h1>
+          <section id="goal">
+            <h2>セッションの内容</h2>
+            <ul>
+              <li>
+                IAM
+                の基本概念を学習し、ユーザー・ロール・ポリシーの違いを理解する
+              </li>
+              <li>
+                VPC内のプライベートサブネットに配置した RDS インスタンスに、EC2
+                から安全に接続する
+              </li>
+              <li>
+                Aurora（MySQL互換）を選択肢として意識し、RDSとの違いを理解する
+              </li>
+            </ul>
+          </section>
+          <section id="lecture">
+            <h2>IAM（Identity and Access Management）の基礎</h2>
+            <h3>IAMとは？</h3>
+            <p>
+              IAM（Identity and Access
+              Management）は、AWSにおけるアクセス管理の中心的なサービスです。<br />
+              <strong
+                >「誰が（アイデンティティ）」「どのリソースに」「どんな操作をできるか（アクセス許可）」</strong
+              >を細かく制御できます。<br />
+              AWSアカウント内のセキュリティを保つために、IAMの理解と設計は非常に重要です。
+            </p>
+            <h4>IAMの主な構成要素と役割</h4>
+            <table
+              style="border-collapse: collapse; width: 100%; max-width: 800px"
+            >
+              <thead>
+                <tr>
+                  <th style="min-width: 90px">構成要素</th>
+                  <th>説明</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>IAMユーザー</td>
+                  <td>
+                    実際の人が使うAWSアカウント。アクセスキーやログインパスワードを持ち、個別の権限を設定可能。開発者や運用者に割り当てます。
+                  </td>
+                </tr>
+                <tr>
+                  <td>IAMロール</td>
+                  <td>
+                    AWSのサービス（例：EC2）や外部アプリケーションに一時的な権限を与えるためのアイデンティティ。人ではなく「動作する仕組み」に使わせたいときに使います。
+                  </td>
+                </tr>
+                <tr>
+                  <td>IAMポリシー</td>
+                  <td>
+                    JSON形式のアクセスルール。「誰に」「どんな操作を」「どのリソースで」許すかを定義。IAMユーザー、ロール、グループにアタッチします。
+                  </td>
+                </tr>
+                <tr>
+                  <td>IAMグループ</td>
+                  <td>
+                    複数のIAMユーザーをまとめる単位。グループにポリシーを付けて、まとめて管理することで運用を効率化できます。
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <h4>IAMとリソースポリシーの違い</h4>
+            <table
+              style="border-collapse: collapse; width: 100%; max-width: 500px"
+            >
+              <thead>
+                <tr>
+                  <th style="min-width: 90px">比較</th>
+                  <th>IAMポリシー</th>
+                  <th>リソースポリシー</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>管理対象</td>
+                  <td>IAMユーザー / ロール / グループ</td>
+                  <td>AWSリソース（例：S3, SNS, Lambda）</td>
+                </tr>
+                <tr>
+                  <td>管理視点</td>
+                  <td>誰に何を許すか</td>
+                  <td>誰をこのリソースに許可するか</td>
+                </tr>
+                <tr>
+                  <td>主な用途</td>
+                  <td>社内ユーザーやアプリに権限付与</td>
+                  <td>外部アカウントからのアクセス制御など</td>
+                </tr>
+                <tr>
+                  <td>代表例</td>
+                  <td>AmazonEC2ReadOnlyAccess</td>
+                  <td>S3バケットポリシー、Lambdaリソースベースポリシー</td>
+                </tr>
+              </tbody>
+            </table>
+            <p>
+              ➡
+              IAMポリシーとリソースポリシーは併用可能で、アクセスは「両方で許可」されて初めて成立します。
+            </p>
+            <h4>IAMのベストプラクティス</h4>
+            <table
+              style="border-collapse: collapse; width: 100%; max-width: 500px"
+            >
+              <thead>
+                <tr>
+                  <th>原則</th>
+                  <th>解説</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>最小権限の原則（Least Privilege）</td>
+                  <td>
+                    必要最小限のアクセス権だけを与え、誤操作・不正アクセスのリスクを最小化
+                  </td>
+                </tr>
+                <tr>
+                  <td>ルートユーザーは使わない</td>
+                  <td>
+                    AWSアカウント作成時のルートユーザーは緊急時以外は使わず、IAMユーザーで管理
+                  </td>
+                </tr>
+                <tr>
+                  <td>MFA（多要素認証）の有効化</td>
+                  <td>
+                    すべての管理ユーザーにMFAを適用。盗難・不正アクセス対策として重要
+                  </td>
+                </tr>
+                <tr>
+                  <td>IAMロールの活用</td>
+                  <td>
+                    EC2やLambdaなどのAWSサービスには、IAMユーザーではなくロールを付与（アクセスキー不要）
+                  </td>
+                </tr>
+                <tr>
+                  <td>ポリシーの定期見直し</td>
+                  <td>
+                    使われていない権限の洗い出し、ログベースでの権限最適化を定期的に実施
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <h4>🧪 よくある設計パターン（例）</h4>
+            <table
+              style="border-collapse: collapse; width: 100%; max-width: 500px"
+            >
+              <thead>
+                <tr>
+                  <th>シナリオ</th>
+                  <th>IAM構成の例</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>開発者がEC2を操作</td>
+                  <td>IAMユーザー＋AmazonEC2FullAccess ポリシー</td>
+                </tr>
+                <tr>
+                  <td>EC2からS3にアクセス</td>
+                  <td>
+                    IAMロール＋AmazonS3ReadOnlyAccess をインスタンスにアタッチ
+                  </td>
+                </tr>
+                <tr>
+                  <td>閲覧だけさせたいユーザーグループ</td>
+                  <td>IAMグループ＋ReadOnlyAccess ポリシー</td>
+                </tr>
+                <tr>
+                  <td>外部アカウントがS3を参照</td>
+                  <td>S3バケットにリソースポリシーを設定（Account ID指定）</td>
+                </tr>
+              </tbody>
+            </table>
+            <h4>🔚 まとめ</h4>
+            <ul>
+              <li>IAMはAWSのセキュリティとアクセス制御の核</li>
+              <li>ユーザー・ロール・グループ・ポリシーを適切に使い分ける</li>
+              <li>IAMポリシーとリソースポリシーは別物だが、連携して動く</li>
+              <li>
+                セキュリティ設計の第一歩は、「誰に、どのようなアクセスが必要か」を明確にすること
+              </li>
+            </ul>
+            <h3>2. RDS / Auroraの概要</h3>
+            <ul>
+              <li>フルマネージドなリレーショナルデータベースサービス</li>
+              <li>
+                対応エンジン：MySQL, PostgreSQL, MariaDB, Oracle, SQL Server,
+                Aurora
+              </li>
+              <li>
+                Aurora MySQL：高可用・自動バックアップ・高速起動などの特徴
+              </li>
+              <li>
+                パブリック vs プライベートサブネットの違い（セキュリティの観点）
+              </li>
+            </ul>
+          </section>
+          <section id="hands-on">
+            <h2>🛠️ ハンズオン内容</h2>
+            <h3>ハンズオン概要：</h3>
+            <p>
+              「プライベートサブネットにRDSを作成し、EC2から接続する」<br />IAM
+              ロールによる権限制御も体験。
+            </p>
+            <h3>ハンズオン手順</h3>
+            <h4>🔹 1. 準備</h4>
+            <ul>
+              <li>
+                既存のVPCとパブリック・プライベートサブネットを利用（第2回のを流用）
+              </li>
+              <li>必要に応じてセキュリティグループを作成／変更</li>
+            </ul>
+
+            <h4>🔹 2. RDS（MySQL or Aurora MySQL）を作成</h4>
+            <table
+              style="border-collapse: collapse; width: 100%; max-width: 600px"
+            >
+              <thead>
+                <tr>
+                  <th>項目</th>
+                  <th>内容</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>DBエンジン</td>
+                  <td>MySQL（またはAurora MySQL）</td>
+                </tr>
+                <tr>
+                  <td>可用性</td>
+                  <td>単一AZで可（検証目的）</td>
+                </tr>
+                <tr>
+                  <td>サブネット</td>
+                  <td>プライベートサブネットを選択</td>
+                </tr>
+                <tr>
+                  <td>パブリックアクセス</td>
+                  <td>無効（非公開）</td>
+                </tr>
+                <tr>
+                  <td>セキュリティグループ</td>
+                  <td>
+                    ポート3306を、EC2のセキュリティグループからの接続のみ許可
+                  </td>
+                </tr>
+                <tr>
+                  <td>その他</td>
+                  <td>初期ユーザー名とパスワードを設定し、控えておく</td>
+                </tr>
+              </tbody>
+            </table>
+            <h4>🔹 3. EC2から接続確認（MySQLクライアント使用）</h4>
+            <ul>
+              <li>Amazon Linux EC2 に SSH 接続（第2回）</li>
+              <li>MySQLクライアントをインストール（初回のみ）：</li>
+            </ul>
+            <pre><code>sudo yum install -y mysql</code></pre>
+            <ul>
+              <li>
+                接続コマンド（RDSエンドポイントとパスワードは控えておいたものを使用）：
+              </li>
+            </ul>
+            <pre><code>mysql -h &lt;RDSエンドポイント&gt; -u admin -p</code></pre>
+            <ul>
+              <li>ログイン後：</li>
+            </ul>
+            <p>create database testdb;</p>
+            <p>use testdb;</p>
+            <p>create table sample (id int, name varchar(50));</p>
+            <p>insert into sample values (1, 'test');</p>
+            <p>select * from sample;</p>
+            <p>exit;</p>
+            <p>以下のように表示されれば、成功です</p>
+            <pre><code>+----+-------+
+| id | name  |
++----+-------+
+|  1 | test  |
++----+-------+
+1 row in set (0.00 sec)</code></pre>
+          </section>
+          <section id="check">
+            <h2>✅ 終了後の理解確認</h2>
+            <ul>
+              <li>IAMポリシーとロールの違いを説明できるか？</li>
+              <li>RDSにEC2からしかアクセスできない構成が作れたか？</li>
+              <li>セキュリティグループとIAMの役割の違いを理解しているか？</li>
+            </ul>
+          </section>
+          <section id="note">
+            <h2>補足・注意事項</h2>
+            <ul>
+              <li>
+                RDSはプライベートサブネットに配置しているため、EC2も同じVPC内にいる必要あり
+              </li>
+              <li>
+                セキュリティグループでポート3306を正しく開けていないと接続できない
+              </li>
+            </ul>
+          </section>
+        </div>
+        <nav class="toc">
+          <h2>目次</h2>
+          <ul>
+            <li><a href="#goal">学習目標</a></li>
+            <li><a href="#lecture">座学内容</a></li>
+            <li><a href="#hands-on">ハンズオン内容</a></li>
+            <li><a href="#check">終了後の理解確認</a></li>
+            <li><a href="#note">補足・注意事項</a></li>
+          </ul>
+        </nav>
+      </div>
+    </main>
+    <footer>
+      &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC BY-SA 4.0.
+    </footer>
+    <script>
+      // 目次ジャンプ用のidは本文に明示的に付与済み
+    </script>
+  </body>
+</html>

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AWSの新しい無料プラン</title>
+    <link rel="stylesheet" href="../common/style.css" />
+    <style>
+      .net {
+        color: blue;
+      } /* ネットワーク部 */
+      .host {
+        color: red;
+      } /* ホスト部（例）*/
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <div class="insider-header">
+        <a href="../index.html" class="logo"
+          >勉強会 <span style="font-size: 0.8em">for</span> AWS</a
+        >
+        <span class="header-spacer"></span>
+        <a href="../board/signin.html" class="header-btn">質問板</a>
+      </div>
+    </header>
+    <main>
+      <div class="container">
+        <div class="content">
+          <section id="cidr-intro">
+            <h2>AWSの新しい無料プラン(7月15日以降)</h2>
+            <p>
+              2025年7月15日に、AWSの無料利用枠に大きな変更がありました。これまでの「12ヶ月間無料」モデルから、新しい無料プランに切り替わり、よりシンプルな仕組みになりました。
+            </p>
+            <p>この記事では、新しいAWS無料プランの特徴、注意点を解説します。</p>
+
+            <a href="https://aws.amazon.com/free/">AWS公式サイト</a>
+            <= 日本語版は現在対応していないため英語版を参照してください。
+
+            <p></p>
+          </section>
+
+          <section id="aws-free-plan-table">
+            <h2>AWS新しい無料プランの概要</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>項目</th>
+                  <th>内容</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>利用期間</td>
+                  <td>最大6ヶ月間（またはクレジット使い切りまで）</td>
+                </tr>
+                <tr>
+                  <td>初期クレジット</td>
+                  <td>$100（登録時に即付与）</td>
+                </tr>
+                <tr>
+                  <td>追加クレジット</td>
+                  <td>$100（チュートリアル等の完了で獲得可能）</td>
+                </tr>
+                <tr>
+                  <td>合計で最大</td>
+                  <td><strong>$200</strong> 相当の利用が可能</td>
+                </tr>
+                <tr>
+                  <td>利用できるサービス</td>
+                  <td>主要なAWSサービス（EC2, RDS, S3, Lambdaなど）</td>
+                </tr>
+                <tr>
+                  <td>対象ユーザー</td>
+                  <td>
+                    <strong>2025年7月15日以降にアカウント作成した人</strong>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="aws-free-plan-services">
+            <h2>AWS無料プランでのサービス利用区分</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>サービスの種類</th>
+                  <th>クレジットから引かれる？</th>
+                  <th>備考</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>🟢 Always Free対象サービス</td>
+                  <td>❌ 引かれない</td>
+                  <td>
+                    Lambda（月100万回）、S3（5GB）、CloudFront（1TB）など。期間制限なし。
+                  </td>
+                </tr>
+                <tr>
+                  <td>🔵 通常のAWSサービス</td>
+                  <td>✅ 引かれる</td>
+                  <td>
+                    EC2、RDS、Bedrock、DynamoDB（大容量利用時）などはクレジットを消費します
+                  </td>
+                </tr>
+                <tr>
+                  <td>🔴 高コスト専用サービス等</td>
+                  <td>🚫 使用不可</td>
+                  <td>一部Marketplace製品や専用インフラ系などは利用制限あり</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="aws-free-plan-end">
+            <h2>⏳ 6ヶ月後にどうなるの？</h2>
+            <p>
+              無料プランは、<strong>登録から6ヶ月が経過したとき</strong>または<strong>クレジットをすべて使い切ったとき</strong>のいずれか早い方で終了します。
+            </p>
+            <p>
+              無料プランが終了すると、AWSから「このまま有料プランに移行しますか？」という案内が届きます。
+            </p>
+            <p>
+              移行しない場合、<strong>90日後にアカウントとデータは削除</strong>されます。
+            </p>
+          </section>
+
+          <section id="aws-paid-plan">
+            <h2>有料プランへ移行すると何が変わる？</h2>
+            <ul>
+              <li>
+                無料プラン中に使い切らなかったクレジット（最大$200）はそのまま使えます。ただしクレジットには有効期限(アカウント作成時から12ヶ月間)があります。
+              </li>
+              <li>Always Free対象サービスの無料枠もそのまま引き継がれます</li>
+              <li>一部制限されていたサービスも利用可能になります</li>
+            </ul>
+          </section>
+          <section id="aws-free-plan-comparison">
+            <h2>旧Free Tierと新Free Planの違い</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>比較項目</th>
+                  <th>旧Free Tier（〜7/14）</th>
+                  <th>新Free Plan（7/15〜）</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>無料期間</td>
+                  <td>12ヶ月間</td>
+                  <td>最大6ヶ月 or クレジット使い切り</td>
+                </tr>
+                <tr>
+                  <td>クレジット制</td>
+                  <td>なし（時間ベース）</td>
+                  <td>あり（$100〜$200）</td>
+                </tr>
+                <tr>
+                  <td>EC2/RDSの無料枠</td>
+                  <td>750時間／月（t2.micro等）</td>
+                  <td>利用可能だがクレジット消費扱い</td>
+                </tr>
+                <tr>
+                  <td>サービスの自由度</td>
+                  <td>比較的高い</td>
+                  <td>一部制限あり</td>
+                </tr>
+              </tbody>
+            </table>
+            <p>
+              <strong>旧Free Tier</strong
+              >は、12ヶ月間にわたり主要サービス（EC2、RDS、S3など）に月ごとの無料枠が設定されていました。例えば、EC2はt2.microインスタンスを月750時間まで無料で利用でき、RDSも同様の無料枠がありました。クレジット制はなく、利用時間や容量の上限を超えた分のみ課金される仕組みでした。サービスの自由度も高く、ほとんどの主要サービスが制限なく利用できました。
+            </p>
+            <p>
+              <strong>新Free Plan</strong
+              >では、最大6ヶ月またはクレジット使い切りまでが無料期間となり、クレジット（$100〜$200）を消費する形に変更されました。EC2やRDSなどの利用はクレジット消費扱いとなり、Always
+              Free対象サービス以外は利用制限が強化されています。サービスの自由度も一部制限されているため、利用前に対象サービスや条件を確認する必要があります。
+            </p>
+          </section>
+          <section id="aws-free-plan-merit">
+            <h2>メリット</h2>
+            <ul>
+              <li>
+                新Free
+                Planの期間中は課金が発生しない仕組みなため、安心して利用できます。
+              </li>
+              <li>
+                今まで無料枠がなく、課金して学習する必要があったサービスでも、クレジットがある間は無料で利用できます。
+              </li>
+              <li>
+                クレジット制により、サービスに対するコストが確認でき、試用期間中にコストのイメージが掴みやすくなりました。今までは無料枠を使用中は、無料枠ではない場合実際にいくらかかるか把握できない問題点がありました。
+              </li>
+            </ul>
+          </section>
+          <section id="aws-free-plan-summary">
+            <h2>まとめ</h2>
+            <ul>
+              <li>
+                新Free Planでは
+                <strong>$100〜$200</strong>
+                のクレジットを活用して最大6ヶ月無料利用できます。
+              </li>
+              <li>
+                クレジット対象外の「Always
+                Free」サービスは、引き続き制限なく使えます。
+              </li>
+              <li>
+                無料期間終了後は、有料プランへの移行か、アカウントの自動削除かを選ぶことになります。
+              </li>
+            </ul>
+          </section>
+        </div>
+
+        <nav class="toc">
+          <h2>目次</h2>
+          <ul>
+            <li><a href="#cidr-intro">AWSの新しい無料プラン</a></li>
+            <li><a href="#aws-free-plan-table">無料プランの概要</a></li>
+            <li><a href="#aws-free-plan-services">サービス利用区分</a></li>
+            <li><a href="#aws-free-plan-end">6ヶ月後にどうなる？</a></li>
+            <li><a href="#aws-paid-plan">有料プランへの移行</a></li>
+            <li><a href="#aws-free-plan-comparison">旧Free Tierとの違い</a></li>
+            <li><a href="#aws-free-plan-merit">新Free Planのメリット</a></li>
+            <li><a href="#aws-free-plan-summary">まとめ</a></li>
+          </ul>
+        </nav>
+      </div>
+    </main>
+
+    <footer>
+      &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC BY-SA 4.0.
+    </footer>
+    <script>
+      // 省略：目次スクロール処理
+    </script>
+  </body>
+</html>

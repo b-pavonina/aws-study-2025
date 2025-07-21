@@ -26,19 +26,21 @@
       <div class="container">
         <div class="content">
           <h1 id="title">第2回：VPC設計とEC2へのSSH接続</h1>
-          <div class="post-date">Posted at 2025-06-19</div>
+          <div class="post-date">Posted at 2025-07-20</div>
           <section id="introduction">
             <h2 id="introduction">はじめに</h2>
-            <h3 id="learn-goal">このセッションで学べること</h3>
-            <p>このセッションでは以下を学びます。</p>
-            <ul>
-              <li>AWSにおけるVPC（仮想ネットワーク）の基本理解</li>
-              <li>VPCの設計・作成のハンズオン</li>
-              <li>EC2（仮想サーバー）の基本理解</li>
-              <li>EC2インスタンスの作成方法</li>
-              <li>EC2インスタンスへのSSH接続（ハンズオン）</li>
-            </ul>
-            <p>ハンズオンで製作する構成図は以下になります。</p>
+            <p>
+              このセッションでは、AWSのVPC（Virtual Private Cloud）とEC2（Elastic Compute Cloud）の基本的な概念を学び、実際にVPCを構築し、EC2インスタンスを立ち上げてSSH接続するまでの流れを体験します。<br />
+              VPCはAWSのネットワーク基盤であり、EC2は仮想サーバーを提供するサービスです。これらの理解は、AWSでのシステム設計や運用において非常に重要です。
+            </p>
+            <p>このセッションは以下の構成になっています</p>
+            <ol>
+              <li>VPCと構成要素</li>
+              <li>ハンズオン: VPC作成</li>
+              <li>EC2（仮想サーバー）の基礎</li>
+              <li>ハンズオン: EC2インスタンスの作成とSSH接続</li>
+            </ol>
+            <p>ハンズオンの構成図は以下になります</p>
             <img
               src="../image/session/1/introduction.png"
               alt="AWS構成図"
@@ -47,9 +49,10 @@
           </section>
 
           <section id="vpc-overview">
-            <h2 id="vpc-overview">1. VPCの概要と構成要素</h2>
+            <h2 id="vpc-overview">1. VPCと構成要素</h2>
             <p>
-              AWSではEC2などを立ち上げる際、以下のリソースを利用しインフラを作ります。
+              VPCはAWSのネットワーク基盤ですが、以下のようにさまざまな構成要素があり、それぞれが特定の役割を持っています。<br />
+              これらの要素を理解することで、AWS上でのネットワーク設計やセキュリティ設定が可能になります。
             </p>
             <ul>
               <li>VPC</li>
@@ -64,10 +67,10 @@
             </ul>
 
             <article class="vpc-block">
-              <h3 id="vpc">1. VPCとは？</h3>
+              <h3 id="vpc">VPC（Virtual Private Cloud）</h3>
               <p>
-                Amazon VPC（Virtual Private
-                Cloud）は、AWS内で自由に構築できる仮想的なネットワーク環境です。企業が自社専用ネットワークを構築するように、IPアドレス範囲やサブネット、ルート、セキュリティ設定などを柔軟に設計できます。
+                Amazon
+                VPCは、AWS内で自由に構築できる仮想的なネットワーク環境です。企業が自社専用ネットワークを構築するように、IPアドレス範囲やサブネット、ルート、セキュリティ設定などを柔軟に設計できます。
               </p>
               <img
                 src="../image/session/1/vpc1.drawio.png"
@@ -176,9 +179,7 @@
             </article>
 
             <article class="vpc-block">
-              <h3 id="network-structure">2. ネットワーク構成の基本</h3>
-
-              <h4>サブネット（Subnet）</h4>
+              <h3 id="subnet">サブネット（Subnet）</h3>
               <p>
                 VPCを小さく分割したネットワーク。EC2などのリソースはサブネット内に作成します。
               </p>
@@ -192,15 +193,17 @@
               <p>
                 インターネットと接続するためには必要なものがいくつかあります。
               </p>
-
-              <h4>🌐 インターネットゲートウェイ（IGW）</h4>
+            </article>
+            <article class="vpc-block">
+              <h3 id="igw">インターネットゲートウェイ（IGW）</h3>
               <p>VPC図を挿入</p>
               <p>
                 VPCをインターネットに接続するための出入口。VPCにアタッチします。<br />
                 出入り口がつきましたが、インターネットに接続するにはまだ必要なものがあります。
               </p>
-
-              <h4>🛣 ルートテーブル（Route Table）</h4>
+            </article>
+            <article class="vpc-block">
+              <h3 id="route-table">ルートテーブル（Route Table）</h3>
               <p>
                 サブネットの通信経路(ルート)を定義する設定。ルートには、送信先となるIPアドレスの範囲(CIDR)と、通信が経由するリソースをターゲットとして指定します。
               </p>
@@ -225,8 +228,9 @@
                   >外部アクセス不可。内部処理向け（例：DB）
                 </li>
               </ul>
-
-              <h4>🔁 NAT Gateway</h4>
+            </article>
+            <article class="vpc-block">
+              <h3 id="nat-gateway">NAT Gateway</h3>
               <p>
                 プライベートサブネットのインスタンスが外部と通信するために必要なリソースです。
               </p>
@@ -238,9 +242,7 @@
             </article>
 
             <article class="vpc-block">
-              <h3 id="security-ip">3. セキュリティとIP管理</h3>
-
-              <h4>🔐 セキュリティグループ（SG）</h4>
+              <h3 id="sg">セキュリティグループ（SG）</h3>
               <p>
                 EC2など、インスタンスレベルで動作するファイアウォールです。<br />
                 通信のルール（インバウンドとアウトバウンド）を設定し、どんな通信を許可するかを決めます。<br />
@@ -253,8 +255,9 @@
               <p>
                 セキュリティグループはステートフルという特徴があります。インバウンド通信を許可すると、アウトバウンドの許可ルールがない場合でも、応答は自動的に許可されます。逆も同様です。ただ自動許可されるのは応答に限ります。
               </p>
-
-              <h4>📜 ネットワークACL（NACL）</h4>
+            </article>
+            <article class="vpc-block">
+              <h3 id="nacl">ネットワークACL（NACL）</h3>
               <p>
                 サブネット単位でアクセス制御をします。<br />
                 インバウンドルールとアウトバウンドルールを設定します。<br />
@@ -268,8 +271,10 @@
                 ルール番号 *
                 は暗黙のDenyと呼ばれ、削除することできず、何もルールを設定しない場合は全ての通信が拒否される仕組みになっています。<br />
               </p>
+            </article>
 
-              <h4>🧠 SGとNACLの違い</h4>
+            <article class="vpc-block">
+              <h3 id="sg-vs-nacl">SGとNACLの違い</h3>
               <table>
                 <thead>
                   <tr>
@@ -299,15 +304,14 @@
             </article>
 
             <article class="vpc-block">
-              <h3 id="availability">4. 可用性と拡張性</h3>
-
-              <h4>🏢 アベイラビリティゾーン（AZ）</h4>
+              <h3 id="az">アベイラビリティゾーン（AZ）</h3>
               <p>
                 リージョン内の物理的に分離されたデータセンター群。AZ単位でサブネットを配置することで、冗長構成と高可用性を実現できます。
               </p>
               <p>AZの構成図</p>
-
-              <h4>🌉 マルチVPCと接続</h4>
+            </article>
+            <article class="vpc-block">
+              <h3 id="multi-vpc">マルチVPC</h3>
               <p>
                 数のVPCを連携させて、それぞれのVPCが持つネットワークリソースを共有したり、相互に通信できるようにする仕組み。<br />
                 VPCを用途や部門ごとに分け、VPCピアリングやTransit
@@ -341,7 +345,7 @@
               <li>SSH接続を許可するセキュリティグループの作成</li>
             </ol>
 
-            <h4 id="vpc-create">VPC作成（10.0.0.0/16）</h4>
+            <h3 id="vpc-create">VPC作成（10.0.0.0/16）</h3>
             <ol>
               <li>
                 <strong>AWSマネジメントコンソールで「VPC」を開く</strong><br />
@@ -369,7 +373,7 @@
                   />
                   <p>
                     ※
-                    赤線のフィルターは画面に表示されていなくて大丈夫です。画像では関係のないリソースを含めないよう使用しています
+                    赤線のフィルターは皆さんの画面には表示されなくて大丈夫です。画像に関係のないリソースを含めないよう使用しています
                   </p>
                 </ul>
               </li>
@@ -441,7 +445,7 @@
               </li>
             </ol>
 
-            <h4 id="subnet-create">サブネット作成（10.0.1.0/24）</h4>
+            <h3 id="subnet-create">サブネット作成（10.0.1.0/24）</h3>
             <ol>
               <li>
                 <strong>サブネット作成画面を開く</strong><br />
@@ -519,9 +523,7 @@
               </li>
             </ol>
 
-            <h4 id="igw-create">
-              インターネットゲートウェイ（IGW）作成、VPCへアタッチ
-            </h4>
+            <h3 id="igw-create">インターネットゲートウェイ（IGW）作成、VPCへアタッチ</h3>
             <ol>
               <li>
                 <strong>インターネットゲートウェイの作成画面を開く</strong
@@ -578,9 +580,7 @@
               </li>
             </ol>
 
-            <h4 id="rtb-create">
-              ルートテーブル作成、ルート(0.0.0.0/0 → IGW) の設定
-            </h4>
+            <h3 id="rtb-create">ルートテーブル作成、ルート(0.0.0.0/0 → IGW) の設定</h3>
             <ol>
               <li>
                 <strong>ルートテーブルの作成画面を開く</strong><br />
@@ -648,7 +648,7 @@
                 </ul>
               </li>
             </ol>
-            <h4 id="rtb-attach">ルートテーブルのサブネットへの関連付け</h4>
+            <h3 id="rtb-attach">ルートテーブルのサブネットへの関連付け</h3>
             <ol>
               <li>
                 <strong>サブネットの関連付け編集画面を開く</strong><br />
@@ -686,7 +686,7 @@
                 </ul>
               </li>
             </ol>
-            <h4 id="sg-create">セキュリティグループ(SSH接続許可)の作成</h4>
+            <h3 id="sg-create">セキュリティグループ(SSH接続許可)の作成</h3>
             <ol>
               <li>
                 <strong>セキュリティグループの作成画面を開く</strong><br />
@@ -744,23 +744,100 @@
           <section id="ec2-overview">
             <h2 id="ec2-overview">3. EC2とは？</h2>
 
-            <p>物理サーバーは、一般的に次のような要素を備えています：</p>
-            <ul>
-              <li>
-                OS（オペレーティングシステム）（サーバーを動かす基本ソフトウェア）
-              </li>
-              <li>CPU（処理を行う頭脳部分）</li>
-              <li>メモリ（一時的なデータを保持する場所）</li>
-              <li>ハードディスク（OSやデータを保存する場所）</li>
-              <li>
-                NIC（ネットワークインターフェースカード）（ネットワーク通信を行う）
-              </li>
-            </ul>
             <p>
-              EC2（仮想サーバー）は、このような物理サーバーの機能をソフトウェア的に実現したものです。<br />
-              物理的なサーバーを複数に分割し、それぞれを独立した『仮想サーバー（EC2インスタンス）』として利用可能にしています。<br />
-              AWSでは、このサービスを Amazon EC2（Elastic Compute Cloud）
-              と呼んでいます。
+              EC2（Amazon Elastic Compute
+              Cloud）とは、クラウド上に仮想サーバーを作成できるサービスで、OSや性能（CPU・メモリ）を自由に選んで、数分で使い始めることができます。
+            </p>
+            <p>
+              EC2
+              インスタンスは、いくつかの構成要素から成り立っており、物理パソコンの部品に例えるとイメージしやすくなります。
+            </p>
+            <table
+              style="border-collapse: collapse; width: 100%; max-width: 800px"
+            >
+              <thead>
+                <tr>
+                  <th
+                    style="
+                      border: 1px solid #ccc;
+                      padding: 8px;
+                      background: #f2f2f2;
+                    "
+                  >
+                    EC2 の構成要素
+                  </th>
+                  <th
+                    style="
+                      border: 1px solid #ccc;
+                      padding: 8px;
+                      background: #f2f2f2;
+                    "
+                  >
+                    役割
+                  </th>
+                  <th
+                    style="
+                      border: 1px solid #ccc;
+                      padding: 8px;
+                      background: #f2f2f2;
+                    "
+                  >
+                    物理パソコンで例えると
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="border: 1px solid #ccc; padding: 8px">
+                    <strong>AMI（Amazon Machine Image）</strong>
+                  </td>
+                  <td style="border: 1px solid #ccc; padding: 8px">
+                    OSや初期ソフトのテンプレート
+                  </td>
+                  <td style="border: 1px solid #ccc; padding: 8px">
+                    OSインストールDVDやリカバリディスク
+                  </td>
+                </tr>
+                <tr>
+                  <td style="border: 1px solid #ccc; padding: 8px">
+                    <strong>インスタンスタイプ</strong>
+                  </td>
+                  <td style="border: 1px solid #ccc; padding: 8px">
+                    CPU・メモリなどのハードウェア性能
+                  </td>
+                  <td style="border: 1px solid #ccc; padding: 8px">
+                    マザーボードやCPU、メモリ構成
+                  </td>
+                </tr>
+                <tr>
+                  <td style="border: 1px solid #ccc; padding: 8px">
+                    <strong>EBS（Elastic Block Store）</strong>
+                  </td>
+                  <td style="border: 1px solid #ccc; padding: 8px">
+                    データ保存用の仮想ディスク
+                  </td>
+                  <td style="border: 1px solid #ccc; padding: 8px">
+                    ハードディスクやSSD
+                  </td>
+                </tr>
+                <tr>
+                  <td style="border: 1px solid #ccc; padding: 8px">
+                    <strong>ENI（Elastic Network Interface）</strong>
+                  </td>
+                  <td style="border: 1px solid #ccc; padding: 8px">
+                    仮想ネットワークインターフェース
+                  </td>
+                  <td style="border: 1px solid #ccc; padding: 8px">
+                    LANポートや無線LANアダプタ
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <p>
+              これらの要素を組み合わせて、必要なスペックや機能を持つ仮想サーバーを構築します。<br />
+              例えば、Amazon
+              LinuxのAMIを選び、t3.microのインスタンスタイプで、EBSに20GBのストレージを割り当てるといった具合です。
             </p>
 
             <h3 id="ami">AMI（Amazon Machine Image）</h3>
@@ -769,182 +846,454 @@
               「OSとソフトウェアが含まれたテンプレート」 です。Amazon
               LinuxやWindowsなど、用途に応じたAMIを選んでサーバーを立ち上げます。
             </p>
+            <img
+              src="../image/session/2/ec2-overview/ami.png"
+              alt="AMIの選択画面のスクリーンショット"
+              class="img-w800"
+            />
 
             <h3 id="instance-type">インスタンスタイプ</h3>
+
             <p>
-              EC2インスタンスの性能を決める「CPU、メモリ、ネットワーク性能などのスペック」であり、様々なタイプ（例：t3.micro,
-              m5.largeなど）があります。
+              インスタンスタイプは、EC2 インスタンスの
+              CPU、メモリ、ネットワーク性能などのスペック構成を指します。用途に応じて様々なタイプ（例：t3.micro、m5.large
+              など）から選べ、コストと性能のバランスを柔軟に調整できます。
+            </p>
+            <p>
+              詳細は
+              <a
+                href="https://aws.amazon.com/jp/ec2/instance-types/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                公式ドキュメント（EC2インスタンスタイプ一覧）
+              </a>
+              を参照してください。
             </p>
 
-            <h3 id="ebs">EBS（Elastic Block Store）</h3>
+            <h3 id="ebs">EBS（Amazon Elastic Block Store）</h3>
             <p>
-              EC2にアタッチする仮想ハードディスクです。OSやデータの保存場所として使い、インスタンスを停止してもデータを維持できます。
+              EBSは、EC2
+              インスタンスに接続して使う高可用で永続的なブロックストレージサービスです。EBS
+              ボリュームは「仮想ハードディスク」のように扱え、OS
+              からは通常のローカルディスクとして認識されます。ブロック単位でデータを管理し、自由にファイルシステムを構築できます。
             </p>
+            <p>
+              OSのインストール先やアプリケーション・データベースの保存に使われ、インスタンス停止後もデータは保持されます。別のインスタンスへ付け替えることも可能です。
+            </p>
+            <p>
+              用途に応じて、読み書き性能（IOPS）やスループットの要件に合わせてストレージの種類や性能を柔軟に選択でき、スナップショットによるバックアップ、暗号化、容量の変更などの機能も備えています。
+            </p>
+
+            <img
+              src="../image/session/2/ec2-overview/ebs.png"
+              alt="ebsの選択画面のスクリーンショット"
+              class="img-w800"
+            />
             <h3>ENI（Elastic Network Interface）</h3>
-            <p>EC2にアタッチできる仮想ネットワークインターフェース。</p>
-
+            <p>
+              ENIは、EC2
+              インスタンスにアタッチできる仮想ネットワークインターフェースで、IPアドレスやセキュリティグループなどのネットワーク設定を持ちます。インスタンス間で付け替えたり、複数の
+              ENI を使ってネットワークを分離・冗長化することも可能です。
+            </p>
             <h3>Elastic IP（EIP）</h3>
             <p>
-              アタッチ可能な固定グローバルIP。EC2インスタンスは再起動するたびにIPアドレスが変わるが、Elastic
-              IPを使用することで固定IPにすることができます。
+              Elastic
+              IPは、EC2インスタンスに割り当て可能な固定のグローバルIPアドレスです。<br />
+              通常、EC2を再起動するとパブリックIPアドレスは変わりますが、EIPを使うことでIPアドレスを固定でき、DNSを変更せずに安定した接続先として利用できます。<br />
+              また、EIPはインスタンスから切り離して、他のインスタンスに付け替えることも可能です。
             </p>
 
             <h3 id="keypair">キーペア</h3>
             <p>
-              SSH接続のための公開鍵と秘密鍵のセットです。インスタンス作成時に登録し、秘密鍵（.pemファイル）を使って安全にリモート接続します。
+              キーペアは、EC2 インスタンスへ SSH
+              接続するための「公開鍵」と「秘密鍵」のセットです。インスタンス作成時に公開鍵を登録し、手元にある秘密鍵（.pem
+              ファイル）を使って、安全にリモート接続します。
             </p>
           </section>
 
           <section id="ec2-hands-on">
-            <h2 id="ec2-hands-on">4. EC2ハンズオン</h2>
+            <h2 id="ec2-hands-on">
+              4. EC2 ハンズオン：VPC上に仮想サーバーを立てて接続してみよう
+            </h2>
 
-            <p>
-              このハンズオンでは、VPC上にEC2インスタンスを作成し、SSH接続を行って
-              "hello world" を表示するまでの手順を体験します。
-            </p>
-
-            <h3>前提</h3>
+            <p>このハンズオンの内容は以下になります。</p>
             <ul>
-              <li>VPCとパブリックサブネットが作成済み</li>
-              <li>インターネットゲートウェイが設定済み</li>
-              <li>キーペア（.pemファイル）を事前に作成しておく</li>
+              <li>VPC上にEC2インスタンスを作成する</li>
+              <li>
+                自身のPC（ターミナル、コマンドライン）からSSHでEC2インスタンスに接続する
+              </li>
             </ul>
 
-            <h4>✅ キーペアの作成方法（AWSマネジメントコンソール）</h4>
-            <ol>
-              <li>AWSマネジメントコンソールにログイン</li>
-              <li>サービスメニューから「EC2」を選択</li>
-              <li>左メニューで「キーペア」をクリック</li>
-              <li>「キーペアを作成」を押す</li>
+            <h3 id="ec2-prereq">前提条件（事前に作成済み）</h3>
+            <ul>
+              <li>VPC（Virtual Private Cloud）</li>
+              <li>パブリックサブネット</li>
+              <li>インターネットゲートウェイ（IGW）</li>
               <li>
-                下記の項目を入力または選択：
-                <ul>
-                  <li>キーペア名（例：<code>my-key</code>）</li>
-                  <li>キーペアの種類：RSA（推奨）</li>
-                  <li>
-                    プライベートキーフォーマット：<code>.pem</code>（Mac /
-                    Linux）または <code>.ppk</code>（Windows用PuTTY）
-                  </li>
-                </ul>
+                EC2用セキュリティグループ（ポート22：SSHを自分のIPに限定して許可）
+              </li>
+            </ul>
+
+            <h3 id="ec2-create">1. EC2 インスタンスを作成</h3>
+            <ol>
+              <li>
+                AWSマネジメントコンソールから「EC2」のダッシュボードを開く
+                <img
+                  src="../image/session/2/ec2-hands-on/1.png"
+                  alt="EC2サービスを検索して選択するAWSマネジメントコンソールの画面"
+                  class="img-w800"
+                />
               </li>
               <li>
-                「キーペアを作成」を押すと、秘密鍵ファイル（<code>.pem</code>）が自動的にダウンロードされる
+                「インスタンスを起動」をクリック
+                <img
+                  src="../image/session/2/ec2-hands-on/2.png"
+                  alt="インスタンスを起動ボタンを押す操作画面"
+                  class="img-w800"
+                />
+              </li>
+              <li>
+                インスタンスの設定をする<br />
+                最初に「名前とタグ」に任意の名前(例: session2-ec2)を記入する
+                <img
+                  src="../image/session/2/ec2-hands-on/3.png"
+                  alt="インスタンス作成画面で名前とタグを入力する操作画面"
+                  class="img-w800"
+                />
+              </li>
+
+              <li>
+                「AMI」はAmazon Linux
+                2023の設定を使用する（デフォルト設定から変更なし）<br />
+                <img
+                  src="../image/session/2/ec2-hands-on/4.png"
+                  alt="AMIの選択画面でAmazon Linux 2023を選ぶ操作画面"
+                  class="img-w800"
+                />
+              </li>
+              <li>
+                「インスタンスタイプ」はt2.micro(新しい無料プランのアカウントはt3.micro)を使用する（デフォルト設定から変更なし）<br />
+                <img
+                  src="../image/session/2/ec2-hands-on/5.png"
+                  alt="インスタンスタイプの選択画面でt2.microを選ぶ操作画面"
+                  class="img-w800"
+                />
+              </li>
+              <li>
+                キーペアは「新しいキーペアの作成」を選択<br />
+                <img
+                  src="../image/session/2/ec2-hands-on/key-pair1.png"
+                  alt="キーペアの選択画面で新しいキーペアを作成する操作画面"
+                  class="img-w800"
+                />
+              </li>
+              <li>
+                プロンプトが表示されるので、以下の内容を入力し、「キーペアを作成」を押す<br />
+                ・キーペア名：任意(例 study-key)<br />
+                ・キーペアの種類：RSA（推奨）<br />
+                ・プライベートキー形式：.pem<br />
+                ※
+                秘密鍵（.pemファイル）がダウンロードされます。再取得できないので、安全な場所に保管してください<br />
+
+                <img
+                  src="../image/session/2/ec2-hands-on/key-pair2.png"
+                  alt="キーペアの選択画面で新しいキーペアを作成する操作画面"
+                  class="img-w500"
+                />
+              </li>
+              <li>
+                作成したキーペアを選択<br />
+                ※
+                次回からは、新しいキーペアを作らず、作成済みのキーペアを選択することも可能です
+                <img
+                  src="../image/session/2/ec2-hands-on/key-pair3.png"
+                  alt="キーペアの選択画面で新しいキーペアを作成する操作画面"
+                  class="img-w800"
+                />
+              </li>
+              <li>
+                <strong>ネットワーク設定</strong><br />
+                VPC：事前作成済みVPC(session2-vpc)<br />
+                サブネット：事前作成済みサブネット(session2-subnet)<br />
+                自動割り当てパブリック IP：有効化<br />
+                ※
+                上記設定になっていない場合、右上の「編集」ボタンから変更できます<br />
+                セキュリティグループ：既存のセュリティグループを選択<br />
+                共通のセキュリティグループ：事前作済みSG(session2-sg)<br />
+
+                <img
+                  src="../image/session/2/ec2-hands-on/network.png"
+                  alt="ネットワーク設定画面でVPCとサブネットを選択する操作画面"
+                  class="img-w800"
+                />
+              </li>
+              <li>
+                ストレージはデフォルト設定を使用。「インスタンスを起動」を押します
+                <img
+                  src="../image/session/2/ec2-hands-on/storage.png"
+                  alt="ストレージ設定画面でデフォルトのストレージを使用する操作画面"
+                  class="img-w800"
+                />
+              </li>
+              <li>
+                インスタンスの起動が開始されます。「すべてのインスタンスを表示」を押します
+                <img
+                  src="../image/session/2/ec2-hands-on/launched.png"
+                  alt="インスタンス起動確認画面"
+                  class="img-w800"
+                />
+              </li>
+              <li>
+                作成したインスタンスを確認します<br />
+                <img
+                  src="../image/session/2/ec2-hands-on/check.png"
+                  alt="インスタンス起動確認画面で内容を確認する操作画面"
+                  class="img-w800"
+                />
               </li>
             </ol>
             <p>
-              <strong
-                >⚠️ ダウンロードした
-                <code>.pem</code>
-                ファイルは後から再取得できないので、大切に保管してください！</strong
-              >
+              インスタンスの状態が「実行中」になり、ステータスチェックが「合格」となったら、次のステップに進みます。
+            </p>
+            <img
+              src="../image/session/1/ec211.png"
+              alt="EC2インスタンス設定画面"
+              class="img-w500"
+            />
+
+            <p style="text-align: center; font-size: 0.9em; color: #555">
+              保留中の表示
+            </p>
+            <img
+              src="../image/session/1/ec212.png"
+              alt="EC2インスタンス設定画面"
+              class="img-w500"
+            />
+            <p style="text-align: center; font-size: 0.9em; color: #555">
+              実行中及びステータスチェックの初期化表示
+            </p>
+            <img
+              src="../image/session/1/ec213.png"
+              alt="EC2インスタンス設定画面"
+              class="img-w500"
+            />
+            <p style="text-align: center; font-size: 0.9em; color: #555">
+              ステータスチェックが合格した状態
             </p>
 
-            <h3>手順</h3>
-            <ol>
-              <li>EC2ダッシュボードに移動し「インスタンスを起動」</li>
-              <li>AMIの選択：Amazon Linux 2を選択</li>
-              <li>
-                インスタンスタイプ：無料枠の <code>t2.micro</code> または
-                <code>t3.micro</code> を選択
-              </li>
-              <li>キーペアの選択：作成済みのキーペアを選ぶ</li>
-              <li>ネットワーク設定：作成したVPCとパブリックサブネットを選択</li>
-              <li>「自動割り当てパブリックIPを有効化」</li>
-              <li>
-                セキュリティグループ：SSH (ポート22) を自分のIPに制限して許可
-              </li>
-              <li>インスタンスを起動</li>
-            </ol>
+            <h3 id="ec2-ssh">2. EC2 に SSH 接続</h3>
+            <p>1. インスタンスの「パブリック IPv4 アドレス」を確認</p>
+            <img
+              src="../image/session/2/ec2-hands-on/ip.png"
+              alt="EC2インスタンスのパブリックIPアドレスをコピーする操作画面"
+              class="img-w800"
+            />
 
-            <h3>SSH接続</h3>
-            <ol>
-              <li>インスタンスの「パブリックIPv4アドレス」を確認</li>
-              <li>
-                ターミナルで以下のコマンドを実行（pemファイルのパスは適宜変更）
-              </li>
-            </ol>
-            <pre><code>chmod 400 my-key.pem
-                            ssh -i my-key.pem ec2-user@<インスタンスのパブリックIP></code></pre>
-
-            <h3>"hello world" を表示</h3>
-            <ol>
-              <li>ログイン後、以下のコマンドを実行</li>
-            </ol>
-            <pre><code>echo "hello world"</code></pre>
-
+            <p>2. .pemファイル(キーペアの秘密鍵)の権限を変更</p>
+            <p>【Mac】<br />
+              ・ターミナルを開き、cdコマンドで.pemファイルがあるディレクトリに移動します<br>
+              ・以下のコマンドを実行して、キーペアファイルの権限を変更します<br />
+              　※ <キーペア名>.pemは、実際に作成したキーペアの名前に置き換えてください</br />
+                  　(例: study-key.pem)
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>chmod 400 &lt;キーペア名&gt;.pem</code></pre>
+            </div>
+            <p><br></p>
             <p>
-              これでEC2ハンズオンは完了です！仮想サーバーへの接続体験ができました
-              🎉
+              【Windows】<br />
+              ・ターミナルを開き、cdコマンドで.pemファイルがあるディレクトリに移動します<br>
+              ・以下の二つのコマンドを実行して、キーペアファイルの権限を変更します<br />
+              
+              　※ <キーペア名>.pemは、実際に作成したキーペアの名前に置き換えてください</br />
+                  　(例: study-key.pem)
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>icacls &lt;キーペア名&gt;.pem /inheritance:r</code></pre>
+            </div>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>icacls &lt;キーペア名&gt;.pem /grant:r "$($env:USERNAME):(R)"</code></pre>
+            </div>
+            <p><br></p>
+            <p>
+                3. SSH
+                接続コマンドを実行し、EC2インスタンスに接続</p>
+            <p>
+              以下のコマンドを実行します
+            </p>
+            
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>ssh -i &lt;キーペア名&gt;.pem ec2-user@&lt;パブリックIPアドレス&gt;</code></pre>
+            </div>
+            <p>
+              ※ <パブリックIPアドレス>は、EC2のIPアドレスに置き換えてください<br />(例: ssh -i study-key.pem ec2-user@152.30.0.1)<br />
+
+              ※ 接続時に「Are you sure you want to continue connecting (yes/no)?」と聞かれた場合は、yesと入力してEnterを押してください
+            </p>
+            <p>
+              以下のように表示されれば、接続成功です
+            </p>
+            <img
+              src="../image/session/2/ec2-hands-on/ssh.png"
+              alt="SSH接続成功の画面"
+              class="img-w800"
+            />
+            <p>
+              SSH接続後は、ユーザー名とホスト名が変わります<br />
+              例: [ec2-user@ip-10-0-0-37 ~] <br />
+              ec2-userはEC2インスタンスのデフォルトユーザー名です<br /> 
+              ip-10-0-0-37は、作成したEC2インスタンスのプライベートIPアドレスになります<br />
+
+            </p>
+            
+
+            <h3 id="ec2-hello">3. "Hello World" を表示</h3>
+
+            <p>SSH接続した状態で、以下のコマンドを実行します</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>echo "Hello World"</code></pre>
+            </div>
+            <p>
+              以下のように表示されれば、成功です
+            </p>
+            <img
+              src="../image/session/2/ec2-hands-on/hello-world.png"
+              alt="Hello Worldの表示画面"
+              class="img-w600"
+            />
+            <p>
+              これで、EC2インスタンス上でコマンドを実行できるようことが確認できました<br />
+              同様の手順で、インスタンスの中にWebサーバーを立てたり、アプリケーションをデプロイしたりしていくことができます
+            </p>
+            <p>
+              🎉 これで仮想サーバー（EC2）の立ち上げとSSH接続のハンズオンは完了です！
+            </p>
+            <h3 id="cleanup">後片付け</h3>
+            <p>セッションで作成したリソースは必ず削除をお願いします<br />
+              削除方法の確認のためだけでなく、不要な課金や、セキュリティリスク（安全な設計でない場合）の発生防止のために削除を行います<br />
+              
+            </p>
+            <h3 id="delete-procedure">削除手順</h3>
+            <ol>
+              <li>
+                削除するEC2インスタンスを選択し、「インスタンスの状態」を選択し、「インスタンスを終了」を選択します<br />
+              </li>
+              <img
+                src="../image/session/1/delete-ec2-1.png"
+                alt="EC2インスタンス設定画面"
+                class="img-w800"
+              />
+              <li>確認画面が表示されるので、終了を押します<br /></li>
+              <img
+                src="../image/session/1/delete-ec2-2.png"
+                alt="EC2インスタンス設定画面"
+                class="img-w800"
+              />
+              <li>
+                削除中はインスタンスの状態が「シャットダウン」になります<br />
+              </li>
+
+              <img
+                src="../image/session/1/delete-ec2-3.png"
+                alt="EC2インスタンス設定画面"
+                class="img-w800"
+              />
+              <li>
+                少し待ち更新ボタンを押すと、インスタンスの状態が「終了済み」になります<br />
+                これでEC2インスタンスの削除は完了です<br />
+              </li>
+
+              <img
+                src="../image/session/1/delete-ec2-4.png"
+                alt="EC2インスタンス設定画面"
+                class="img-w800"
+              />
+            </ol>
+          </section>
+          <section id="end">
+            <h3>おわりに</h3>
+            <p>
+              今回のセッションでは、AWSのVPCとEC2の基本的な概念と、実際にVPCを構築し、EC2インスタンスを立ち上げてSSH接続するまでの流れを体験しました。<br />
+              次回はIAM(Identity and Access
+              Management)の基礎理解と、リレーショナルデータベースサービスであるRDS/Auroraの学習およびハンズオンを行います。
             </p>
           </section>
         </div>
-
-        <!-- 目次：2. VPCハンズオンの小目次をh4から自動生成 -->
+         
         <nav class="toc">
-          <h2>目次</h2>
-          <ul>
-            <li><a href="#introduction">はじめに</a></li>
-            <li>
-              <a href="#vpc-overview">1. VPCの概要と構成要素</a>
-              <ul>
-                <li><a href="#vpc">VPCとは？</a></li>
-                <li><a href="#network-structure">ネットワーク構成の基本</a></li>
-                <li><a href="#security-ip">セキュリティとIP管理</a></li>
-                <li><a href="#availability">可用性と拡張性</a></li>
-              </ul>
-            </li>
-            <li>
-              <a href="#vpc-hands-on">2. VPCハンズオン</a>
-              <ul>
-                <li><a href="#vpc-create">VPC作成（10.0.0.0/16）</a></li>
-                <li>
-                  <a href="#subnet-create">サブネット作成（10.0.1.0/24）</a>
-                </li>
-                <li>
-                  <a href="#igw-create"
-                    >インターネットゲートウェイ（IGW）作成、VPCへアタッチ</a
-                  >
-                </li>
-                <li>
-                  <a href="#rtb-create"
-                    >ルートテーブル作成、ルート(0.0.0.0/0 → IGW) の設定</a
-                  >
-                </li>
-                <li>
-                  <a href="#rtb-attach"
-                    >ルートテーブルのサブネットへの関連付け</a
-                  >
-                </li>
-                <li>
-                  <a href="#sg-create"
-                    >セキュリティグループ(SSH接続許可)の作成</a
-                  >
-                </li>
-              </ul>
-            </li>
-            <li>
-              <a href="#ec2-overview">3. EC2とは？</a>
-              <ul>
-                <li><a href="#ami">AMI</a></li>
-                <li><a href="#instance-type">インスタンスタイプ</a></li>
-                <li><a href="#ebs">EBS</a></li>
-                <li><a href="#keypair">キーペア</a></li>
-              </ul>
-            </li>
-            <li><a href="#ec2-hands-on">4. EC2ハンズオン</a></li>
-          </ul>
+          <h3>目次</h3>
+            <ul>
+              <li><a href="#introduction">はじめに</a></li>
+              <li>
+                <a href="#vpc-overview">1. VPCと構成要素</a>
+                <ul>
+                  <li><a href="#vpc">VPC</a></li>
+                  <li><a href="#subnet">サブネット</a></li>
+                  <li><a href="#igw">インターネットゲートウェイ</a></li>
+                  <li><a href="#route-table">ルートテーブル</a></li>
+                  <li><a href="#nat-gateway">NAT Gateway</a></li>
+                  <li><a href="#sg">セキュリティグループ</a></li>
+                  <li><a href="#nacl">ネットワークACL</a></li>
+                  <li><a href="#sg-vs-nacl">SGとNACLの違い</a></li>
+                  <li><a href="#az">アベイラビリティゾーン</a></li>
+                  <li><a href="#multi-vpc">マルチVPC</a></li>
+                </ul>
+              </li>
+              <li>
+                <a href="#vpc-hands-on">2. VPCハンズオン</a>
+                <ul>
+                  <li><a href="#vpc-create">VPC作成</a></li>
+                  <li><a href="#subnet-create">サブネット作成</a></li>
+                  <li><a href="#igw-create">IGW作成・アタッチ</a></li>
+                  <li><a href="#rtb-create">ルートテーブル作成・設定</a></li>
+                  <li><a href="#rtb-attach">ルートテーブル関連付け</a></li>
+                  <li><a href="#sg-create">セキュリティグループ作成</a></li>
+                </ul>
+              </li>
+              <li>
+                <a href="#ec2-overview">3. EC2とは？</a>
+                <ul>
+                  <li><a href="#ami">AMI</a></li>
+                  <li><a href="#instance-type">インスタンスタイプ</a></li>
+                  <li><a href="#ebs">EBS</a></li>
+                  <li><a href="#keypair">キーペア</a></li>
+                </ul>
+              </li>
+              <li>
+                <a href="#ec2-hands-on">4. EC2ハンズオン</a>
+                <ul>
+                  <li><a href="#ec2-prereq">前提条件</a></li>
+                  <li><a href="#ec2-create">EC2インスタンス作成</a></li>
+                  <li><a href="#ec2-ssh">SSH接続</a></li>
+                  <li><a href="#ec2-hello">Hello World表示</a></li>
+                </ul>
+              </li>
+              <li><a href="#cleanup">後片付け</a></li>
+              <li><a href="#end">おわりに</a></li>
+            </ul>
         </nav>
-        <!-- /目次 -->
       </div>
     </main>
 
     <footer>
       &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC BY-SA 4.0.
     </footer>
-    <script>
-      document.addEventListener('DOMContentLoaded', function () {
-        // 目次のhrefと本文idが一致するように明示的にidを付与したため、自動id付与処理は不要
-      });
-    </script>
+    <script src="../common/script.js"></script>
   </body>
 </html>
