@@ -301,6 +301,13 @@ module.exports.updateQuestion = async (event) => {
       'SELECT user_token_hash FROM questions WHERE id = ?',
       [id]
     );
+    if (!row) {
+      return {
+        statusCode: 404,
+        body: JSON.stringify({ error: 'Question not found' }),
+        headers: corsHeaders,
+      };
+    }
     const inputTokenHash = user_token
       ? crypto.createHash('sha256').update(user_token).digest('hex')
       : null;
@@ -361,6 +368,13 @@ module.exports.updateAnswer = async (event) => {
       'SELECT user_token_hash FROM answers WHERE id = ?',
       [id]
     );
+    if (!row) {
+      return {
+        statusCode: 404,
+        body: JSON.stringify({ error: 'Answer not found' }),
+        headers: corsHeaders,
+      };
+    }
     const tokenHash = user_token
       ? crypto.createHash('sha256').update(user_token).digest('hex')
       : null;
