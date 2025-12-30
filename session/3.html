@@ -19,35 +19,121 @@
     <main>
       <div class="container">
         <div class="content">
-          <h1>第3回 学習内容：IAM と RDS / Aurora</h1>
+          <h1>第3回 学習内容：IAM(アクセス管理)、RDS(DB構築と接続)</h1>
           <section id="goal">
             <h2>セッションの内容</h2>
             <ul>
+              <li>IAM の基礎知識(ユーザー・ロール・ポリシー)</li>
+              <li>RDSとAuroraの基礎知識</li>
               <li>
-                IAM
-                の基本概念を学習し、ユーザー・ロール・ポリシーの違いを理解する
-              </li>
-              <li>
-                VPC内のプライベートサブネットに配置した RDS インスタンスに、EC2
-                から安全に接続する
-              </li>
-              <li>
-                Aurora（MySQL互換）を選択肢として意識し、RDSとの違いを理解する
+                ハンズオン：RDSをプライベートサブネットに作成し、EC2から接続する
               </li>
             </ul>
           </section>
           <section id="lecture">
             <h2>IAM（Identity and Access Management）の基礎</h2>
-            <h3>IAMとは？</h3>
+            <h3 id="iam-intro">IAMとは？</h3>
             <p>
-              IAM（Identity and Access
-              Management）は、AWSにおけるアクセス管理の中心的なサービスです。<br />
-              <strong
-                >「誰が（アイデンティティ）」「どのリソースに」「どんな操作をできるか（アクセス許可）」</strong
-              >を細かく制御できます。<br />
-              AWSアカウント内のセキュリティを保つために、IAMの理解と設計は非常に重要です。
+              IAM（Identity and Access Management）
+              は、AWSにおけるアクセス管理の中核を担うサービスです。<br />
+              「誰が（アイデンティティ）」「どのリソースに」「どんな操作をできるか（アクセス許可）」を、きめ細かくコントロールできます。<br /><br />
+
+              たとえば、開発チームのメンバーごとに操作権限を分けて、誤って本番環境を削除したり、機密情報にアクセスしたりするのを防ぐことができます。<br />
+              また、IAMを正しく設計しておくことで、万が一不正アクセスが起きた場合にも、影響範囲を最小限に抑えることができます。<br /><br />
+
+              つまりIAMは、AWSアカウント全体の「安全の土台」となる存在です。<br />
+              セキュリティを確保しつつ、チーム全員が安心してクラウドを使えるようにするためにも、IAMの理解と設計は欠かせません。<br />
             </p>
-            <h4>IAMの主な構成要素と役割</h4>
+
+            <h4 id="iam-personal">学習用の個人利用時の位置づけ</h4>
+            <p>学習では次のような使い方をしていればOKです。</p>
+            <ul>
+              <li>
+                <strong>ルートユーザー</strong> …
+                AWSを最初に作るために使う（課金設定など）
+              </li>
+              <li>
+                <strong>IAMユーザー（管理者権限）</strong> …
+                実際の操作に使うアカウント
+              </li>
+            </ul>
+            <p>実務にも通じる基本構成です。<br /></p>
+
+            <h4 id="iam-project">実際のプロジェクトでのイメージ</h4>
+            <p>
+              たとえば、会社やチームで1つのAWSアカウントを使って開発する場合、次のような構成になります。
+            </p>
+            <table
+              style="border-collapse: collapse; width: 100%; max-width: 800px"
+            >
+              <thead>
+                <tr>
+                  <th style="min-width: 120px">役割</th>
+                  <th>アカウントの種類</th>
+                  <th>権限参考例</th>
+                  <th>説明</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>代表者 / 管理者</td>
+                  <td>ルートユーザー</td>
+                  <td>全権限（緊急時のみ使用）</td>
+                  <td>
+                    AWSを最初に作成した人。普段は使用せず、請求やMFA設定など限定用途でのみ使う。
+                  </td>
+                </tr>
+                <tr>
+                  <td>インフラ担当エンジニア</td>
+                  <td>IAMユーザー</td>
+                  <td>
+                    AdministratorAccess（構築期のみ）→運用期は権限分割(最小権限化)
+                  </td>
+                  <td>VPC、EC2、RDSなどの環境構築を担当。</td>
+                </tr>
+                <tr>
+                  <td>開発メンバー</td>
+                  <td>IAMユーザー</td>
+                  <td>
+                    AmazonEC2FullAccess(EC2の権限)、AmazonS3ReadOnlyAccess(S3の権限)
+                    など
+                  </td>
+                  <td>
+                    開発・検証環境の利用者。必要なサービスのみにアクセスできる。
+                  </td>
+                </tr>
+                <tr>
+                  <td>監査・セキュリティ担当</td>
+                  <td>IAMユーザー</td>
+                  <td>SecurityAudit＋AWSCloudTrailReadOnlyAccess</td>
+                  <td>ログや権限設定の確認専用。</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <h4 id="iam-why">💡 なぜこのように分けるのか</h4>
+            <ul>
+              <li>
+                ルートユーザーは強力すぎるため、誤操作・漏えいのリスクが高い
+              </li>
+              <li>
+                IAMユーザーを分けることで、「誰が・何を・どこまで」できるかを管理できる
+              </li>
+              <li>
+                CloudTrailと組み合わせることで、「誰がいつ何をしたか」を追跡できる<br />
+                ※ CloudTrail :
+                AWSの監査ログサービス。AWSアカウント内で「誰が」「いつ」「どんな操作をしたか」を自動的に記録する。<br />
+                たとえば、EC2を削除した人やRDSを変更した人を後から確認できます。
+              </li>
+              <li>MFA（二段階認証）を個別に設定でき、セキュリティが向上する</li>
+            </ul>
+
+            <h4 id="iam-components">IAMの主な構成要素と役割</h4>
+            <p>
+              IAMは単に「ユーザーを作る」だけの仕組みではなく、
+              人間・システム・ポリシーを組み合わせてアクセスを制御する総合的な仕組みです。
+              ここでは、IAMを構成する主な要素を整理します。
+            </p>
             <table
               style="border-collapse: collapse; width: 100%; max-width: 800px"
             >
@@ -61,30 +147,90 @@
                 <tr>
                   <td>IAMユーザー</td>
                   <td>
-                    実際の人が使うAWSアカウント。アクセスキーやログインパスワードを持ち、個別の権限を設定可能。開発者や運用者に割り当てます。
+                    実際の人が使うAWSアカウント。アクセスキーやログインパスワードを持ち、どのAWSリソースを操作できるか個別の権限を設定可能。開発者や運用者に割り当てる。
                   </td>
                 </tr>
                 <tr>
                   <td>IAMロール</td>
                   <td>
-                    AWSのサービス（例：EC2）や外部アプリケーションに一時的な権限を与えるためのアイデンティティ。人ではなく「動作する仕組み」に使わせたいときに使います。
+                    AWSサービスや他アカウントのユーザーに「一時的な権限」を渡す仕組み。EC2やユーザーがロールを引き受け（AssumeRole）、定義された範囲の操作を行う。アクセスキーを持たず、STSによる一時的な認証情報で安全に利用できる。
                   </td>
                 </tr>
                 <tr>
                   <td>IAMポリシー</td>
                   <td>
-                    JSON形式のアクセスルール。「誰に」「どんな操作を」「どのリソースで」許すかを定義。IAMユーザー、ロール、グループにアタッチします。
+                    「誰に」「どんな操作を」「どのリソースで」許可または拒否するかを定義するJSON形式のルール。IAMユーザー・ロール・グループにアタッチして適用する。
                   </td>
                 </tr>
                 <tr>
                   <td>IAMグループ</td>
                   <td>
-                    複数のIAMユーザーをまとめる単位。グループにポリシーを付けて、まとめて管理することで運用を効率化できます。
+                    複数のIAMユーザーをまとめる単位。グループにポリシーをアタッチすると、所属する全ユーザーにまとめて適用される。権限管理の効率化に有効。
                   </td>
                 </tr>
               </tbody>
             </table>
-            <h4>IAMとリソースポリシーの違い</h4>
+            <h4 id="iam-policy">IAMポリシーの書き方</h4>
+            <p>
+              IAMポリシーはJSON形式で記述されます。<br />以下は一つの例ですが、このポリシーは、「AWS上のすべてのEC2インスタンスに対して、
+              インスタンスを起動および停止する操作を許可しています。
+            </p>
+            <ul>
+              <div class="code-wrapper">
+                <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+                <pre class="code-block"><code>{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:StartInstances",
+        "ec2:StopInstances"
+      ],
+      "Resource": "*"
+    }
+  ]</code></pre>
+              </div>
+              <li>
+                Statement： 実際の許可や拒否のルールをまとめたブロックです。
+              </li>
+              <li>
+                Effect
+                「Allow（許可）」または「Deny（拒否）」を指定します。この例では
+                "Allow" なので、指定された操作を許可します。
+              </li>
+              <li>
+                Action
+                許可または拒否の対象となる操作を指定します。この例ではEC2の「起動（StartInstances）」と「停止（StopInstances）」が対象です。
+              </li>
+              <li>
+                Resource 操作対象となるAWSリソースを指定します。ここでは
+                "*"（すべてのリソース）となっており、全てのEC2インスタンスが対象になります。
+              </li>
+              
+              <p>
+                今回のセッションではIAMのハンズオンはしませんが、コンソールからIAMポリシーの確認や作成をすることができます。<br>
+                既存ポリシーが用意されており(1407個以上ととても多いですが)、よく使う権限はこれらを利用することが多いです。
+              </p>
+              <img
+              src="../image/session/3/iam/1-policy.png"
+              alt="IAMポリシーの例"
+              class="img-w800"
+            />
+            既存ポリシーの一例ですが、中身がJSON形式で書かれているのが確認できます。<br>
+            <img
+              src="../image/session/3/iam/2-policy-detail.png"
+              alt="IAMポリシーの詳細"
+              class="img-w800"
+            />
+            </ul>
+
+            <h4 id="iam-resource">IAMとリソースポリシーの違い</h4>
+            <p>
+              IAMでは「ユーザー側の権限設定」だけでなく、
+              リソース側に直接アクセスルールを設定する方法（リソースポリシー）も存在します。
+              それぞれの視点を理解しておくと、アクセス制御の仕組みを正しく設計できます。
+            </p>
             <table
               style="border-collapse: collapse; width: 100%; max-width: 500px"
             >
@@ -120,9 +266,14 @@
             </table>
             <p>
               ➡
-              IAMポリシーとリソースポリシーは併用可能で、アクセスは「両方で許可」されて初めて成立します。
+              IAMポリシーとリソースポリシーは併用可能で、アクセスは「両方で許可」されて初めて成立します。(一部でもDenyだとアクセス不可)。
             </p>
-            <h4>IAMのベストプラクティス</h4>
+            <h4 id="iam-best">IAMのベストプラクティス</h4>
+            <p>
+              AWSのIAMは、自由度が高い分、設定を誤ると重大なセキュリティリスクにつながることがあります。
+              そのため、「便利さ」よりもまず「安全性」を重視した設計と運用ルールが重要です。
+              以下は、AWSが公式に推奨しているIAM運用の基本原則（ベストプラクティス）です。
+            </p>
             <table
               style="border-collapse: collapse; width: 100%; max-width: 500px"
             >
@@ -142,7 +293,7 @@
                 <tr>
                   <td>ルートユーザーは使わない</td>
                   <td>
-                    AWSアカウント作成時のルートユーザーは緊急時以外は使わず、IAMユーザーで管理
+                    ルートユーザーは緊急時以外使用せず、IAMユーザーで運用する。
                   </td>
                 </tr>
                 <tr>
@@ -160,12 +311,12 @@
                 <tr>
                   <td>ポリシーの定期見直し</td>
                   <td>
-                    使われていない権限の洗い出し、ログベースでの権限最適化を定期的に実施
+                    使われていない権限を洗い出し、CloudTrailログを基に最適化を定期的に実施。
                   </td>
                 </tr>
               </tbody>
             </table>
-            <h4>🧪 よくある設計パターン（例）</h4>
+            <h4 id="iam-patterns">🧪 設計パターンの例</h4>
             <table
               style="border-collapse: collapse; width: 100%; max-width: 500px"
             >
@@ -196,7 +347,30 @@
                 </tr>
               </tbody>
             </table>
-            <h4>🔚 まとめ</h4>
+
+            <h4 id="iam-identity-center">(参考) IAM Identity Centerとは？</h4>
+            <p>
+              近年のAWS環境では、IAM Identity Center（旧AWS SSO）を使って
+              チームや組織全体の「ログイン方法」と「アクセス権限」をまとめて管理するケースが増えています。
+            </p>
+            <p>
+              この仕組みでは、各メンバーが会社のメールアドレスとパスワードで
+              AWSのSSOポータル（Identity Centerポータル）にサインインし、
+              必要なときだけ IAMロールを一時的に借りて（引き受けて）
+              AWSリソースを操作します。
+            </p>
+            <p>
+              AWSアカウント内にIAMユーザーを作成する必要がなく、
+              個別のパスワードやアクセスキーを発行しないため、
+              セキュリティと運用の両面で管理が非常にシンプルになります。
+            </p>
+            <p>
+              ただし、AWS Organizationsとの連携が前提となるため、
+              初期設定にはやや手間がかかります。
+              そのため、個人学習や小規模チームでは、まずIAMユーザーによる基本的な管理を理解しておけば十分です。
+            </p>
+
+            <h4 id="iam-summary">🔚 まとめ</h4>
             <ul>
               <li>IAMはAWSのセキュリティとアクセス制御の核</li>
               <li>ユーザー・ロール・グループ・ポリシーを適切に使い分ける</li>
@@ -205,38 +379,335 @@
                 セキュリティ設計の第一歩は、「誰に、どのようなアクセスが必要か」を明確にすること
               </li>
             </ul>
-            <h3>2. RDS / Auroraの概要</h3>
+            <h3 id="rds-overview">2. RDS / Auroraの概要</h3>
+            <h4 id="rds-intro">Amazon RDSとは</h4>
+            <p>
+              RDS（Relational Database
+              Service）とは、AWSが提供するマネージド型のリレーショナルデータベースサービスです。
+            </p>
             <ul>
-              <li>フルマネージドなリレーショナルデータベースサービス</li>
               <li>
                 対応エンジン：MySQL, PostgreSQL, MariaDB, Oracle, SQL Server,
-                Aurora
+                Amazon Aurora(MySQL/PostgreSQL互換)
               </li>
               <li>
-                Aurora MySQL：高可用・自動バックアップ・高速起動などの特徴
-              </li>
-              <li>
-                パブリック vs プライベートサブネットの違い（セキュリティの観点）
+                自動バックアップやスケーリング、パッチ適用などの運用負荷を軽減<br />
+                ※ マネージド :
+                ユーザーがインフラ管理を意識せずに利用できるよう、AWSが運用管理を代行するサービス形態。
               </li>
             </ul>
+            <h4 id="aurora-intro">Amazon Auroraとは</h4>
+            <p>
+              Auroraは、AWSが独自に開発したリレーショナルデータベースエンジンで、MySQLおよびPostgreSQLと互換性があります。<br />
+              RDSの一種ですが、従来のRDSよりも高性能・高可用性を提供します。
+            </p>
+            <h4 id="rds-aurora-diff">RDSとAuroraの違い</h4>
+            <table
+              style="border-collapse: collapse; width: 100%; max-width: 900px"
+            >
+              <thead>
+                <tr>
+                  <th style="min-width: 140px">比較項目</th>
+                  <th>RDS（MySQLなど）</th>
+                  <th>Aurora</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>性能（スループット）</strong></td>
+                  <td>
+                    オープンソースのMySQLをそのまま利用。性能はインスタンスタイプや設定に左右される。
+                  </td>
+                  <td>
+                    AWS独自のエンジンでクラウド向けに最適化。MySQL比で最大<strong>5倍</strong>、PostgreSQL比で最大<strong>3倍</strong>の処理性能。
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>ストレージ構成</strong></td>
+                  <td>
+                    ストレージ容量を手動で指定。拡張するときは再起動やメンテナンスが必要な場合がある。
+                  </td>
+                  <td>
+                    <strong>計算とストレージが分離</strong
+                    >されており、ストレージは自動で<strong>最大128TB</strong>まで拡張できる。停止なしでスケール可能。
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>可用性（高可用構成）</strong></td>
+                  <td>
+                    <strong>Multi-AZ構成</strong>を選べる。<br />①
+                    スタンバイ1台（読取不可）<br />②
+                    スタンバイ2台（読取可）のクラスタ構成も選択可能。
+                  </td>
+                  <td>
+                    データを<strong>3つのAZに6コピー</strong>して自動で同期。ストレージ層が冗長化されているため、障害に非常に強い。
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>冗長化の仕組み</strong></td>
+                  <td>
+                    プライマリDBとスタンバイDBの間で<strong>同期レプリケーション</strong>。障害時はスタンバイを自動昇格。
+                  </td>
+                  <td>
+                    <strong>ストレージ層で同期レプリケーション</strong
+                    >を行うため、計算ノードが落ちてもデータは保持され、すぐ切り替わる。
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>フェイルオーバー時間</strong></td>
+                  <td>
+                    Multi-AZクラスタ構成では、通常<strong>35秒以内</strong>に自動フェイルオーバー（AWS公称値）。
+                  </td>
+                  <td>
+                    ストレージを共有しているため、<strong>30秒未満</strong>でフェイルオーバーが完了することが多い。
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>読取スケール（読み取り分散）</strong></td>
+                  <td>
+                    リードレプリカを最大<strong>15台</strong>まで追加可能。Multi-AZクラスタ構成ではスタンバイ2台も読取可。
+                  </td>
+                  <td>
+                    最大<strong>15台のリーダーインスタンス</strong>を追加可能。すべて同じ共有ストレージを使うため、遅延が非常に少ない。
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>バックアップと復元</strong></td>
+                  <td>
+                    <strong>1日1回の自動スナップショット</strong
+                    >とトランザクションログで復元。バックアップ中はI/O性能に軽い影響。
+                  </td>
+                  <td>
+                    <strong>常時自動バックアップ</strong
+                    >（S3保存＋継続スナップショット）。性能への影響はほとんどなく、いつでもポイント復元可能。
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>セキュリティ</strong></td>
+                  <td>VPC隔離、SSL通信、保存時の暗号化、IAM認証などに対応。</td>
+                  <td>
+                    同様に対応。さらにトークンベースの<strong>IAMデータベース認証</strong>を標準サポート。
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>コスト</strong></td>
+                  <td>安価でシンプル。開発・検証・小規模本番に向く。</td>
+                  <td>
+                    高性能・高可用な分コストは高め。大規模・本番環境に向く。
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </section>
           <section id="hands-on">
-            <h2>🛠️ ハンズオン内容</h2>
-            <h3>ハンズオン概要：</h3>
+            <h2>3. RDSハンズオン内容</h2>
+
+            <p>このハンズオンの内容は以下になります。</p>
+            <ol>
+              <li>EC2インスタンス作成(第2回と同じ手順)</li>
+              <li>プライベートサブネット3つ作成</li>
+              <li>DBサブネットグループ作成</li>
+              <li>RDS用セキュリティーグループ作成</li>
+              <li>RDS作成</li>
+              <li>ターミナルからEC2にSSH接続し、EC2からRDSに接続する</li>
+            </ol>
+            こちらが今回作成するRDSの構成図です。
+            <img
+              src="../image/session/3/handson/session2.drawio.png"
+              alt="RDS構成図"
+              class="img-w800"
+            />
+
+            <h3 id="hands-on-prereq">前提条件（第2回で作成済み）</h3>
+            <ul>
+              <li>VPC（10.0.0.0/16）</li>
+              <li>パブリックサブネット（10.0.1.0/24）</li>
+              <li>インターネットゲートウェイ</li>
+              <li>ルートテーブル（0.0.0.0/0 → IGW）</li>
+              <li>
+                EC2用セキュリティグループ（ポート22：SSHを自分のIPに限定して許可）
+              </li>
+            </ul>
             <p>
-              「プライベートサブネットにRDSを作成し、EC2から接続する」<br />IAM
-              ロールによる権限制御も体験。
+              ※ 前提条件が未作成の場合は第2回(<a
+                href="../session/2.html#vpc-hands-on"
+                >VPCハンズオン</a
+              >)を参照して作成してください。
             </p>
+
             <h3>ハンズオン手順</h3>
-            <h4>🔹 1. 準備</h4>
+            <h4 id="ec2-create">🔹 1. EC2インスタンス作成</h4>
             <ul>
               <li>
-                既存のVPCとパブリック・プライベートサブネットを利用（第2回のを流用）
+                第2回(<a href="../session/2.html#ec2-create"
+                  >EC2インスタンス作成</a
+                >)と同じ手順でEC2インスタンスをパブリックサブネットに作成する。
               </li>
-              <li>必要に応じてセキュリティグループを作成／変更</li>
             </ul>
+            <h4 id="private-subnet">🔹 2. プライベートサブネットの作成</h4>
+            <p>
+              RDS用に、新規でプライベートサブネットを3つ作成する。アベイラビリティーゾーンはそれぞれ異なるものを指定する。
+            </p>
+            <ol>
+              <li>「VPC」を検索し選択する</li>
+              <img
+                src="../image/session/2/vpc/1-search.png"
+                alt="VPCサービスを検索して選択するAWSマネジメントコンソールの画面"
+                class="img-w800"
+              />
+              <li>
+                左メニューから「サブネット」を選択し、「サブネットを作成」を押す
+              </li>
+              <img
+                src="../image/session/2/subnet/1-console.png"
+                alt="VPCダッシュボードでサブネットメニューを選択し、サブネット作成ボタンを押す画面"
+                class="img-w800"
+              />
+              <li>1つ目のプライベートサブネットを以下の内容で設定する</li>
+              VPC: session2-vpc(第2回で作成したもの)<br />
+              サブネット名 : 任意（例 : session3-private-subnet-a)<br />
+              アベイラビリティゾーン: ap-northeast-1a<br />
+              IPv4 CIDRブロック : 10.0.3.0/24
+              <img
+                src="../image/session/3/subnet/1-create.png"
+                alt="プライベートサブネットの作成画面"
+                class="img-w800"
+              />
+              <li>
+                左下の「新しいサブネットを追加」を押し、2つ目と3つ目のプライベートサブネットも設定し、作成をする
+              </li>
+              <img
+                src="../image/session/3/subnet/2-add.png"
+                alt="プライベートサブネットの作成画面"
+                class="img-w800"
+              />
+              【2つ目のプライベートサブネット設定内容】<br />
+              VPC: session2-vpc(第2回で作成したもの)<br />
+              サブネット名 : 任意（例 : session3-private-subnet-c)<br />
+              アベイラビリティゾーン: ap-northeast-1c<br />
+              IPv4 CIDRブロック : 10.0.4.0/24<br /><br />
 
-            <h4>🔹 2. RDS（MySQL or Aurora MySQL）を作成</h4>
+              【3つ目のプライベートサブネット設定内容】<br />
+              VPC: session2-vpc(第2回で作成したもの)<br />
+              サブネット名 : 任意（例 : session3-private-subnet-d)<br />
+              アベイラビリティゾーン: ap-northeast-1d<br />
+              IPv4 CIDRブロック : 10.0.5.0/24<br /><br />
+
+              <li>3つのプライベートサブネットが作成されたことを確認する</li>
+              <img
+                src="../image/session/3/subnet/3-list.png"
+                alt="作成したプライベートサブネットの一覧画面"
+                class="img-w800"
+              />
+            </ol>
+
+            <div style="background-color: #f0f8ff; padding: 15px; border-left: 4px solid #4a90e2; margin: 20px 0;">
+              <h5 style="margin-top: 0; color: #2c5aa0;">💡 補足：プライベートサブネットとルートテーブル</h5>
+              <p>
+                <strong>Q: プライベートサブネットにルートテーブルは不要なのか？</strong><br>
+                A: いいえ、プライベートサブネットにもルートテーブルは必要です。
+              </p>
+              <p>
+                今回のハンズオンでは明示的にルートテーブルを作成していませんが、実は<strong>VPCには必ず「メインルートテーブル」が自動で作成</strong>されています。<br>
+                サブネット作成時にルートテーブルを指定しない場合、自動的にこのメインルートテーブルが関連付けられます。
+              </p>
+              <p>
+                <strong>パブリックサブネットとプライベートサブネットの違い：</strong>
+              </p>
+              <ul style="margin: 10px 0;">
+                <li><strong>パブリックサブネット</strong>：インターネットゲートウェイ（IGW）へのルート（0.0.0.0/0 → IGW）を持つルートテーブルを関連付け</li>
+                <li><strong>プライベートサブネット</strong>：IGWへのルートを持たないルートテーブルを関連付け（メインルートテーブルのままでOK）</li>
+              </ul>
+              <p>
+                今回のRDSは、インターネットからの直接アクセスを必要としないため、メインルートテーブル（IGWへのルートなし）が関連付けられたプライベートサブネットに配置しています。<br>
+                これにより、同じVPC内のEC2からのみアクセス可能な、セキュアなデータベース環境を実現しています。
+              </p>
+            </div>
+
+            <h4 id="db-subnet-group">🔹 3. DBサブネットグループの作成</h4>
+            <ol>
+              <li>検索窓からAurora and RDSを開く</li>
+              <img
+                src="../image/session/3/db-subnet-group/1-open.png"
+                alt="DBサブネットグループの作成画面"
+                class="img-w800"
+              />
+              <li>
+                左メニューから「サブネットグループ」を選択し、「DBサブネットグループを作成」を押す
+              </li>
+              <img
+                src="../image/session/3/db-subnet-group/2-create.png"
+                alt="DBサブネットグループの作成画面"
+                class="img-w800"
+              />
+              <li>
+                サブネットグループの詳細を以下の内容で設定し、作成を押す<br />
+                DBサブネットグループ名 : 任意（例 : session3-db-subnet-group)<br />
+                説明 : 任意（例 : DB subnet group for RDS in session 3)<br />
+                VPC : session2-vpc(第2回で作成したもの)<br />
+              </li>
+              <img
+                src="../image/session/3/db-subnet-group/3-detail.png"
+                alt="DBサブネットグループの作成画面"
+                class="img-w800"
+              />
+              <li>
+                以下のアベイラビリティーゾーンとサブネットを選択し、作成を押す<br />
+                アベイラビリティーゾーン : ap-northeast-1a, ap-northeast-1c,
+                ap-northeast-1d<br />
+                サブネット : session3-private-subnet-a,
+                session3-private-subnet-c, session3-private-subnet-d<br />
+              </li>
+              <img
+                src="../image/session/3/db-subnet-group/4-add-subnet.png"
+                alt="DBサブネットグループの作成画面"
+                class="img-w800"
+              />
+              <li>
+                作成が完了したことを確認する<br />
+
+                <img
+                  src="../image/session/3/db-subnet-group/5-complete.png"
+                  alt="DBサブネットグループの作成画面"
+                  class="img-w800"
+                />
+              </li>
+            </ol>
+
+            <h4 id="rds-sg">🔹 4. RDS用のセキュリティグループ作成</h4>
+            <p>
+              RDS用に新規でセキュリティグループを作成し、EC2からの接続を許可するルールを追加する。
+            </p>
+            <ol>
+              <li>検索窓からVPCを開く</li>
+              <li>
+                左メニューから「セキュリティグループ」を選択し、「セキュリティグループを作成」を押す
+              </li>
+              <li>
+                以下の内容で設定し、作成を押す<br />
+                [基本的な詳細]<br />
+                セキュリティグループ名 : session3-sg-for-rds<br />
+                説明 : 任意（例 : SG for RDS in session 3)<br />
+                VPC : session2-vpc(第2回で作成したもの)<br /><br />
+
+                [インバウンドルール]<br />
+                タイプ : MySql/Aurora(スクロールダウン選択)<br />
+                ソース :
+                session2-sg(第2回で作成したEC2にアタッチされたセキュリティーグループをスクロールダウン選択。)<br />
+              </li>
+              <img
+                src="../image/session/3/sg/1-create.png"
+                alt="セキュリティグループ作成フォームで名前タグとVPCを選択する画面"
+                class="img-w800"
+              />
+              <img
+                src="../image/session/3/sg/2-source.png"
+                alt="セキュリティグループ作成フォームで名前タグとVPCを選択する画面"
+                class="img-w300"
+              />
+            </ol>
+
+            <h4 id="rds-create">🔹 5. RDSを作成</h4>
             <table
               style="border-collapse: collapse; width: 100%; max-width: 600px"
             >
@@ -249,11 +720,11 @@
               <tbody>
                 <tr>
                   <td>DBエンジン</td>
-                  <td>MySQL（またはAurora MySQL）</td>
+                  <td>MySQL</td>
                 </tr>
                 <tr>
                   <td>可用性</td>
-                  <td>単一AZで可（検証目的）</td>
+                  <td>単一AZ（学習目的）</td>
                 </tr>
                 <tr>
                   <td>サブネット</td>
@@ -275,62 +746,270 @@
                 </tr>
               </tbody>
             </table>
-            <h4>🔹 3. EC2から接続確認（MySQLクライアント使用）</h4>
-            <ul>
-              <li>Amazon Linux EC2 に SSH 接続（第2回）</li>
-              <li>MySQLクライアントをインストール（初回のみ）：</li>
-            </ul>
-            <pre><code>sudo yum install -y mysql</code></pre>
-            <ul>
+            <p>
+              ※
+              以降の手順は以前の無料プランを利用しているアカウントでの作成手順になります。新しい無料プランを使用しているアカウントでは、表示や手順が異なる場合があります。
+            </p>
+
+            <ol>
+              <li>左メニューからAurora and RDSを選択する</li>
+              <img
+                src="../image/session/3/rds/1-menu.png"
+                alt="RDSの作成画面"
+                class="img-w300"
+              />
+              <li>「データベースの作成」を押す</li>
+              <img
+                src="../image/session/3/rds/2-create.png"
+                alt="RDSの作成画面"
+                class="img-w800"
+              />
+              <li>MySQLを選択する</li>
+              <img
+                src="../image/session/3/rds/3-select-db.png"
+                alt="RDSの作成画面"
+                class="img-w800"
+              />
+              <li>無料枠を選択する(シングルAZが適用される)</li>
+              <img
+                src="../image/session/3/rds/4-select-free.png"
+                alt="RDSの作成画面"
+                class="img-w800"
+              />
               <li>
-                接続コマンド（RDSエンドポイントとパスワードは控えておいたものを使用）：
+                DBインスタンス識別子とパスワードを設定する<br />
+                DBインスタンス識別子 : database-session3(任意)<br />
+                マスターユーザー名 : admin(そのまま 任意で変更可)<br />
+                パスワード : 任意の値を設定(忘れないようにする)<br />
+
+                <img
+                  src="../image/session/3/rds/5-detail.png"
+                  alt="RDSの作成画面"
+                  class="img-w800"
+                />
               </li>
-            </ul>
-            <pre><code>mysql -h &lt;RDSエンドポイント&gt; -u admin -p</code></pre>
-            <ul>
-              <li>ログイン後：</li>
-            </ul>
-            <p>create database testdb;</p>
-            <p>use testdb;</p>
-            <p>create table sample (id int, name varchar(50));</p>
-            <p>insert into sample values (1, 'test');</p>
-            <p>select * from sample;</p>
-            <p>exit;</p>
-            <p>以下のように表示されれば、成功です</p>
-            <pre><code>+----+-------+
-| id | name  |
-+----+-------+
-|  1 | test  |
-+----+-------+
-1 row in set (0.00 sec)</code></pre>
+              <li>
+                DBインスタンスクラスはそのまま<br />
+
+                <img
+                  src="../image/session/3/rds/6-instance.png"
+                  alt="RDSの作成画面"
+                  class="img-w800"
+                />
+              </li>
+              <li>
+                ストレージはそのまま<br />
+
+                <img
+                  src="../image/session/3/rds/7-storage.png"
+                  alt="RDSの作成画面"
+                  class="img-w800"
+                />
+              </li>
+              <li>
+                VPCはsession2-vpcを選択、DBサブネットグループはsession3-db-subnet-group(先ほど作成したもの)を選択する<br />
+
+                <img
+                  src="../image/session/3/rds/8-vpc.png"
+                  alt="RDSの作成画面"
+                  class="img-w800"
+                />
+              </li>
+              <li>
+                既存のセキュリティグループからsession3-sg-for-rds(先ほど作成したもの)を選択、アベイラビリティーゾーンはap-northeast-1aを選択する<br />
+
+                <img
+                  src="../image/session/3/rds/9-sg.png"
+                  alt="RDSの作成画面"
+                  class="img-w800"
+                />
+              </li>
+              <li>
+                一番下にスクロールし、データベースの作成を押す<br />
+
+                <img
+                  src="../image/session/3/rds/10-done.png"
+                  alt="rdsの作成画面"
+                  class="img-w800"
+                />
+              </li>
+              <li>
+                データベース作成中の画面が表示されるので、完了するまで数分待ちます。完了するとステータスが「利用可能」に変わりますが、待っている間にEC2のSSH接続を進めましょう。
+                <br />
+
+                <img
+                  src="../image/session/3/rds/11-creating.png"
+                  alt="rdsの作成画面"
+                  class="img-w800"
+                />
+              </li>
+            </ol>
+            <h4 id="rds-connect">
+              🔹 6. RDSにEC2から接続確認（MySQLクライアント使用）
+            </h4>
+            <ol>
+              <li>
+                コマンドプロンプトやターミナルからEC2にSSH接続をする（第2回<a
+                  href="../2.html#ec2-ssh"
+                  >SSH接続</a
+                >参照）
+              </li>
+              <li>
+                下記コマンドを使用し、EC2にMariaDBクライアントをインストールする<br />
+              </li>
+              <div class="code-wrapper">
+                <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+                <pre
+                  class="code-block"
+                ><code>sudo yum install -y mariadb105</code></pre>
+              </div>
+              <li>
+                RDSエンドポイントを確認する<br />
+                RDSのダッシュボードから、先ほど作成したRDSインスタンスを選択し、エンドポイントを控えておく。
+                <img
+                  src="../image/session/3/connect/1-db.png"
+                  alt="RDSエンドポイント確認画面"
+                  class="img-w800"
+                />
+                <img
+                  src="../image/session/3/connect/2-detail.png"
+                  alt="RDSエンドポイント確認画面"
+                  class="img-w800"
+                />
+              </li>
+              <li>
+                以下の接続コマンドを入力する（RDSエンドポイントは控えておいたものを使用）<br />
+                パスワード入力を求められるので、RDS作成時に設定したパスワードを入力する。
+              </li>
+              <div class="code-wrapper">
+                <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+                <pre
+                  class="code-block"
+                ><code>mysql -h &lt;RDSエンドポイント&gt; -u admin -p</code></pre>
+              </div>
+              <p>接続が成功すると、MySQLのプロンプトが表示されます。</p>
+              <img
+                src="../image/session/3/connect/3-example.png"
+                alt="RDSエンドポイント確認画面"
+                class="img-w800"
+              />
+
+              <li>ログイン後に以下のSQLを実行する</li>
+              <div class="code-wrapper">
+                <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+                <pre class="code-block"><code>create database testdb;
+use testdb;
+create table sample (id int, name varchar(50));
+insert into sample values (1, 'test');
+select * from sample;</code></pre>
+              </div>
+              <p>以下のように表示されれば、成功です</p>
+              <img
+                src="../image/session/3/connect/4-example2.png"
+                alt="RDSエンドポイント確認画面"
+                class="img-w800"
+              />
+              <li>
+                データベース操作が完了したら、以下のコマンドで接続を終了します
+              </li>
+              <div class="code-wrapper">
+                <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+                <pre class="code-block"><code>exit;</code></pre>
+              </div>
+            </ol>
           </section>
-          <section id="check">
-            <h2>✅ 終了後の理解確認</h2>
-            <ul>
-              <li>IAMポリシーとロールの違いを説明できるか？</li>
-              <li>RDSにEC2からしかアクセスできない構成が作れたか？</li>
-              <li>セキュリティグループとIAMの役割の違いを理解しているか？</li>
-            </ul>
+          <section id="cleanup">
+            <h2>後片付け</h2>
+            <ol>
+              <li>
+                EC2を削除する(削除方法は<a href="../2.html#cleanup">第2回参照</a
+                >)
+              </li>
+              <li>
+                RDSを削除するため、アクションから「削除」を選択する
+                <img
+                  src="../image/session/3/cleanup/1-delete.png"
+                  alt="RDS削除画面"
+                  class="img-w300"
+                />
+              </li>
+              <li>
+                「最終スナップショットを作成する」「自動バックアップを保持」のチェックを外し、その下の自動バックアップが利用不可となることの了承にチェックをつける。
+                delete meを入力し、「削除」を押す
+                <img
+                  src="../image/session/3/cleanup/2-option.png"
+                  alt="RDS削除画面"
+                  class="img-w300"
+                />
+              </li>
+              <li>
+                DBインスタンスの削除中の画面が表示されるので、完了するまで数分待つ
+                <img
+                  src="../image/session/3/cleanup/3-deleting.png"
+                  alt="RDS削除画面"
+                  class="img-w800"
+                />
+                <img
+                  src="../image/session/3/cleanup/4-deleted.png"
+                  alt="RDS削除画面"
+                  class="img-w800"
+                />
+              </li>
+            </ol>
           </section>
-          <section id="note">
-            <h2>補足・注意事項</h2>
-            <ul>
-              <li>
-                RDSはプライベートサブネットに配置しているため、EC2も同じVPC内にいる必要あり
-              </li>
-              <li>
-                セキュリティグループでポート3306を正しく開けていないと接続できない
-              </li>
-            </ul>
+          <section id="end">
+            <h3>おわりに</h3>
+            <p>
+              今回のセッションでは、AWSのセキュリティの要となるIAM（Identity and Access Management）の基本概念と、マネージドデータベースサービスであるRDS/Auroraについて学習しました。<br />
+              ハンズオンでは、プライベートサブネットにRDSインスタンスを配置し、EC2からセキュアに接続する構成を実際に構築することで、
+              AWSにおける安全なデータベース運用の基礎を体験しました。<br /><br />
+
+              次回は、ロードバランサーとAutoScalingを使用し、2つのサブネットにまたがりEC2を自動でデプロイし、CloudWatchでログを確認する内容を予定しています。<br />
+            </p>
           </section>
         </div>
         <nav class="toc">
-          <h2>目次</h2>
+          <h3>目次</h3>
           <ul>
-            <li><a href="#goal">学習目標</a></li>
-            <li><a href="#lecture">座学内容</a></li>
-            <li><a href="#hands-on">ハンズオン内容</a></li>
-            <li><a href="#check">終了後の理解確認</a></li>
+            <li><a href="#goal">セッションの内容</a></li>
+            <li>
+              <a href="#lecture">1. IAMの基礎</a>
+              <ul>
+                <li><a href="#iam-intro">IAMとは？</a></li>
+                <li><a href="#iam-personal">学習用の位置づけ</a></li>
+                <li><a href="#iam-project">実際のプロジェクト</a></li>
+                <li><a href="#iam-why">なぜ分けるのか</a></li>
+                <li><a href="#iam-components">主な構成要素</a></li>
+                <li><a href="#iam-resource">IAMとリソースポリシー</a></li>
+                <li><a href="#iam-best">ベストプラクティス</a></li>
+                <li><a href="#iam-patterns">設計パターンの例</a></li>
+                <li><a href="#iam-identity-center">IAM Identity Center</a></li>
+                <li><a href="#iam-summary">まとめ</a></li>
+              </ul>
+            </li>
+            <li>
+              <a href="#rds-overview">2. RDS / Aurora概要</a>
+              <ul>
+                <li><a href="#rds-intro">Amazon RDSとは</a></li>
+                <li><a href="#aurora-intro">Amazon Auroraとは</a></li>
+                <li><a href="#rds-aurora-diff">RDSとAuroraの違い</a></li>
+              </ul>
+            </li>
+            <li>
+              <a href="#hands-on">3. RDSハンズオン</a>
+              <ul>
+                <li><a href="#hands-on-prereq">前提条件</a></li>
+                <li><a href="#ec2-create">EC2作成</a></li>
+                <li>
+                  <a href="#private-subnet">プライベートサブネット作成</a>
+                </li>
+                <li><a href="#db-subnet-group">DBサブネットグループ作成</a></li>
+                <li><a href="#rds-sg">RDS用SG作成</a></li>
+                <li><a href="#rds-create">RDS作成</a></li>
+                <li><a href="#rds-connect">RDSに接続確認</a></li>
+              </ul>
+            </li>
+            <li><a href="#cleanup">後片付け</a></li>
             <li><a href="#note">補足・注意事項</a></li>
           </ul>
         </nav>

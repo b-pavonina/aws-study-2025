@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>第X回：[タイトル] | 勉強会 for AWS</title>
+  <link rel="stylesheet" href="../common/style.css">
+  <style>
+      header .insider-header {
+        max-width: 1160px;
+      }
+      /* 記事内でのみ使用する特定スタイルがあればここに記述 */
+      .img-w800 { width: 100%; max-width: 800px; height: auto; }
+      .img-w600 { width: 100%; max-width: 600px; height: auto; }
+      
+      /* 補足・警告用のボックススタイル */
+      .alert-box {
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 5px;
+        border-left: 5px solid #ccc;
+        background-color: #f9f9f9;
+      }
+      .alert-box.warning {
+        border-color: #f0ad4e;
+        background-color: #fcf8e3;
+        color: #8a6d3b;
+      }
+      .alert-box.info {
+        border-color: #5bc0de;
+        background-color: #d9edf7;
+        color: #31708f;
+      }
+      .alert-title {
+        font-weight: bold;
+        display: block;
+        margin-bottom: 5px;
+      }
+    </style>
+</head>
+
+<body>
+  <header>
+        <div class="insider-header">
+          <a href="../index.html" class="logo">勉強会 <span style="font-size: 0.8em">for</span> AWS</a
+          >
+          <span class="header-spacer"></span>
+          <a href="../board/signin.html" class="header-btn">質問板</a>
+        </div>
+  </header>
+  <main>
+  <div class="container">
+    <div class="content">
+      <h1>第X回：[セッションタイトル]</h1>
+      <div class="post-date">Posted at 2025-XX-XX</div>
+      
+      <section id="intro">
+        <h2>1. はじめに</h2>
+        <p>
+          [このセッションの概要を記述]
+        </p>
+        <!-- 警告ボックスの例 -->
+        <div class="alert-box warning">
+          <span class="alert-title">⚠️ 課金に関する注意</span>
+          <p>このハンズオンではXXを使用します。終了後は必ずリソースを削除してください。</p>
+        </div>
+      </section>
+
+      <section id="goal">
+        <h2>2. ゴール</h2>
+        <ul>
+          <li>[学習目標1]</li>
+          <li>[学習目標2]</li>
+        </ul>
+      </section>
+
+      <section id="lecture">
+        <h2>3. 解説</h2>
+        <h3>[トピック1]</h3>
+        <p>[解説文]</p>
+        <!-- 画像の例 -->
+        <img src="../image/session/X/placeholder.png" alt="[画像説明]" class="img-w800">
+        
+        <h3>[トピック2]</h3>
+        <p>[解説文]</p>
+      </section>
+
+      <section id="handson">
+        <h2>4. ハンズオン</h2>
+        <p>以下の手順で進めます。</p>
+        <ol>
+            <li>[手順1]</li>
+            <li>[手順2]</li>
+        </ol>
+        
+        <!-- コピーボタン付きコードブロックの例 -->
+        <div class="code-wrapper">
+          <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+          <pre class="code-block"><code>[コマンドやコード]</code></pre>
+        </div>
+      </section>
+
+      <section id="summary">
+        <h2>5. まとめ</h2>
+        <p>
+          [まとめの文章]
+        </p>
+      </section>
+
+    </div>
+
+    <nav class="toc">
+      <h2>目次</h2>
+      <ul>
+        <li><a href="#intro">1. はじめに</a></li>
+        <li><a href="#goal">2. ゴール</a></li>
+        <li><a href="#lecture">3. 解説</a></li>
+        <li><a href="#handson">4. ハンズオン</a></li>
+        <li><a href="#summary">5. まとめ</a></li>
+      </ul>
+    </nav>
+  </div>
+  </main>
+
+  <footer>
+    &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC BY-SA 4.0.
+  </footer>
+  <!-- 共通スクリプト（コピー機能など） -->
+  <script src="../common/script.js"></script>
+</body>
+</html>

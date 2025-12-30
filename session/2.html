@@ -54,6 +54,22 @@
               VPCはAWSのネットワーク基盤ですが、以下のようにさまざまな構成要素があり、それぞれが特定の役割を持っています。<br />
               これらの要素を理解することで、AWS上でのネットワーク設計やセキュリティ設定が可能になります。
             </p>
+            <img
+              src="../image/session/2/vpc/how-it-works.png"
+              alt="VPCの構成要素と通信の流れ"
+              class="img-w800"
+            />
+            <p
+                style="
+                  text-align: center;
+                  font-size: 0.9em;
+                  color: #555;
+                  margin-top: 15px;
+                "
+              ><a href="https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html" target="_blank">
+                VPCの図 参照:AWS公式ドキュメント</a>
+              </p>
+
             <ul>
               <li>VPC</li>
               <li>サブネット</li>
@@ -62,8 +78,6 @@
               <li>NATゲートウェイ</li>
               <li>セキュリティグループ（SG）</li>
               <li>ネットワークACL（NACL）</li>
-              <li>Elastic IP（EIP）</li>
-              <li>Elastic Network Interface（ENI）</li>
             </ul>
 
             <article class="vpc-block">
@@ -77,7 +91,7 @@
                 alt="vpc構成図"
                 style="
                   width: 100%;
-                  max-width: 200px;
+                  max-width: 400px;
                   display: block;
                   margin-top: 10px;
                 "
@@ -90,11 +104,10 @@
                   margin-top: 15px;
                 "
               >
-                VPCのみ作成した状態ではインターネットとは接続しておらず、VPC内は完全にプライベートな状態です
+                VPCのみではインターネットと接続していない状態です
               </p>
               <p>
-                VPCのネットワーク範囲はCIDR（Classless Inter-Domain
-                Routing）で指定します。CIDRは、IPアドレスとサブネットマスクを一緒に記述する方法です。
+                VPCのネットワーク範囲は<a href="./knowledge/4.html">CIDR（サイダー）</a>で指定します。CIDRは、IPアドレスとサブネットマスクを一緒に記述する方法です。
               </p>
               <ul>
                 <li>
@@ -183,23 +196,51 @@
               <p>
                 VPCを小さく分割したネットワーク。EC2などのリソースはサブネット内に作成します。
               </p>
-              <p>サブネットの図を挿入</p>
-              <p>
-                サブネットにも「10.0.1.0/24」、「10.0.2.0/24」などCIDRを指定します。VPCのCIDR範囲に収まる値を使用します。
+              <img
+              src="../image/session/2/vpc/subnet-diagram.png"
+              alt="サブネットの構成図"
+              class="img-w800"
+            />
+            <p
+                style="
+                  text-align: center;
+                  font-size: 0.9em;
+                  color: #555;
+                  margin-top: 15px;
+                "
+              ><a href="https://docs.aws.amazon.com/ja_jp/vpc/latest/userguide/configure-subnets.html" target="_blank">
+                サブネットの図 参照:AWS公式ドキュメント</a>
               </p>
               <p>
-                上記図の状態ではまだインターネットとサブネットはつながっていません。インターネットと繋がっていないサブネットはプライベートサブネットと呼ばれます。
+                VPCのCIDR範囲から切り出し、サブネットにも「10.0.1.0/24」、「10.0.2.0/24」などCIDRを指定します。
               </p>
               <p>
-                インターネットと接続するためには必要なものがいくつかあります。
+              </p>
+              <p>
+                サブネットはインターネットゲートウェイを介して、パブリックサブネットとプライベートサブネットに分かれます。
               </p>
             </article>
             <article class="vpc-block">
               <h3 id="igw">インターネットゲートウェイ（IGW）</h3>
-              <p>VPC図を挿入</p>
+              <img
+              src="../image/session/2/vpc/internet-gateway-basics.png"
+              alt="インターネットゲートウェイの構成図"
+              class="img-w500"
+            />
+            <p
+                style="
+                  text-align: center;
+                  font-size: 0.9em;
+                  color: #555;
+                  margin-top: 15px;
+                "
+              ><a href="https://docs.aws.amazon.com/ja_jp/vpc/latest/userguide/VPC_Internet_Gateway.html" target="_blank">
+                インターネットゲートウェイの図 参照:AWS公式ドキュメント</a>
+              </p>
+              <p>インターネットゲートウェイはVPCにアタッチされ、VPC内のリソースがインターネットと通信するためのエンドポイントとなります。</p>
               <p>
-                VPCをインターネットに接続するための出入口。VPCにアタッチします。<br />
-                出入り口がつきましたが、インターネットに接続するにはまだ必要なものがあります。
+                パブリックサブネットにはインターネットゲートウェイへの直接ルートがあります。パブリックサブネット内のリソースは、パブリックインターネットにアクセスできます。<br />
+                プライベートサブネット内のリソースがインターネットにアクセスするには、後述するNAT Gatewayを使用する必要があります。
               </p>
             </article>
             <article class="vpc-block">
@@ -207,37 +248,37 @@
               <p>
                 サブネットの通信経路(ルート)を定義する設定。ルートには、送信先となるIPアドレスの範囲(CIDR)と、通信が経由するリソースをターゲットとして指定します。
               </p>
-              <p>ルートテーブルの図を挿入</p>
               <p>
-                サブネットをインターネットと接続させる場合、送信先を0.0.0.0./0とし、ターゲットにインターネットゲートウェイを指定します。
-              </p>
-              <p>ルートテーブルの図を挿入</p>
-              <p>
-                サブネットに上記のルートテーブルがアタッチされているものは、インターネット接続ができるため、パブリックサブネット呼ばれます。
+                パブリックサブネットの場合、送信先を0.0.0.0./0とし、ターゲットにインターネットゲートウェイを指定します。
               </p>
               <p>
                 ルートテーブルにはデフォルトで送信先：10.0.0.0/16、ターゲット：localが設定されています。これは、VPCのCIDR範囲内への通信がVPC内部(local)で行われるようにするものであり、削除することはできません。
               </p>
-              <ul>
-                <li>
-                  <strong>パブリックサブネット：</strong
-                  >インターネットとの通信が可能なサーバー向け（例：Webサーバー）
-                </li>
-                <li>
-                  <strong>プライベートサブネット：</strong
-                  >外部アクセス不可。内部処理向け（例：DB）
-                </li>
-              </ul>
+
             </article>
             <article class="vpc-block">
               <h3 id="nat-gateway">NAT Gateway</h3>
               <p>
                 プライベートサブネットのインスタンスが外部と通信するために必要なリソースです。
               </p>
-              <p>NAT Gatewayの構成図</p>
+              <img
+              src="../image/session/2/vpc/public-nat-gateway-diagram.png"
+              alt="Natゲートウェイの構成図"
+              class="img-w600"
+            />
+            <p
+                style="
+                  text-align: center;
+                  font-size: 0.9em;
+                  color: #555;
+                  margin-top: 15px;
+                "
+              ><a href="https://docs.aws.amazon.com/ja_jp/vpc/latest/userguide/nat-gateway-scenarios.html" target="_blank">
+                Natゲートウェイの図 参照:AWS公式ドキュメント</a>
+              </p>
               <p>
                 NAT
-                Gatewayを使用することで、プライベートサブネット内のインスタンスはインターネットへのアウトバウンド通信が可能になります。インバウンド通信はできません。
+                ゲートウェイを使用することで、プライベートサブネット内のインスタンスはインターネットへのアウトバウンド通信が可能になります。インバウンド通信はできません。
               </p>
             </article>
 
@@ -247,10 +288,6 @@
                 EC2など、インスタンスレベルで動作するファイアウォールです。<br />
                 通信のルール（インバウンドとアウトバウンド）を設定し、どんな通信を許可するかを決めます。<br />
                 具体的には、「どんな通信か（プロトコルやポート番号）」と「どこから・どこへの通信か（CIDRや他のセキュリティグループ）」を指定します。<br />
-              </p>
-              <p>セキュリティグループの参考画面の図</p>
-              <p>
-                上の図ではインバウンドルールで自宅のIPアドレスからSSH接続を許可しています。
               </p>
               <p>
                 セキュリティグループはステートフルという特徴があります。インバウンド通信を許可すると、アウトバウンドの許可ルールがない場合でも、応答は自動的に許可されます。逆も同様です。ただ自動許可されるのは応答に限ります。
@@ -264,7 +301,6 @@
                 許可と拒否の両方の設定ができます。<br />
                 ステートレスであり、応答通信が必要な場合インバウンドルールとアウトバウンドルールの両方に許可ルールを設定する必要があります。<br />
               </p>
-              <p>デフォルトネットワークACLの参考図</p>
               <p>
                 デフォルトでは全ての通信が許可されている状態です。<br />
                 ルール番号が小さいものから順に評価され、最初にマッチしたルールが適用されます。<br />
@@ -308,12 +344,11 @@
               <p>
                 リージョン内の物理的に分離されたデータセンター群。AZ単位でサブネットを配置することで、冗長構成と高可用性を実現できます。
               </p>
-              <p>AZの構成図</p>
             </article>
             <article class="vpc-block">
               <h3 id="multi-vpc">マルチVPC</h3>
               <p>
-                数のVPCを連携させて、それぞれのVPCが持つネットワークリソースを共有したり、相互に通信できるようにする仕組み。<br />
+                複数のVPCを連携させて、それぞれのVPCが持つネットワークリソースを共有したり、相互に通信できるようにする仕組み。<br />
                 VPCを用途や部門ごとに分け、VPCピアリングやTransit
                 Gatewayで接続することで、大規模なネットワーク設計が可能です。
               </p>
@@ -381,6 +416,7 @@
                 <strong>デフォルトVPCの削除</strong><br />
                 <p>
                   デフォルトVPCは自動で作成されるVPCですが、ハンズオンでは新しいVPCを作成するために削除します。
+                  ※ 新しいアカウントだと削除できない可能性があります。その場合は、デフォルトVPCを使用して進めてください。
                 </p>
                 <ul>
                   <li>
@@ -473,7 +509,8 @@
                   />
                   <li>サブネットの設定内容を指定</li>
                   サブネット名 : 任意（例 : session2-subnet)<br />アベイラビリティゾーン
-                  : ap-northeast-1a<br />IPv4 CIDRブロック : 10.0.1.0/24
+                  : ap-northeast-1a<br />IPv4 CIDRブロック : 10.0.1.0/24<br />
+                  ※ 画像内10.0.0.0/24は誤りです。ただどちらでも問題ありません
                   <img
                     src="../image/session/2/subnet/3-create.png"
                     alt="サブネット作成フォームでサブネット名・AZ・CIDRを入力する画面"
@@ -930,6 +967,7 @@
               <li>VPC（Virtual Private Cloud）</li>
               <li>パブリックサブネット</li>
               <li>インターネットゲートウェイ（IGW）</li>
+              <li>ルートテーブル</li>
               <li>
                 EC2用セキュリティグループ（ポート22：SSHを自分のIPに限定して許可）
               </li>
@@ -1106,9 +1144,9 @@
             <p><br></p>
             <p>
               【Windows】<br />
-              ・ターミナルを開き、cdコマンドで.pemファイルがあるディレクトリに移動します<br>
-              ・以下の二つのコマンドを実行して、キーペアファイルの権限を変更します<br />
-              
+              ・PowerShellを開き、cdコマンドで.pemファイルがあるディレクトリに移動します<br>
+
+              ※ 3の工程を進めた際に、キーペアの権限に関するエラーが出た場合、以下の二つのコマンドを実行してください<br />       
               　※ <キーペア名>.pemは、実際に作成したキーペアの名前に置き換えてください</br />
                   　(例: study-key.pem)
             </p>
