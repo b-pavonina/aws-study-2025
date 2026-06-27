@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
@@ -13,7 +13,12 @@
           >勉強会 <span style="font-size: 0.8em">for</span> AWS</a
         >
         <span class="header-spacer"></span>
-        <a href="../board/signin.html" class="header-btn">質問板</a>
+        <span
+          class="header-btn header-btn-disabled"
+          aria-label="質問板は停止中です"
+        >
+          質問板（停止中）
+        </span>
       </div>
     </header>
     <main>
@@ -207,22 +212,22 @@
                 Resource 操作対象となるAWSリソースを指定します。ここでは
                 "*"（すべてのリソース）となっており、全てのEC2インスタンスが対象になります。
               </li>
-              
+
               <p>
-                今回のセッションではIAMのハンズオンはしませんが、コンソールからIAMポリシーの確認や作成をすることができます。<br>
+                今回のセッションではIAMのハンズオンはしませんが、コンソールからIAMポリシーの確認や作成をすることができます。<br />
                 既存ポリシーが用意されており(1407個以上ととても多いですが)、よく使う権限はこれらを利用することが多いです。
               </p>
               <img
-              src="../image/session/3/iam/1-policy.png"
-              alt="IAMポリシーの例"
-              class="img-w800"
-            />
-            既存ポリシーの一例ですが、中身がJSON形式で書かれているのが確認できます。<br>
-            <img
-              src="../image/session/3/iam/2-policy-detail.png"
-              alt="IAMポリシーの詳細"
-              class="img-w800"
-            />
+                src="../image/session/3/iam/1-policy.png"
+                alt="IAMポリシーの例"
+                class="img-w800"
+              />
+              既存ポリシーの一例ですが、中身がJSON形式で書かれているのが確認できます。<br />
+              <img
+                src="../image/session/3/iam/2-policy-detail.png"
+                alt="IAMポリシーの詳細"
+                class="img-w800"
+              />
             </ul>
 
             <h4 id="iam-resource">IAMとリソースポリシーの違い</h4>
@@ -601,25 +606,46 @@
               />
             </ol>
 
-            <div style="background-color: #f0f8ff; padding: 15px; border-left: 4px solid #4a90e2; margin: 20px 0;">
-              <h5 style="margin-top: 0; color: #2c5aa0;">💡 補足：プライベートサブネットとルートテーブル</h5>
+            <div
+              style="
+                background-color: #f0f8ff;
+                padding: 15px;
+                border-left: 4px solid #4a90e2;
+                margin: 20px 0;
+              "
+            >
+              <h5 style="margin-top: 0; color: #2c5aa0">
+                💡 補足：プライベートサブネットとルートテーブル
+              </h5>
               <p>
-                <strong>Q: プライベートサブネットにルートテーブルは不要なのか？</strong><br>
+                <strong
+                  >Q:
+                  プライベートサブネットにルートテーブルは不要なのか？</strong
+                ><br />
                 A: いいえ、プライベートサブネットにもルートテーブルは必要です。
               </p>
               <p>
-                今回のハンズオンでは明示的にルートテーブルを作成していませんが、実は<strong>VPCには必ず「メインルートテーブル」が自動で作成</strong>されています。<br>
+                今回のハンズオンでは明示的にルートテーブルを作成していませんが、実は<strong>VPCには必ず「メインルートテーブル」が自動で作成</strong>されています。<br />
                 サブネット作成時にルートテーブルを指定しない場合、自動的にこのメインルートテーブルが関連付けられます。
               </p>
               <p>
-                <strong>パブリックサブネットとプライベートサブネットの違い：</strong>
+                <strong
+                  >パブリックサブネットとプライベートサブネットの違い：</strong
+                >
               </p>
-              <ul style="margin: 10px 0;">
-                <li><strong>パブリックサブネット</strong>：インターネットゲートウェイ（IGW）へのルート（0.0.0.0/0 → IGW）を持つルートテーブルを関連付け</li>
-                <li><strong>プライベートサブネット</strong>：IGWへのルートを持たないルートテーブルを関連付け（メインルートテーブルのままでOK）</li>
+              <ul style="margin: 10px 0">
+                <li>
+                  <strong>パブリックサブネット</strong
+                  >：インターネットゲートウェイ（IGW）へのルート（0.0.0.0/0 →
+                  IGW）を持つルートテーブルを関連付け
+                </li>
+                <li>
+                  <strong>プライベートサブネット</strong
+                  >：IGWへのルートを持たないルートテーブルを関連付け（メインルートテーブルのままでOK）
+                </li>
               </ul>
               <p>
-                今回のRDSは、インターネットからの直接アクセスを必要としないため、メインルートテーブル（IGWへのルートなし）が関連付けられたプライベートサブネットに配置しています。<br>
+                今回のRDSは、インターネットからの直接アクセスを必要としないため、メインルートテーブル（IGWへのルートなし）が関連付けられたプライベートサブネットに配置しています。<br />
                 これにより、同じVPC内のEC2からのみアクセス可能な、セキュアなデータベース環境を実現しています。
               </p>
             </div>
@@ -960,7 +986,9 @@ select * from sample;</code></pre>
           <section id="end">
             <h3>おわりに</h3>
             <p>
-              今回のセッションでは、AWSのセキュリティの要となるIAM（Identity and Access Management）の基本概念と、マネージドデータベースサービスであるRDS/Auroraについて学習しました。<br />
+              今回のセッションでは、AWSのセキュリティの要となるIAM（Identity and
+              Access
+              Management）の基本概念と、マネージドデータベースサービスであるRDS/Auroraについて学習しました。<br />
               ハンズオンでは、プライベートサブネットにRDSインスタンスを配置し、EC2からセキュアに接続する構成を実際に構築することで、
               AWSにおける安全なデータベース運用の基礎を体験しました。<br /><br />
 

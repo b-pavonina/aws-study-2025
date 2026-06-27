@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
@@ -58,7 +58,8 @@
         border-collapse: collapse;
         margin: 20px 0;
       }
-      .comparison-table th, .comparison-table td {
+      .comparison-table th,
+      .comparison-table td {
         border: 1px solid #ddd;
         padding: 8px;
         text-align: left;
@@ -77,7 +78,9 @@
           >勉強会 <span style="font-size: 0.8em">for</span> AWS</a
         >
         <span class="header-spacer"></span>
-        <a href="../board/signin.html" class="header-btn">質問板</a>
+        <span class="header-btn header-btn-disabled" aria-label="質問板は停止中です">
+  質問板（停止中）
+</span>
       </div>
     </header>
 
@@ -85,40 +88,54 @@
       <div class="container">
         <div class="content">
           <h1>第6回：Dockerの基本とコンテナ化入門</h1>
-          <div class="post-date">Posted at 2025-12-30</div>
+          <div class="post-date">Posted at 2026-03-07</div>
 
           <section id="intro">
             <h2>1. はじめに</h2>
             <p>
-              これまでは EC2（仮想サーバー）を中心に学んできましたが、近年は「コンテナを実行する基盤」として <strong>ECS（特にFargate）</strong> がよく使われます。
+              これまでは EC2（仮想サーバー）を中心に学んできましたが、
+              最近は「コンテナを実行する基盤」として<strong
+                >ECS（特にFargate）</strong
+              >
+              がよくつかわれます。
             </p>
             <p>
-              ただし ECS は「サーバーを立てるサービス」ではなく、コンテナを実行するサービスです。<br>
-              そのため、ECSを使うにはまず <strong>Dockerイメージ（コンテナの元になる成果物）</strong> を自分で作れる必要があります。
+              ただし ECS
+              はサーバーを立てるサービスではなく、コンテナを実行するサービスです。<br />
+              （※
+              コンテナが何かは後ほど説明しますが、いったん「アプリを動かすための隔離された実行環境（プロセス）」と思ってください。）<br />
             </p>
             <p>
-              そこで今回はAWSサービスではなく、<strong>ローカル環境でDockerを操作</strong> して「イメージを作り、起動し、ログを見て、止めて消す」までを一通り体験します。<br>
-              この流れを理解しておくと、次回のECS（Fargate）で詰まりやすいポイント（ポート、起動コマンド、ログ確認）が一気に見通せるようになります。
+              そして、コンテナは“何もない状態”からは起動できず、元になる「コンテナイメージ」というものが必要です。このイメージを作る代表的な仕組みが
+              Docker です。<br />
             </p>
-
+            <p>
+              そこで今回は、ECS理解の前提となる「Dockerでコンテナイメージを作って動かす流れ」を学習します。<br />
+              ハンズオンではDockerを操作して「イメージを作り、コンテナを起動し、ログを見て、止めて消す」までを一通り体験します。
+            </p>
+            <p>
+              Docker自体はAWSサービスではありませんが、この流れを理解しておくと、次回のECS（Fargate）で詰まりやすいポイント（ポート、起動コマンド、ログ確認）が見通せるようになります。<br />
+            </p>
 
             <div class="alert-box info">
-              <span class="alert-title">✅ なぜECSの前にDockerを学ぶのか（重要）</span>
+              <span class="alert-title">✅ なぜECSの前にDockerを学ぶのか</span>
               <p>
-                ECS（Fargate）は「コンテナをAWS上で実行・管理する仕組み」です。つまり、ECSが扱う“荷物”は
-                <b>Dockerイメージ</b>です。Dockerが分からないままECSに進むと、よくあるトラブルが
-                「原因不明」になりやすいです。
+                Dockerが分からないと、ECSで起きるトラブルの原因が理解しにくくなります。
               </p>
               <ul>
                 <li>
-                  <b>イメージを作れない</b>：Dockerfileが書けないと、ECSに載せる“成果物”が作れません。
+                  <b>イメージを作れない</b
+                  >：Dockerfileが書けないと、ECSに載せるコンテナイメージが作れません。
                 </li>
                 <li>
-                  <b>起動失敗の理由が読めない</b>：ECSで「タスクが落ちる」原因は、ほとんどが
-                  <b>コンテナ内部の起動コマンド / ポート / 依存関係</b>です（Dockerの知識が必要）。
+                  <b>起動失敗の理由が読めない</b
+                  >：ECSでタスクが落ちる原因の多くが
+                  <b>コンテナ内部の起動コマンド / ポート / 依存関係</b
+                  >です（Dockerの知識が必要）。
                 </li>
                 <li>
-                  <b>設定の対応関係が見えない</b>：Dockerの <code>docker run</code> オプションは、ECSの
+                  <b>設定の対応関係が見えない</b>：Dockerの
+                  <code>docker run</code> オプションは、ECSの
                   タスク定義（portMappings / env / command 等）と対応します。
                 </li>
               </ul>
@@ -132,50 +149,170 @@
             <h2>2. ゴール</h2>
             <ul>
               <li>
-                <b>コンテナの正体</b>：コンテナは「軽量VM」ではなく「隔離されたプロセス」であることを理解する
+                <b>コンテナの理解</b
+                >：コンテナの特徴（軽量・移植性・分離）を説明できる
               </li>
               <li>
-                <b>Dockerの基本3点</b>：Dockerfile（設計図）→ Image（成果物）→ Container（実行体）を説明できる
+                <b>Dockerの基本要素理解</b>：Dockerfile（設計図）→ Image（成果物）→
+                Container（実行体）の関係を説明できる
               </li>
               <li>
-                <b>基本操作</b>：build / run / ps / logs / stop / rm / rmi を一通り実行できる
+                <b>基本操作</b>：Dockerfileの基本命令と、docker build / docker run などの基本操作を理解する
               </li>
               <li>
                 <b>ポート公開</b>：ホストとコンテナの通信（-p の意味）を理解する
               </li>
-              <li>
-                <b>ECSへの接続</b>：今回の <code>docker run</code> と、次回のECSタスク定義の対応を言語化できる
-              </li>
             </ul>
           </section>
 
-          <section id="lecture">
-            <h2>3. 解説（Lecture）</h2>
+          <section id="explain">
+            <h2>3. 解説</h2>
 
-            <h3 id="vm-vs-container">3.1 仮想マシン（EC2） vs コンテナ</h3>
+            <h3 id="container-merits">3.1 コンテナの特徴</h3>
             <p>
-              まず結論から言うと、<b>コンテナは「OSを丸ごと持ちません」</b>。
-              コンテナの正体は「OS上で動くプロセス」を、あたかも別マシンのように見せている仕組みです。
+              コンテナの3つの特徴である、軽量、移植性(portability)、分離(isolation)について理解すると、なぜコンテナが注目されているのかが分かります。
             </p>
-
-            <!-- img: VMとコンテナの違い（VM=各VMにGuest OS、コンテナ=ホストOSのカーネル共有、アプリ＋依存はコンテナごと） -->
+            <h4>コンテナの特徴①：軽量（Lightweight）</h4>
+            <p>
+              コンテナは「OSを丸ごと持たない」ことで、軽さと起動の速さを実現しています。<br />
+              仮想マシンと比較すると、軽さの仕組みを理解しやすいです。
+            </p>
+            <figure>
+              <img
+                src="../image/session/6/explain/Docker-containerized-and-vm-transparent-bg.png"
+                alt="Dockerコンテナと仮想マシンの比較"
+                class="img-w600"
+              />
+              <figcaption
+                style="
+                  text-align: center;
+                  color: #666;
+                  font-size: 0.9em;
+                  margin-top: 10px;
+                "
+              >
+                <b>図：コンテナ（左）vs 仮想マシン（右）</b><br />
+                Image credit: Katalon Studio, CC BY-SA 4.0, via Wikimedia
+                Commons
+              </figcaption>
+            </figure>
             <div class="mini-check">
-              <b>🔎 仕組みの要点（なぜ軽いのか）</b>
-              <ul>
-                <li>
-                  <b>VM（EC2など）</b>：ハイパーバイザ上で「OS（カーネル含む）」を丸ごと起動します。OS起動が重く、
-                  1台あたりのオーバーヘッドも大きいです。
-                </li>
-                <li>
-                  <b>コンテナ</b>：OS（カーネル）は共有しつつ、プロセスを隔離します。つまり「OS起動」が不要で、
-                  必要なのはアプリを動かすプロセス起動だけなので速いです。
-                </li>
-              </ul>
-            </div>
+              <b>🔎 それぞれの仕組み</b>
 
+              <div
+                style="
+                  margin: 15px 0;
+                  padding: 12px;
+                  background: #fff;
+                  border-left: 3px solid #5bc0de;
+                  border-radius: 4px;
+                "
+              >
+                <div style="font-weight: bold; margin-bottom: 8px">
+                  📦 コンテナ
+                </div>
+                <p style="margin: 0 0 8px 0">
+                  ホストOSのカーネルを共有しつつ、アプリを動かすプロセスを隔離して実行します。
+                </p>
+                <p style="margin: 0; color: #555">
+                  →
+                  <strong>メリット</strong
+                  >OSを起動する必要がなく、アプリのプロセス起動だけで済むため、軽量で起動が速く、同じマシン上で多数のコンテナを動かしやすくなります。
+                </p>
+              </div>
+
+              <div
+                style="
+                  margin: 15px 0;
+                  padding: 12px;
+                  background: #fff;
+                  border-left: 3px solid #f0ad4e;
+                  border-radius: 4px;
+                "
+              >
+                <div style="font-weight: bold; margin-bottom: 8px">
+                  💻 仮想マシン
+                </div>
+                <p style="margin: 0 0 8px 0">
+                  1台の物理サーバーの上に、複数の"仮想的なマシン"を作る仕組みです。それぞれの仮想マシンは自分専用のゲストOSを持ち、ハイパーバイザの上で動きます。
+                </p>
+                <p style="margin: 0; color: #555">
+                  →
+                  OS起動に時間がかかり、OSの分だけ余計なメモリやCPU消費も発生します。
+                </p>
+              </div>
+
+              <div
+                style="
+                  margin-top: 15px;
+                  padding: 10px;
+                  background: #f8f9fa;
+                  border-radius: 4px;
+                  font-size: 0.9em;
+                  color: #666;
+                "
+              >
+                <div style="font-weight: bold; margin-bottom: 6px">
+                  💡 用語補足
+                </div>
+                <div style="margin: 4px 0">
+                  <strong>カーネル：</strong
+                  >OSの中心部分。CPU・メモリ・ディスクなどの資源を管理する
+                </div>
+                <div style="margin: 4px 0">
+                  <strong>プロセス：</strong>起動して動いているプログラムの実体
+                </div>
+              </div>
+            </div>
+            <h4>コンテナの特徴②：移植性（Portability）</h4>
             <p>
-              では「隔離」はどう実現しているのでしょうか。代表的には次の3つがポイントです。
+              コンテナの大きな特徴の一つに、<b>移植性（Portability）</b>があります。<br />
+              移植性とは、作ったアプリを別の環境へ持っていっても、同じように動かしやすい性質のことです。
             </p>
+            <p>
+              コンテナでは、アプリを動かすのに必要なライブラリ・設定・実行ファイルなどを、<b>コンテナイメージ</b>にまとめて閉じ込めることができます。<br />
+              そのため、開発PC・検証環境・本番環境など、環境が変わっても<b>同じ実行環境を再現しやすく</b>なります。
+            </p>
+            <p>
+              一方、従来のようにEC2へ直接ミドルウェアやライブラリをインストールして動かす場合は、次のような差によって挙動が変わり問題となることがあります。
+            </p>
+            <ul>
+              <li>OSのバージョン差</li>
+              <li>依存ライブラリの差</li>
+              <li>設定ファイルの差</li>
+            </ul>
+            <p>
+              コンテナを利用することで、<b>「開発環境では動いたのに、本番では動かない」問題を減らしやすく</b>なります。
+            </p>
+
+            <h4>コンテナの特徴③：分離（Isolation）</h4>
+            <p>
+              ここで、もう一つの重要な特徴である 分離（Isolation）
+              を見ていきます。
+            </p>
+            <p>
+              普通のOSでも、ブラウザやエディタなど複数のアプリを同じOS上で同時に動かせます。<br />
+              ただし、それらは基本的に 同じOSの世界 を共有しています。
+            </p>
+            <p>
+              一方コンテナは、同じOS上で動いていても、それぞれが別マシンのような独立した環境を持つように見せる
+              ことができます。
+            </p>
+            <p>たとえば次のような構成を考えます。</p>
+            <ul>
+              <li>コンテナA：Webアプリ</li>
+              <li>コンテナB：DB</li>
+              <li>コンテナC：Nginx</li>
+            </ul>
+            <p>
+              これらは同じOS上で動いていても、それぞれが<b>自分専用のプロセス空間・ネットワーク・ファイルシステム</b>を持つように見えます。
+            </p>
+            <p>
+              この<b>「互いに影響を与えにくいように分離する仕組み」</b>を<b>隔離（Isolation）</b>と呼びます。
+            </p>
+
+            <h4>コンテナの隔離はどう実現しているのか</h4>
+            <p>コンテナの隔離は、主にLinuxの次の仕組みで実現されています。</p>
             <ul>
               <li>
                 <b>Namespaces（見える世界を分ける）</b><br />
@@ -188,77 +325,502 @@
               </li>
               <li>
                 <b>Union FS / レイヤー（差分で配布する）</b><br />
-                イメージはレイヤーの積み重ねです。変更分だけを追加して配布できるので、再利用が効きます（高速＆省容量）。
+                イメージはレイヤーの積み重ねでできています。変更分だけを追加して持てるので、再利用しやすく、配布や更新も効率的です。<br />
+                これは Docker イメージを軽く配布できる理由の一つです。
               </li>
             </ul>
 
             <div class="alert-box warning">
-              <span class="alert-title">⚠️ Mac/Windowsの注意（「カーネル共有」の現実）</span>
+              <span class="alert-title"
+                >⚠️ Mac/Windowsの注意（「カーネル共有」の現実）</span
+              >
               <p>
                 Linux上ではコンテナはホストのLinuxカーネルを共有します。一方、Mac/WindowsではそのままではLinuxカーネルが無いので、
-                Docker Desktop や OrbStack は内部で <b>Linuxの軽量VM</b> を動かし、その中のLinuxカーネルを共有してコンテナを動かします。
+                Docker Desktop や OrbStack は内部で
+                <b>Linuxの軽量VM</b>
+                を動かし、その中のLinuxカーネルを共有してコンテナを動かします。
               </p>
               <p>
-                なので「コンテナ=OS共有」は原理として正しいのですが、Mac/Windowsでは「Linux VMの中で共有している」と理解すると混乱しません。
+                なので「コンテナ=OS共有」は原理として正しいのですが、Mac/Windowsでは「Linux
+                VMの中で共有している」と理解すると混乱しません。
               </p>
             </div>
 
             <div class="mini-check">
-              <b>✅ まとめ：コンテナのメリットが“なぜ”生まれるか</b>
+              <b>✅ まとめ：コンテナのメリットがどのような特徴から生まれるか</b>
               <ul>
-                <li><b>軽量</b>：OS起動がなく、プロセス隔離なのでオーバーヘッドが小さい</li>
-                <li><b>起動が速い</b>：VM起動ではなく、プロセス起動だから速い</li>
                 <li>
-                  <b>同じ動き（Portability）</b>：アプリ＋依存ライブラリ＋設定をイメージに閉じ込めるので、
+                  <b>軽量</b
+                  >：OSを丸ごと持たず、プロセス単位で動くためオーバーヘッドが小さい
+                </li>
+
+                <li>
+                  <b>移植性（Portability）</b
+                  >：アプリ＋依存ライブラリ＋設定をイメージに閉じ込めるので、
                   実行環境のズレが起きにくい
                 </li>
+                <li>
+                  <b>分離（Isolation）</b
+                  >：同じOS上でも、コンテナごとにプロセス・ネットワーク・
+                  ファイルシステムを分離できる
+                </li>
               </ul>
             </div>
 
-            <h3 id="three-elements">3.2 Dockerの3要素（Dockerfile / Image / Container）</h3>
-            <p>
-              Dockerを学ぶときは「設計図 → 成果物 → 実行体」で考えると分かりやすいです。
-            </p>
+            <h3 id="docker-basic">3.2 Dockerの基本</h3>
+            <p>この節では、Dockerを理解するうえで重要な次の3点を整理します。</p>
             <ul>
-              <li><b>Dockerfile</b>：設計図（レシピ）。どんな環境を作り、何を入れ、どう起動するかを書きます。</li>
-              <li><b>Image</b>：Dockerfileから作られた読み取り専用の成果物。配布・再現の単位になります。</li>
-              <li><b>Container</b>：Imageを元に起動した「実行中のプロセス」。止めたり消したりできます。</li>
+              <li>Dockerfile / Image / Container の関係</li>
+              <li>Dockerfile がどのように書かれるか</li>
+              <li>Dockerでよく使う基本コマンド</li>
             </ul>
 
-            <!-- img: Dockerfile→Image→Container の流れ（レイヤー構造＋ContainerはImageに書き込み層が乗る） -->
+            <h4>Dockerの3要素（Dockerfile / Image / Container）</h4>
+            <p>
+              Dockerを学ぶときは、<b>「設計図 → 成果物 → 実行体」</b
+              >の流れで考えると分かりやすいです。
+            </p>
+            <ul>
+              <li>
+                <b>Dockerfile：設計図</b><br />
+                どんな環境を作り、何を入れ、どう起動するかを書くファイルです。
+              </li>
+              <li>
+                <b>Image：成果物</b><br />
+                Dockerfileから作られた、読み取り専用のパッケージです。<br />
+                配布・再現の単位になります。
+              </li>
+              <li>
+                <b>Container：実行体</b><br />
+                Imageを元に起動した、実行中の状態です。<br />
+                止めたり消したりできます。
+              </li>
+            </ul>
+            <p>つまり、流れとしては次のようになります。</p>
+            <p style="text-align: center; font-weight: bold; margin: 15px 0">
+              Dockerfileを書く → Imageを作る → ImageをもとにContainerを作成して起動する
+            </p>
+            <p>DockerにはDockerコマンドがあり、"docker build"でDockerfileからImageを作り、"docker run"でImageをもとにContainerを作成し、そのContainerを起動します。</p>
+
+            <h4>Dockerfileの例</h4>
+            <p>
+              <b>Dockerfileは設計図と先ほど言いました。設計図に何が書かれるか、Node.js
+              のWebアプリコンテナ化を例として見てみます。
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre class="code-block"><code>FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install
+
+COPY . .
+
+EXPOSE 3000
+
+CMD ["npm", "start"]</code></pre>
+            </div>
+
+            <p>Dockerfileに書かれた内容をもとに"docker build"でイメージが作られます。それぞれの行がどのような意味を持つのか見てみましょう。</p>
+
+            <p>
+              <span style="font-weight: 600">FROM</span
+              >：ベースになるイメージを指定する命令です。<br />
+              例では、Node.js 20 が入った軽量な Linux
+              イメージを土台として使います。<br>
+              つまり「このイメージを出発点にして、自分のコンテナイメージを組み立てる」という意味です。<br />
+              ※ イメージはどこから取得されるのかは後ほど説明します。
+            
+            </p>
+
+            <p>
+              <span style="font-weight: 600">WORKDIR</span
+              >：コンテナ内の作業ディレクトリを指定する命令です。<br />
+              例では、作業場所を <code>/app</code> に設定しています。以降の
+              <code>COPY</code> や
+              <code>RUN</code> は、このディレクトリを基準に実行されます。
+            </p>
+
+            <p>
+              <span style="font-weight: 600">COPY</span
+              >：ローカルのファイルをコンテナ内へコピーする命令です。<br />
+              例では、まず <code>package.json</code> /
+              <code>package-lock.json</code>
+              をコピーし、その後でアプリ本体のソースコードをコピーしています。<br>
+              依存関係の定義ファイルを先にコピーするのは、Docker のビルドキャッシュを効かせやすくするためです。
+            </p>
+
+            <p>
+              <span style="font-weight: 600">RUN</span
+              >：イメージを作る途中でコマンドを実行する命令です。<br />
+              例では、<code>npm install</code>
+              を実行して依存ライブラリをインストールしています。
+            </p>
+
+            <p>
+              <span style="font-weight: 600">EXPOSE</span
+              >：このコンテナがリッスンする想定のポートを示す命令です。<br />
+              例では、アプリが 3000 番ポートを使う前提で設定しています。<br />
+              ただし、これだけで外部公開されるわけではなく、実際にホストからアクセスするには
+              <code>docker run -p</code> が必要です。
+            </p>
+
+            <p>
+              <span style="font-weight: 600">CMD</span
+              >：コンテナ起動時にデフォルトで実行するコマンドを指定する命令です。<br />
+              例では、コンテナ起動時に
+              <code>npm start</code> を実行してアプリを立ち上げます。
+            </p>
+
+            <p>まとめると、さきほどの例では、次の流れでコンテナを作っています。</p>
+            <ol>
+              <li>Node.js が入ったイメージを土台にする</li>
+              <li>コンテナ内の作業ディレクトリを <code>/app</code> にする</li>
+              <li>依存関係の定義ファイルをコピーする</li>
+              <li><code>npm install</code> でライブラリを入れる</li>
+              <li>アプリ本体をコピーする</li>
+              <li>3000番ポートを使うことを示す</li>
+              <li>起動時に <code>npm start</code> を実行する</li>
+            </ol>
 
             <div class="mini-check">
-              <b>🔎 初心者が詰まりやすいポイント（超重要）</b>
+              <b>🔎 初心者が特につまずきやすいポイント</b>
+              <p><b>RUN</b> と <b>CMD</b> は役割が違います。</p>
               <ul>
+                <li><b>RUN</b>：イメージを作る途中で実行する</li>
+                <li><b>CMD</b>：コンテナを起動したときに実行する</li>
+              </ul>
+              <p>
+                この違いは最初に混同しやすいので、意識しておくと理解しやすいです。
+              </p>
+            </div>
+
+            <h4>イメージはどこから来るのか</h4>
+            <p>
+              <code>FROM</code> で指定したイメージは、イメージの保存場所（<b>レジストリ</b>）から取得します。<br />
+              Dockerで何も指定しない場合、通常は <b>Docker Hub</b> という公開レジストリを見に行きます。
+            </p>
+            
+            <p>たとえば、次の指定を見てみます。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre class="code-block"><code>FROM node:20-alpine</code></pre>
+            </div>
+            
+            <p>これは次の意味です。</p>
+            <ul>
+              <li>
+                <b>node</b><br />
+                使うイメージの名前です。ここでは Node.js が入ったイメージを指します。
+              </li>
+              <li>
+                <b>20-alpine</b><br />
+                イメージのタグです。<br />
+                ここでは「Node.js 20系」かつ「Alpine Linux ベース」の軽量版を使う、という意味です。
+              </li>
+            </ul>
+            
+            <p>
+              つまりこの1行は、<br />
+              <b>「Docker Hub にある node イメージの 20-alpine タグを土台として使う」</b><br />
+              という指定になります。
+            </p>
+            
+            <h4>Dockerイメージ関連用語</h4>
+            
+            <p><b>レジストリ（Registry）</b></p>
+            <p>
+              Dockerイメージを保存・配布する場所です。<br />
+              例：
+            </p>
+            <ul>
+              <li>Docker Hub</li>
+              <li>Amazon ECR</li>
+              <li>GitHub Container Registry</li>
+            </ul>
+            
+            <p><b>リポジトリ（Repository）</b></p>
+            <p>
+              レジストリの中で、関連するイメージをまとめて管理する単位です。<br />
+              たとえば <code>node</code> は、Node.js イメージのリポジトリです。
+            </p>
+            
+            <p><b>タグ（Tag）</b></p>
+            <p>
+              同じリポジトリの中で、バージョンや種類を区別するための名前です。<br />
+              例：
+            </p>
+            <ul>
+              <li><code>latest</code></li>
+              <li><code>20</code></li>
+              <li><code>20-alpine</code></li>
+            </ul>
+
+
+            <h4>Dockerコマンド</h4>
+            <p>
+              ここでは、Dockerでよく使う基本コマンドを見ておきます。<br />
+              ハンズオンでも、主にこれらのコマンドを使います。
+            </p>
+
+            <h5>docker build</h5>
+            <p>Dockerfile をもとに Image を作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>docker build -t my-web-app .</code></pre>
+            </div>
+            <ul>
+              <li><code>-t</code>：イメージに名前（タグ）を付ける</li>
+              <li>
+                <code>.</code>：Dockerfile
+                がある場所（カレントディレクトリ）を指定する
+              </li>
+            </ul>
+
+            <h5>docker images</h5>
+            <p>作成済みの Image 一覧を表示します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre class="code-block"><code>docker images</code></pre>
+            </div>
+
+            <h5>docker run</h5>
+            <p>Image をもとに Container を作成して起動します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>docker run -d -p 8080:80 --name my-container my-web-app</code></pre>
+            </div>
+            <ul>
+              <li><code>-d</code>：バックグラウンド実行</li>
+              <li>
+                <code>-p 8080:80</code
+                >：ホストの8080番ポートをコンテナの80番ポートへつなぐ
+              </li>
+              <li><code>--name</code>：コンテナに名前を付ける</li>
+            </ul>
+
+            <h5>docker ps</h5>
+            <p>現在動いている Container の一覧を表示します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre class="code-block"><code>docker ps</code></pre>
+            </div>
+
+            <h5>docker logs</h5>
+            <p>Container のログを表示します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>docker logs my-container</code></pre>
+            </div>
+            <p>
+              アプリが起動しているか、エラーが出ていないかを確認するときに使います。
+            </p>
+
+            <h5>docker exec</h5>
+            <p>起動中の Container の中でコマンドを実行します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>docker exec -it my-container sh</code></pre>
+            </div>
+            <p>
+              コンテナ内部に入って、ファイルの配置や状態を確認したいときに使います。
+            </p>
+
+            <h5>docker stop</h5>
+            <p>起動中の Container を停止します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>docker stop my-container</code></pre>
+            </div>
+
+            <h5>docker rm</h5>
+            <p>停止済みの Container を削除します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre class="code-block"><code>docker rm my-container</code></pre>
+            </div>
+
+            <h5>docker rmi</h5>
+            <p>Image を削除します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre class="code-block"><code>docker rmi my-web-app</code></pre>
+            </div>
+
+            <div class="mini-check">
+              <b>🔎 この節で押さえたいこと</b>
+              <p>この節で特に押さえたいのは、次の3点です。</p>
+              <ul>
+                <li><b>Dockerfile は Image の作り方を書くファイル</b>である</li>
+                <li><b>Image は成果物、Container は実行中の状態</b>である</li>
                 <li>
-                  <b>イメージは基本“不変”</b>：HTMLを書き換えても、すでに作ったイメージは変わりません（後で体験します）。
-                </li>
-                <li>
-                  <b>コンテナは“一時的”</b>：コンテナを消すと中の変更も消えます（永続化は volume / DB を使う）。
+                  Docker は
+                  <b>build → run → logs / ps / exec → stop / rm</b>
+                  の流れで操作することが多い
                 </li>
               </ul>
             </div>
 
-            <h3 id="port-forward">3.3 ポートフォワーディング（-p オプション）</h3>
+
+
+            <h3 id="port-forward">
+              3.3 ポート公開（-p オプション）
+            </h3>
             <p>
               コンテナの中の世界とホストPCは隔離されています。そのため、コンテナ内部のWebサーバー（例：80番）へ
-              ホストからアクセスするには「入口」を作る必要があります。それが <code>-p</code> です。
+              ホストPCからアクセスするには、ホスト側へポートを公開する必要があります。それが
+              <code>-p</code> オプションです。
             </p>
+            <p><code>-p</code> の書式は、ホスト側ポート:コンテナ側ポート です。</p>
+
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre class="code-block"><code># 例
+docker run -p 8080:80 ...</code></pre>
+            </div>
             <p>
-              例：<code>-p 8080:80</code> は「ホストの8080番 → コンテナの80番」へ転送します。
+              例では、ホストPCの8080番ポートを、コンテナの80番ポートへつなぐ指定になっています。<br />
+              これによって、ホストPCのブラウザで <code>http://localhost:8080</code>
+              にアクセスすると、コンテナ内のWebサーバー（80番）へリクエストが届くようになります。
             </p>
             <!-- img: ホスト(8080) → Docker NAT/bridge → コンテナ(80) の図 -->
 
             <div class="mini-check">
               <b>✅ 次回（ECS）との対応</b>
               <ul>
+                <li>Docker：<code>docker run -p 8080:80 ...</code></li>
                 <li>
-                  Docker：<code>docker run -p 8080:80 ...</code>
-                </li>
-                <li>
-                  ECS：タスク定義の <b>portMappings</b>（containerPort / hostPort）に相当
+                  ECS：タスク定義の <b>portMappings</b>（containerPort /
+                  hostPort）に相当
                 </li>
               </ul>
+            </div>
+
+            <h3 id="docker-compose">3.4 Docker Compose（発展）</h3>
+            <p>
+              ここまでは、<code>docker build</code> や <code>docker run</code> を使って、1つのコンテナを作って起動する流れを見てきました。<br>
+              ただし実際の開発では、Webアプリ + DB のように、複数のコンテナをまとめて扱いたい場面がよくあります。
+            </p>
+            <p>
+              そのようなときに使うのが <b>Docker Compose</b> です。<br>
+              Docker Compose は、複数コンテナの構成を1つのファイルにまとめて定義し、まとめて起動・停止できる仕組みです。Compose ファイルでは、アプリケーションを <code>services</code> などの要素で定義します。<code>docker compose up</code> はサービスをビルド・（再）作成・起動し、<code>docker compose down</code> はコンテナやネットワークを停止・削除します。
+            </p>
+
+            <h4>Docker Compose を使う目的</h4>
+            <p>
+              Docker Compose を使う主な目的は、<b>複数コンテナをまとめて管理しやすくすること</b>です。
+            </p>
+            <p>たとえば、アプリを動かすのに次のような構成が必要だとします。</p>
+            <ul>
+              <li>Webアプリ</li>
+              <li>データベース</li>
+              <li>キャッシュサーバー</li>
+            </ul>
+            <p>
+              このような場合、<code>docker run</code> を何度も実行して1つずつ起動するより、<br>
+              1つの Compose ファイルにまとめて書き、<b><code>docker compose up</code> でまとめて起動する</b>方が分かりやすく、再現もしやすくなります。
+            </p>
+
+            <h4>よくある compose.yaml の例</h4>
+            <p>たとえば、Webアプリ + DB のような構成は、次のように書けます。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre class="code-block"><code>services:
+  web:
+    build: .
+    ports:
+      - "8080:3000"
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: example
+      POSTGRES_DB: sample
+
+volumes:
+  db-data:</code></pre>
+            </div>
+
+            <h4>このファイルが意味すること</h4>
+            <p>この例では、次のようなことを定義しています。</p>
+            <p><b>services</b></p>
+            <p>
+              起動したいコンテナの一覧です。<br>
+              この例では <code>web</code> と <code>db</code> の2つのサービスがあります。
+            </p>
+            <p><b>web</b></p>
+            <p>
+              <code>build: .</code> と書いているので、今いるディレクトリの Dockerfile を使って web 用イメージを作成します。<br>
+              <code>ports</code> では、ホストの8080番ポートを、コンテナの3000番ポートに公開しています。<br>
+              <code>depends_on</code> では、<code>db</code> サービスに依存していることを示しています。
+            </p>
+            <p><b>db</b></p>
+            <p>
+              <code>image: postgres:16-alpine</code> とあるので、Docker Hub などのレジストリから PostgreSQL イメージを取得して使うことを意味します。<br>
+              <code>environment</code> では、コンテナに渡す環境変数を指定しています。
+            </p>
+            <p><b>volumes</b></p>
+            <p>
+              永続化に使うボリュームを定義できます。<br>
+              たとえばDBコンテナを再作成しても、データを残したいときに使います。Compose ファイルでは <code>volumes</code> もトップレベル要素として定義できます。
+            </p>
+
+            <h4>docker compose up で何が起きるのか</h4>
+            <p>この <code>compose.yaml</code> があるディレクトリで、次のコマンドを実行します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre class="code-block"><code>docker compose up -d</code></pre>
+            </div>
+            <p>
+              すると、Compose はファイルの内容を読み取り、必要ならイメージをビルド / pull し、ネットワークを作成し、複数のコンテナをまとめて起動します。<code>docker compose up</code> は、サービスのビルド、（再）作成、起動、アタッチまでを行います。
+            </p>
+            <p>この例では、概ね次の流れになります。</p>
+            <ol>
+              <li><code>web</code> 用イメージを Dockerfile から build する</li>
+              <li><code>db</code> 用に PostgreSQL イメージを取得する</li>
+              <li><code>web</code> と <code>db</code> が通信できるネットワークを作る</li>
+              <li><code>web</code> コンテナと <code>db</code> コンテナを起動する</li>
+            </ol>
+            <p>
+              つまり、<b>複数コンテナの構成全体を1回で立ち上げられる</b>のが Compose の大きな利点です。
+            </p>
+
+            <h4>停止・削除するとき</h4>
+            <p>Compose で起動したコンテナ群を止めるときは、次を使います。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre class="code-block"><code>docker compose down</code></pre>
+            </div>
+            <p>
+              <code>docker compose down</code> は、Compose で作成したコンテナやネットワークを停止・削除します。なお、名前付きボリュームは <code>-v</code> を付けたときに削除されます。
+            </p>
+
+            <div class="mini-check">
+              <b>🔎 まずはどう理解すればよいか</b>
+              <p>第6回の段階では、Docker Compose は次のように理解すれば十分です。</p>
+              <ul>
+                <li><code>docker run</code>：1つのコンテナを起動する</li>
+                <li><code>docker compose up</code>：複数のコンテナ構成をまとめて起動する</li>
+              </ul>
+              <p>
+                今回はハンズオンをシンプルにするため、<code>docker run</code> を中心に進めます。<br>
+                ただし、実務では Web + DB + キャッシュ のような構成が多いため、Docker Compose もよく使われます。Compose は Docker CLI の一部として提供されており、Compose ファイル名としては <code>compose.yaml</code> が標準的です。
+              </p>
             </div>
           </section>
 
@@ -273,61 +835,94 @@
               </p>
             </div>
 
-            <h3 id="step0">Step 0: Docker をインストール</h3>
+            <h3 id="step0">Step 0: Docker をインストール & 動作確認</h3>
+
+            <p>
+              ローカル環境で Docker を使うには、<b>Docker Desktop</b> をインストールします。<br />
+              Docker Desktop は、Mac・Windows で Docker を動かすための公式アプリです。<br />
+              インストールするだけで <code>docker</code> コマンドが使えるようになります。
+            </p>
+            <p>
+              <a href="https://www.docker.com/ja-jp/products/docker-desktop/" target="_blank" rel="noopener noreferrer">
+                🐳 Docker Desktop 公式ダウンロードページ
+              </a>
+            </p>
 
             <div class="mini-check">
-              <b>Mac（推奨）</b>
               <ol>
-                <li>Docker Desktop をインストールして起動します（初回は権限許可が求められることがあります）。</li>
-                <li>ターミナルで以下を実行し、バージョンが出ればOKです。</li>
+                <li>
+                  Docker Desktop
+                  をインストールして起動します（初回は権限許可が求められることがあります）。<br>
+                  ※ Windowsの場合、インストール後に案内に従ってWSL2を有効化してください。
+                </li>
+                <li>ターミナルで以下を実行します。</li>
               </ol>
               <div class="code-wrapper">
-                <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
-                <pre class="code-block"><code>docker version
-docker run --rm hello-world</code></pre>
+                <button class="copy-btn" onclick="copyCode(this)">
+                  📋 Copy
+                </button>
+                <pre class="code-block"><code>docker version</code></pre>
               </div>
               <p>
-                代替として OrbStack でもOKです（Mac向け）。導入が軽く、dockerコマンド互換で動きます。
+                ・Dockerのバージョン情報が表示されます。Client / Server の両方が表示されればOKです。<br />
+              </p>
+               <div class="code-wrapper">
+                <button class="copy-btn" onclick="copyCode(this)">
+                  📋 Copy
+                </button>
+                <pre class="code-block"><code>docker pull hello-world</code></pre>
+              </div>
+              <p>
+                ・Docker Hub から hello-world イメージを取得します。<br />
+              </p>
+               <div class="code-wrapper">
+                <button class="copy-btn" onclick="copyCode(this)">
+                  📋 Copy
+                </button>
+                <pre class="code-block"><code>docker images</code></pre>
+              </div>
+              <p>
+                ・hello-world イメージがあることを確認します。<br />
+              </p>
+               <div class="code-wrapper">
+                <button class="copy-btn" onclick="copyCode(this)">
+                  📋 Copy
+                </button>
+                <pre class="code-block"><code>docker run --rm hello-world</code></pre>
+              </div>
+              <p>
+                ・hello-world イメージからコンテナを作成して起動します。<br>
+　Hello from Docker! のメッセージが出ればOKです。<br />
+　--rm は、実行終了後にそのコンテナを自動削除するオプションです。<br />
               </p>
             </div>
-
-            <div class="mini-check">
-              <b>Windows（推奨）</b>
-              <ol>
-                <li>Docker Desktop をインストールします。</li>
-                <li>案内に従って WSL2 を有効化します。</li>
-                <li>PowerShell / ターミナルで以下を実行し、バージョンが出ればOKです。</li>
-              </ol>
-              <div class="code-wrapper">
-                <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
-                <pre class="code-block"><code>docker version
-docker run --rm hello-world</code></pre>
-              </div>
-            </div>
+           
 
             <div class="alert-box warning">
               <span class="alert-title">⚠️ うまくいかない場合</span>
               <ul>
-                <li><b>docker コマンドが見つからない</b>：Docker Desktop の起動とPATHを確認します（再起動で直ることもあります）。</li>
-                <li><b>権限エラー</b>：会社PCでインストール権限が無い場合は、別手段（社内許可 or 代替PC or Linux環境）を検討します。</li>
+                <li>
+                  <b>docker コマンドが見つからない</b>：Docker Desktop
+                  の起動とPATHを確認します（再起動で直ることもあります）。
+                </li>
               </ul>
             </div>
 
-            <h3 id="step1">Step 1: ファイルの準備</h3>
-             <p>
-              作業用ディレクトリ <code>docker-intro</code> を作成し、その中にファイルを用意します。<br>
-              VS Codeのエクスプローラーなどで作成します。
-            </p>
-
+            <h3 id="step1">Step 1: 作業用ディレクトリとindex.htmlの準備</h3>
             <div class="mini-check">
               <b>作成するファイル構成</b>
               <pre>
 docker-intro/
-  ├─ index.html
-  └─ Dockerfile</pre>
+  └─ index.html</pre
+              >
             </div>
+            <p>
+              最初に作業用ディレクトリ
+              <code>docker-intro</code> を作成してください。<br />
+              ※  ディレクトリは任意の名前で構いませんが、この資料では <code>docker-intro</code> で進めます。
+            </p>
 
-            <p><code>index.html</code> を作成します。</p>
+            <p><code>index.html</code> を作成し(以下コピー)、docker-intro ディレクトリに保存します。</p>
             <div class="code-wrapper">
               <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
               <pre class="code-block"><code>&lt;!DOCTYPE html&gt;
@@ -346,8 +941,16 @@ docker-intro/
             </div>
 
             <h3 id="step2">Step 2: Dockerfile の作成</h3>
+            <div class="mini-check">
+              <b>作成するファイル構成</b>
+              <pre>
+docker-intro/
+  ├─ index.html
+  └─ Dockerfile ※ 追加</pre
+              >
+            </div>
             <p>
-              nginx:alpine をベースにします。軽量で、静的ファイル配信に向いています。
+              <code>Dockerfile</code> を作成します。<br />エディターなどでDockerfileという名前のファイルを作成してください。拡張子は必要ありません。ファイルには以下をコピーして保存します。<br />
             </p>
 
             <div class="code-wrapper">
@@ -356,32 +959,48 @@ docker-intro/
 COPY index.html /usr/share/nginx/html/index.html
 </code></pre>
             </div>
+            <p>
+              これで「nginx:alpine イメージを土台にして、index.html を nginx の公開ディレクトリへコピーする」という設計図ができました。
 
             <div class="mini-check">
               <b>🔎 Dockerfile 命令の意味</b>
               <ul>
-                <li><code>FROM</code>：ベースになるイメージ（材料）を指定します</li>
-                <li><code>COPY</code>：ホストのファイルを、イメージ内にコピーします</li>
+                <li>
+                  <code>FROM</code>：ベースになるイメージ（材料）を指定します
+                </li>
+                <li>
+                  <code>COPY</code
+                  >：ホストのファイルを、イメージ内にコピーします
+                </li>
               </ul>
             </div>
 
             <h3 id="step3">Step 3: イメージのビルド（Build）</h3>
-            <p>ターミナルで <code>docker-intro</code> ディレクトリに移動してから実行します。</p>
+            <p>
+              <code>docker-intro</code>
+              ディレクトリに移動してから、以下コマンドを実行します。<br />
+              ※ 以降のコマンドも同じディレクトリで実行してください。
+            </p>
             <div class="code-wrapper">
               <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
-              <pre class="code-block"><code>cd docker-intro
-docker build -t my-web-app .</code></pre>
+              <pre
+                class="code-block"
+              ><code>docker build -t my-web-app .</code></pre>
             </div>
+            <p>ビルドするイメージには <code>my-web-app</code> という名前をつけています。</p>
 
             <div class="mini-check">
               <b>🔎 オプションの意味</b>
               <ul>
                 <li><code>-t</code>：イメージに名前（タグ）を付けます</li>
-                <li>最後の <code>.</code>：Dockerfile を探す場所（カレントディレクトリ）です</li>
+                <li>
+                  最後の <code>.</code>：Dockerfile
+                  を探す場所（カレントディレクトリ）です
+                </li>
               </ul>
             </div>
 
-            <p>ビルド後、イメージ一覧を確認します。</p>
+            <p>ビルド後、イメージ一覧から <code>my-web-app</code> を確認します。</p>
             <div class="code-wrapper">
               <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
               <pre class="code-block"><code>docker images</code></pre>
@@ -390,15 +1009,22 @@ docker build -t my-web-app .</code></pre>
             <h3 id="step4">Step 4: コンテナの起動（Run）</h3>
             <div class="code-wrapper">
               <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
-              <pre class="code-block"><code>docker run -d -p 8080:80 --name my-container my-web-app</code></pre>
+              <pre
+                class="code-block"
+              ><code>docker run -d -p 8080:80 --name my-container my-web-app</code></pre>
             </div>
 
             <div class="mini-check">
               <b>🔎 オプションの意味（ECSにも効きます）</b>
               <ul>
                 <li><code>-d</code>：バックグラウンド実行</li>
-                <li><code>-p 8080:80</code>：ホスト8080番 → コンテナ80番へ転送</li>
-                <li><code>--name</code>：コンテナに名前を付ける（ログや操作が楽になります）</li>
+                <li>
+                  <code>-p 8080:80</code>：ホスト8080番 → コンテナ80番へ転送
+                </li>
+                <li>
+                  <code>--name</code
+                  >：コンテナに名前を付ける（ログや操作が楽になります）
+                </li>
               </ul>
             </div>
 
@@ -410,34 +1036,56 @@ docker build -t my-web-app .</code></pre>
 
             <h3 id="step5">Step 5: 動作確認</h3>
             <p>
-              ブラウザで <code>http://localhost:8080</code> にアクセスし、HTMLが表示されれば成功です。
+              ブラウザで
+              <code>http://localhost:8080</code>
+              にアクセスし、HTMLが表示されれば成功です。
             </p>
 
             <div class="mini-check">
               <b>追加で「中身」を覗く（コンテナ=プロセス隔離の体感）</b>
-              <p>コンテナ内でシェルを動かして、配置したファイルが見えるか確認します。</p>
+              <p>以下を実行します。</p>
               <div class="code-wrapper">
-                <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
-                <pre class="code-block"><code>docker exec -it my-container sh
-ls -la /usr/share/nginx/html
-exit</code></pre>
+                <button class="copy-btn" onclick="copyCode(this)">
+                  📋 Copy
+                </button>
+                <pre class="code-block"><code>docker exec -it my-container sh</code></pre>
+              </div>
+              <p>これで、コンテナの中のシェルに入れます。<br />
+              その状態で、次を実行して配置されたファイルを確認します。</p>
+              <div class="code-wrapper">
+                <button class="copy-btn" onclick="copyCode(this)">
+                  📋 Copy
+                </button>
+                <pre class="code-block"><code>ls -la /usr/share/nginx/html</code></pre>
+              </div>
+              <p>確認できたら、次でコンテナの中から抜けます。</p>
+              <div class="code-wrapper">
+                <button class="copy-btn" onclick="copyCode(this)">
+                  📋 Copy
+                </button>
+                <pre class="code-block"><code>exit</code></pre>
               </div>
             </div>
 
             <p>ログを確認します。</p>
             <div class="code-wrapper">
               <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
-              <pre class="code-block"><code>docker logs my-container</code></pre>
+              <pre
+                class="code-block"
+              ><code>docker logs my-container</code></pre>
             </div>
-
 
             <h3 id="step6">Step 6: 変更と再ビルド（イメージの不変性を体験）</h3>
             <p>
-              VS Codeで <code>index.html</code> の中身を書き換えて保存してください（例：<code>Hello Docker World v2</code>）。<br>
+              VS Codeで
+              <code>index.html</code>
+              の中身を書き換えて保存してください（例：<code
+                >Hello Docker World v2</code
+              >）。<br />
               ブラウザをリロードしても<strong>表示が変わらない</strong>ことを確認します。
             </p>
             <p>
-              これは「すでに起動中のコンテナは、過去に作ったイメージを元に動いているため」です。<br>
+              これは「すでに起動中のコンテナは、過去に作ったイメージを元に動いているため」です。<br />
               反映させるには「止める→消す→作り直す」が必要です。
             </p>
 
@@ -450,16 +1098,23 @@ docker run -d -p 8080:80 --name my-container my-web-app</code></pre>
             </div>
 
             <p>
-              もう一度 <code>http://localhost:8080</code> を開き、変更が反映されればOKです。
+              もう一度
+              <code>http://localhost:8080</code>
+              を開き、変更が反映されればOKです。
             </p>
 
-
             <div class="alert-box info">
-              <span class="alert-title">補足：なぜ今回は volume（-v）を使わないのか</span>
+              <span class="alert-title"
+                >補足：なぜ今回は「編集 → 即反映」の方法を使わないのか</span
+              >
               <p>
-                volume（バインドマウント）を使うと「編集→即反映」ができて便利ですが、初心者の段階では
-                <b>“イメージは不変”</b> という重要概念が曖昧になりがちです。
-                まずは再ビルドを体験して、ECSでのデプロイ感覚（新しいイメージを作って差し替える）に繋げます。
+                Dockerでは、ホストPCのファイルをコンテナにそのまま見せる方法もあります。
+この方法を使うと、HTMLを編集してすぐに反映できるため、開発では便利です。
+
+ただし今回は、まず「イメージは不変であり、変更を反映するには再ビルドが必要」という基本を理解することを優先します。
+そのため、このハンズオンではあえて再ビルドの流れを体験しています。
+
+この考え方は、ECSで新しいイメージを作って差し替える流れにもつながります。
               </p>
             </div>
 
@@ -475,15 +1130,18 @@ docker rmi my-web-app</code></pre>
               <span class="alert-title">⚠️ よくある詰まりポイント</span>
               <ul>
                 <li>
-                  <b>ポートが使用中（Address already in use）</b>：8080が埋まっているので、
+                  <b>ポートが使用中（Address already in use）</b
+                  >：8080が埋まっているので、
                   <code>-p 8081:80</code> のように変えて試してください。
                 </li>
                 <li>
-                  <b>コンテナ名が重複</b>：<code>--name my-container</code> が残っている場合は
+                  <b>コンテナ名が重複</b>：<code>--name my-container</code>
+                  が残っている場合は
                   <code>docker rm my-container</code> で消します。
                 </li>
                 <li>
-                  <b>ログを見たい</b>：<code>docker logs my-container</code> で確認できます。
+                  <b>ログを見たい</b>：<code>docker logs my-container</code>
+                  で確認できます。
                 </li>
               </ul>
             </div>
@@ -495,21 +1153,38 @@ docker rmi my-web-app</code></pre>
               今回ローカルで作った「イメージ」を、次回はAWSに持っていきます。流れは次の通りです。
             </p>
             <ul>
-              <li><b>ECR</b>：作ったイメージを保存する場所（「Dockerイメージのレジストリ」）</li>
-              <li><b>ECS（Fargate）</b>：そのイメージを使ってコンテナを実行・管理する</li>
+              <li>
+                <b>ECR</b
+                >：作ったイメージを保存する場所（「Dockerイメージのレジストリ」）
+              </li>
+              <li>
+                <b>ECS（Fargate）</b
+                >：そのイメージを使ってコンテナを実行・管理する
+              </li>
             </ul>
 
             <!-- img: Docker build→(push)ECR→ECS/Fargate(task) の流れ図 -->
 
-             <div class="mini-check">
-              <b>✅ 今日の学びが、次回ECSでどう効くか（3行で要点）</b>
+            <div class="mini-check">
+              <b>✅ 今回の内容が、次回ECSでどう効くか</b>
               <ul>
-                <li><b>Dockerfile</b>：ECSで動かすコンテナの「中身（実行環境）」を作る元になる</li>
-                <li><b>Image</b>：ECRに置いて、ECSが取得して起動する“成果物”</li>
-                <li><b>docker run の考え方</b>：ECSの「タスク定義（起動方法の設定）」に置き換わる</li>
+                <li>
+                  <b>Dockerfile</b
+                  >：ECSで動かすコンテナの「中身（実行環境）」を作る元になる
+                </li>
+                <li>
+                  <b>Image</b>：ECRに置いて、ECSが取得して起動する“成果物”
+                </li>
+                <li>
+                  <b>docker run の考え方</b
+                  >：ECSの「タスク定義（起動方法の設定）」に置き換わる
+                </li>
               </ul>
               <br />
-              <b>✅ Docker（ローカル）→ ECS（AWS）の対応表（次回のチートシート）</b>
+              <b
+                >✅ Docker（ローカル）→
+                ECS（AWS）の対応表（次回のチートシート）</b
+              >
               <table class="comparison-table">
                 <thead>
                   <tr>
@@ -557,7 +1232,8 @@ docker rmi my-web-app</code></pre>
                 </tbody>
               </table>
               <p>
-                次回は「ローカルで <code>docker run</code> していた部分を、AWSでは
+                次回は「ローカルで
+                <code>docker run</code> していた部分を、AWSでは
                 <b>タスク定義</b> に書き換える」と考えると理解しやすいです。
               </p>
             </div>
@@ -565,12 +1241,30 @@ docker rmi my-web-app</code></pre>
 
           <section id="summary">
             <h2>6. まとめ</h2>
+            <p>今回は、Dockerの基本として次の点を確認しました。</p>
             <ul>
-              <li>コンテナは「OSを丸ごと起動するVM」ではなく「隔離されたプロセス」である</li>
-              <li>Dockerfile → Image → Container の流れを理解し、操作できるようになった</li>
-              <li><code>-p</code> によるポート公開を体験し、ECSのportMappingsへの橋渡しができた</li>
-              <li>「イメージは不変」を再ビルドで体感し、ECSのデプロイ感覚につながった</li>
+              <li>
+                コンテナは、OSを丸ごと持つ仮想マシンとは異なり、ホストOSのカーネルを共有しながら動く
+              </li>
+              <li>
+                Dockerでは、Dockerfile → Image → Container
+                の流れでコンテナを作成・実行する
+              </li>
+              <li>
+                <code>docker build</code> や <code>docker run</code>
+                などの基本コマンドを使って、イメージ作成から起動、確認、削除までの流れを体験する
+              </li>
+              <li>
+                <code>-p</code>
+                により、ホストPCからコンテナ内のサービスへアクセスできる
+              </li>
+              <li>
+                変更を反映するには、イメージを作り直してコンテナを起動し直す、という考え方が基本になる
+              </li>
             </ul>
+            <p>
+              次回は、今回ローカルで行った「イメージを作って動かす流れ」をAWS上に広げ、<b>ECR</b> と <b>ECS（Fargate）</b> を使ってコンテナを実行していきます。
+            </p>
           </section>
         </div>
 
@@ -580,11 +1274,12 @@ docker rmi my-web-app</code></pre>
             <li><a href="#intro">1. はじめに</a></li>
             <li><a href="#goal">2. ゴール</a></li>
             <li>
-              <a href="#lecture">3. 解説</a>
+              <a href="#explain">3. 解説</a>
               <ul>
-                <li><a href="#vm-vs-container">3.1 仮想マシン vs コンテナ</a></li>
-                <li><a href="#three-elements">3.2 Dockerの3要素</a></li>
-                <li><a href="#port-forward">3.3 ポートフォワーディング</a></li>
+                <li><a href="#container-merits">3.1 コンテナの特徴</a></li>
+                <li><a href="#docker-basic">3.2 Dockerの基本</a></li>
+                <li><a href="#port-forward">3.3 ポート公開</a></li>
+                <li><a href="#docker-compose">3.4 Docker Compose（発展）</a></li>
               </ul>
             </li>
             <li>
@@ -592,9 +1287,9 @@ docker rmi my-web-app</code></pre>
               <ul>
                 <li><a href="#step0">Step 0: Dockerインストール</a></li>
                 <li><a href="#step1">Step 1: ファイル準備</a></li>
-                <li><a href="#step2">Step 2: Dockerfile</a></li>
-                <li><a href="#step3">Step 3: Build</a></li>
-                <li><a href="#step4">Step 4: Run</a></li>
+                <li><a href="#step2">Step 2: Dockerfile作成</a></li>
+                <li><a href="#step3">Step 3: イメージ作成(Build)</a></li>
+                <li><a href="#step4">Step 4: コンテナ起動(Run)</a></li>
                 <li><a href="#step5">Step 5: 動作確認</a></li>
                 <li><a href="#step6">Step 6: 変更と再ビルド</a></li>
                 <li><a href="#step7">Step 7: 後片付け</a></li>

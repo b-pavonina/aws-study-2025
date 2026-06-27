@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>第5回：S3静的サイトとCloudFront（CDN）の基本 | 勉強会 for AWS</title>
+  <title>第5回：静的コンテンツ配信から学ぶS3とCloudFrontの基本 | 勉強会 for AWS</title>
   <link rel="stylesheet" href="../common/style.css">
   <style>
       header .insider-header {
@@ -44,99 +44,500 @@
           <a href="../index.html" class="logo">勉強会 <span style="font-size: 0.8em">for</span> AWS</a
           >
           <span class="header-spacer"></span>
-          <a href="../board/signin.html" class="header-btn">質問板</a>
+          <span class="header-btn header-btn-disabled" aria-label="質問板は停止中です">
+  質問板（停止中）
+</span>
         </div>
   </header>
   <main>
   <div class="container">
     <div class="content">
-      <h1>第5回：S3静的サイトとCloudFront（CDN）の基本</h1>
-      <div class="post-date">Posted at 2025-12-30</div>
+      <h1>第5回：静的コンテンツ配信から学ぶS3とCloudFrontの基本</h1>
+      <div class="post-date">Posted at 2026-02-08</div>
       
       <section id="intro">
         <h2>1. はじめに</h2>
         <p>
-          今回のテーマは、静的サイトを「速く・安全に・本番運用に近い形」で配信する基本を理解することです。<br>
-          本セッションでは、以下のサービス群の役割と連携を学びます。
+          今回は静的コンテンツ配信（例：Webページ公開）を題材に、S3（ストレージ） と CloudFront（CDN） を中心に学習します。あわせて、本番運用で関係してくる周辺サービスも 概要として位置づけを整理します。
         </p>
-        <ul>
-          <li><strong>S3：</strong>HTML/CSS/JSなどの静的ファイルを保管するストレージ（配信元の格納場所）</li>
-          <li><strong>CloudFront：</strong>世界中のエッジから配信するCDN（キャッシュによる高速化）</li>
-          <li><strong>Route 53：</strong>独自ドメインをCloudFrontへ向けるDNS</li>
-          <li><strong>ACM：</strong>HTTPS（TLS証明書）を発行・管理するサービス</li>
-          <li><strong>OAC：</strong>S3を非公開にし、CloudFrontからのみ取得できるようにする仕組み</li>
-          <li><strong>WAF / Shield：</strong>攻撃検知・遮断およびDDoS対策</li>
-        </ul>
-        <p>
-          進め方は、まず <strong>S3＋CloudFrontで配信を成立させるところまでをハンズオンで実施</strong> します。<br>
-          その後「次の一歩」として、独自ドメインやセキュリティ（OAC/WAF）の位置づけを整理します。
-        </p>
+        <img src="../image/session/5/explain/Screenshot-2023-05-16-at-20.10.27-1024x798.png" alt="Host Single Page Applications (SPA) with Tiered TTLs on CloudFront and S3overview" class="img-w400">
+        <p style="text-align: center;">出典: <a href="https://aws.amazon.com/jp/blogs/networking-and-content-delivery/host-single-page-applications-spa-with-tiered-ttls-on-cloudfront-and-s3/" target="_blank" rel="noopener noreferrer">Host Single Page Applications (SPA) with Tiered TTLs on CloudFront and S3</a></p>
 
-        <div class="alert-box warning">
-          <span class="alert-title">⚠️ 課金に関する注意</span>
-          <p>
-            CloudFrontはデータ転送量やリクエスト数に応じて課金が発生します。また、WAFやRoute 53を利用する場合もコストがかかります。<br>
-            <strong>ハンズオン終了後は必ずリソースを削除してください。</strong>
-          </p>
-        </div>
-      </section>
-
-      <section id="goal">
-        <h2>2. ゴール</h2>
-        <h3>ハンズオンで達成すること（完走ライン）</h3>
+        <h3>学習サービス（この回で扱うAWSサービス）</h3>
         <ul>
-          <li>S3に index.html を配置し、CloudFront経由で表示できる</li>
-          <li>CloudFrontのキャッシュ（更新が即時反映されない理由）を体験できる</li>
-          <li>更新反映の代表的な手段（Invalidation / TTL / Cache-Control）の存在を理解する</li>
+          <li><strong>S3（本編）：</strong>静的ファイルの保管場所（配信元）</li>
+          <li><strong>CloudFront（本編）：</strong>配信の入口（CDN／キャッシュ）</li>
+          <li><strong>Route 53（概要）：</strong>独自ドメインをCloudFrontに向けるDNS</li>
+          <li><strong>ACM（概要）：</strong>HTTPS証明書の発行・管理（CloudFront用は us-east-1 が重要）</li>
+          <li><strong>WAF（概要）：</strong>Web攻撃の検知・遮断（入口で守る）</li>
+          <li><strong>Shield（概要）：</strong>DDoS対策（標準機能と有料強化の位置づけ）</li>
         </ul>
-        <h3>座学＋次の一歩で理解すること（理解ライン）</h3>
+
+        <h3>ハンズオン内容（本編でやること）</h3>
         <ul>
-          <li><strong>Route 53：</strong>独自ドメインをCloudFrontへ向ける考え方</li>
-          <li><strong>ACM：</strong>CloudFront用証明書は <strong>us-east-1（バージニア北部）</strong> で発行が必要であること</li>
-          <li><strong>OAC：</strong>S3を非公開にし、CloudFrontのみが取得できる構成（推奨形）</li>
-          <li><strong>WAF/Shield：</strong>公開配信での防御レイヤの全体像</li>
+          <li>S3に index.html をアップロードし、ファイルを置く／更新する体験をする</li>
+          <li>CloudFrontを作成し、CloudFrontのURLからページが表示できることを確認する</li>
+          <li>キャッシュの挙動（更新がすぐ反映されないことがある）を確認する</li>
+          <li>Invalidation（キャッシュ削除）を実行し、更新を反映させる</li>
         </ul>
       </section>
 
-      <section id="lecture">
-        <h2>3. 解説（用語と役割）</h2>
+      <section id="s3">
         
-        <h3>3.1 S3：静的ファイルの置き場（オブジェクトストレージ）</h3>
+        <h2>S3とは（Amazon Simple Storage Service）</h2>
+        
+        <h4>2.1 役割</h4>
         <p>
-          S3は「ファイルを保管し、必要に応じて取り出す」ためのストレージです。<br>
-          本セッションでは、S3を Webサーバーとしては使いません（= <strong>S3静的Webホスティング機能は利用しません</strong>）。<br>
-          S3はあくまで <strong>オリジン（配信元）</strong> として扱い、配信の入口はCloudFrontに寄せます。
+          Amazon S3は、ファイル（オブジェクト）を安全・高耐久に保管し、必要なときに取り出すためのオブジェクトストレージです。
         </p>
+
+        <h4>2.2 ユースケース</h4>
+        <p>S3は「静的サイト用」だけのサービスではなく、実務では次のような用途で広く使われます。</p>
         <ul>
-          <li><strong>S3：</strong>配信元（Origin）</li>
-          <li><strong>CloudFront：</strong>配信の入口（Distribution）</li>
+          <li><strong>配信・公開の元データ置き場：</strong>HTML/CSS/JS、画像、PDF、ダウンロードファイルなど（必要に応じてCloudFrontなどの"配信の入口"と組み合わせます）</li>
+          <li><strong>ログ・バックアップの保管：</strong>アクセスログ、監査ログ、バックアップ、アーカイブなど</li>
+          <li><strong>ユーザーアップロードの保存先：</strong>投稿画像、添付ファイル、アップロードされた資料など</li>
+          <li><strong>データ蓄積（分析の材料）：</strong>アプリのイベントデータや集計前データをためて、後から分析に回す</li>
+          <li><strong>システム間の受け渡し：</strong>別サービスや別システムとのファイル受け渡し（バッチ処理・連携データなど）</li>
+        </ul>
+        <p>この回では「Webページ公開」を題材にしますが、S3の本質はあくまで <strong>"汎用のファイル保管"</strong> です。</p>
+
+        <h4>2.3 導入メリット</h4>
+        <ul>
+          <li><strong>高い耐久性と可用性：</strong>代表的な S3 Standard は 耐久性 99.999999999%（11ナイン）、可用性 99.99% を提供するよう設計されています</li>
+          <li><strong>保管と取り出しがシンプル：</strong>HTTP/APIで扱える</li>
+          <li><strong>容量計画が要りにくい：</strong>利用量に応じて自然に増やせる</li>
+          <li><strong>アクセス制御が強い：</strong>IAMやバケットポリシーで「誰が・何をできるか」を細かく制御でき、Block Public Accessによって意図しない公開を抑える設計に寄せやすい</li>
+          <li><strong>コストを設計で最適化しやすい：</strong>ストレージクラスの選択やライフサイクルルールで最適化できる</li>
+          <li><strong>他サービスと組み合わせやすい：</strong>CloudFront、Athena/Glue、Lambdaなど、S3を中心に構成を組み立てやすい</li>
         </ul>
 
-        <h3>3.2 CloudFront：CDN（キャッシュ配信）</h3>
-        <p>
-          CloudFrontは、利用者に近いエッジから配信することで、高速化・負荷分散・安定配信を実現します。<br>
-          <strong>キャッシュ</strong>とは、CloudFrontが取得したコンテンツを一定期間保持し、次回以降の配信で再利用する仕組みです。<br>
-          これにより高速化されますが、同時に <strong>更新が即時反映されない</strong> ことがあります。
-        </p>
+        <h4>2.4 仕組み</h4>
+        <p>S3は「サーバーにログインしてディスクへ保存する」方式ではなく、オブジェクト（ファイル）を、HTTP（API）で保存・取得するストレージです。</p>
+        <ul>
+          <li><strong>バケット（Bucket）：</strong>オブジェクトを入れる入れ物。作成時にリージョンを指定します</li>
+          <li><strong>オブジェクト（Object）：</strong>実体のファイル。ファイル本体に加えてメタデータ（Content-Type など）が付きます</li>
+          <li><strong>キー（Key）：</strong>オブジェクトはキーで識別され、<code>assets/logo.png</code> のように / を含むキー名を使うことで、見た目がフォルダっぽく見えます</li>
+          <li><strong>アクセス制御：</strong>IAM、バケットポリシー、パブリックアクセスブロックなどの組み合わせで決まります</li>
+        </ul>
+
+        <h4>2.5 重要機能</h4>
+        <ul>
+          <li><strong>ストレージクラス：</strong>用途に応じたコスト最適化（Standard、Glacier等）</li>
+          <li><strong>バケットポリシー / IAM：</strong>アクセス制御の中心</li>
+          <li><strong>パブリックアクセスブロック：</strong>公開事故を減らす最重要ガード（本番運用では基本的にON推奨）</li>
+          <li><strong>暗号化（SSE等）：</strong>保管時の暗号化</li>
+          <li><strong>バージョニング：</strong>上書き事故や復旧に効く</li>
+          <li><strong>ライフサイクル：</strong>一定期間後の移行/削除を自動化</li>
+          <li><strong>レプリケーション：</strong>別リージョン/別バケットへ複製</li>
+        </ul>
+
+        <h4>2.6 セキュリティの基本</h4>
+        <p>S3はまず <strong>"公開しない前提（private）で設計する"</strong> のが基本です。</p>
+        <ul>
+          <li>基本は private（最小権限）</li>
+          <li>パブリックアクセスブロックを活用する</li>
+          <li>アクセス制御は IAM とバケットポリシーが中心</li>
+          <li>"直接公開"より"入口を分ける"設計が安全（例：CloudFront + OAC）</li>
+        </ul>
+      </section>
+      <section id="cloudfront">
+        <h2>3 CloudFrontとは（Amazon CloudFront）</h2>
         
+        <h4>3.1 役割</h4>
+        <p>
+          Amazon CloudFrontは、Webコンテンツをユーザーに届けるための <strong>CDN（Content Delivery Network）</strong> です。<br>
+          役割は大きく次の2つです。
+        </p>
+        <ul>
+          <li><strong>配信の入口（Front Door）：</strong>ユーザーはまずCloudFrontにアクセスし、CloudFrontが配信を取りまとめます</li>
+          <li><strong>キャッシュ（Cache）：</strong>一度取得したコンテンツをエッジロケーション（利用者に近い配信拠点）に保持し、次回以降はオリジン（配信元）へ取りに行かずに返せるようにします</li>
+        </ul>
+        <p>🔳 静的ウェブサイトを例にした配信の流れ</p>
+        <img src="../image/session/5/explain/cloudfront-secure-static-website-overview-github.png" alt="cloudfront secure static website overview" class="img-w400">
+        <p style="text-align: center;">出典: <a href="https://docs.aws.amazon.com/ja_jp/AmazonCloudFront/latest/DeveloperGuide/Introduction.html" target="_blank" rel="noopener noreferrer">Amazon CloudFront Developer Guide</a></p>
+        <ol>
+          <li>ビューワーが www.example.com のウェブサイトをリクエストします。</li>
+
+          <li>リクエストされたオブジェクトがキャッシュされている場合、CloudFront はオブジェクトをキャッシュからビューワーに返します。</li>
+
+          <li>オブジェクトが CloudFront のキャッシュにない場合、CloudFront はオリジン (S3 バケット) にオブジェクトをリクエストします。</li>
+
+          <li>S3 はオブジェクトを CloudFront に返します。</li>
+
+          <li>CloudFront はオブジェクトをキャッシュします。</li>
+          <li>オブジェクトがビューワーに返されます。同じ CloudFront エッジロケーションに送信されるオブジェクトに対する後続のリクエストは、CloudFront キャッシュから処理されます。</li>
+        </ol>
+        <h4>3.2 ユースケース</h4>
+        <ul>
+          <li><strong>静的コンテンツ配信（Web表示／ファイル配布）：</strong>Webサイト素材（HTML/CSS/JS/画像）や配布ファイル（PDF/ZIP/動画）を高速・安定配信したいとき</li>
+          <li><strong>APIの前段：</strong>オリジンをALBやAPI Gatewayにして、APIをCloudFront配下で配信する</li>
+          <li><strong>アクセス集中・スパイク対策：</strong>急なアクセス増でも、キャッシュでオリジンへの負荷を抑える</li>
+          <li><strong>独自ドメイン／HTTPS／WAFを入口に集約：</strong>公開面（証明書・DNS・防御）をCloudFront側で整理したいとき</li>
+        </ul>
+
+        <h4>3.3 導入メリット</h4>
+        <ul>
+          <li><strong>速くなりやすい：</strong>ユーザーに近いエッジロケーションから配信でき、レイテンシが下がりやすくなります</li>
+          <li><strong>オリジンへの負荷が減る：</strong>キャッシュが効くと、S3などのオリジンに毎回取りに行かずに済みます</li>
+          <li><strong>スパイク耐性が上がる：</strong>急にアクセスが増えても、キャッシュがクッションになります</li>
+          <li><strong>入口の整備がしやすい：</strong>独自ドメインやHTTPSなど「公開面の整備」をCloudFront側に寄せやすくなります</li>
+          <li><strong>入口防御をかけやすい：</strong>WAFをCloudFrontに関連付けることで、入口で攻撃を検知・遮断しやすくなります</li>
+        </ul>
+
+        <h4>3.4 仕組み</h4>
+        <p>CloudFrontは「ユーザーのリクエストを受け取る入口」として動き、必要に応じて オリジン（配信元） からコンテンツを取得し、エッジにキャッシュして配信します。</p>
+        <ol>
+          <li>ユーザーがCloudFrontにアクセスする</li>
+          <li>エッジにキャッシュがあれば、キャッシュから返す（速い）</li>
+          <li>キャッシュがなければ、CloudFrontがオリジン（S3）に取りに行く</li>
+          <li>取得した内容をエッジロケーションにキャッシュして返す（次回以降が速くなる）</li>
+        </ol>
+
+        <h4>3.5 重要概念</h4>
+        <ul>
+          <li><strong>Distribution：</strong>配信設定のまとまり</li>
+          <li><strong>Origin：</strong>配信元（この回ではS3）</li>
+          <li><strong>Edge Location：</strong>配信拠点、キャッシュサーバー</li>
+          <li><strong>Behavior：</strong>パス別の配信ルール（キャッシュ/TTL、オリジン、許可メソッドなど）</li>
+          <li><strong>TTL / Cache-Control：</strong>CloudFrontは一度取得したコンテンツをキャッシュし、オリジンが返す Cache-Control（max-age などのキャッシュ寿命） や CloudFront側のTTL設定に従って、一定時間はキャッシュを返します。</li>
+          <li><strong>Invalidation：</strong>キャッシュ削除（更新を急いで反映したいときの臨時手段）</li>
+          <li><strong>Default root object：</strong><code>/</code> (ルート)にアクセスしたときに返す規定のファイル（例：index.html）</li>
+          <li><strong>OAC（Origin Access Control）：</strong>S3を非公開のまま、CloudFront経由のアクセスだけ許可して配信する仕組み</li>
+        </ul>
+
+        <h4>3.6 セキュリティの基本</h4>
+        <p>CloudFrontは公開配信の入口なので、基本方針は <strong>入口をCloudFrontに集約し、オリジンを閉じる</strong> です。</p>
+        <ul>
+          <li><strong>オリジンを直接公開しない：</strong>代表例がS3 private + OAC</li>
+          <li><strong>HTTPSを基本にする：</strong>HTTPはHTTPSへリダイレクトする設計が一般的</li>
+          <li><strong>WAFで入口防御をかける：</strong>攻撃・Bot・過剰アクセスなどを入口で止められます</li>
+        </ul>
+      </section>
+
+      <section id="handson">
+        <h2>4. ハンズオン（本編）</h2>
+        <p>
+          このハンズオンは、Webページ（index.html）を置く場所をS3に作り、そのページをCloudFront経由で表示できる状態にします。<br>
+そのあと、キャッシュ機能により index.html を更新しても CloudFront 側では古い内容が表示されることを確認し、最後に Invalidation Cache-Control を使って「更新の反映タイミング」を扱う方法を押さえます。
+        </p>
+
         <div class="alert-box info">
-          <span class="alert-title">重要：Default root object</span>
-          <p>
-            S3（REST API）をオリジンにした場合、ドメインルート（<code>/</code>）にアクセスしても自動で <code>index.html</code> は補完されません。<br>
-            そのためCloudFront側の設定で <strong>Default root object = index.html</strong> を指定する必要があります。
-          </p>
+          <span class="alert-title">ハンズオンの大まかなの流れ</span>
+          <ol>
+            <li>S3バケットを作成（privateのまま）</li>
+            <li>S3にindex.html（v1）をアップロードして「S3直アクセス不可」を確認</li>
+            <li>CloudFrontを作成（S3オリジン + OAC）</li>
+            <li>CloudFrontのURLから index.html が見えることを確認</li>
+            <li>index.html（v2）をアップロードし、キャッシュにより「CloudFrontは古い内容(v1)が出る」ことを確認</li>
+            <li>Invalidationを実行して「CloudFrontで更新が反映される」ことを確認</li>
+            <li>(任意)Cache-Controlから更新の反映タイミングを設定する</li>
+          </ol>
         </div>
 
-        <h3>3.3 Route 53：DNS</h3>
+        <h3>Part A：配信を成立させる（必須）</h3>
+
+        <h4>4.1 S3バケットを作る</h4>
+        <p>S3はprivateにし、公開しないようにします。</p>
+        <ol>
+          <li>AWSマネジメントコンソールで S3 を開く</li>
+          <li>左メニューの <strong>Amazon S3</strong> を開き、<strong>[バケットを作成]</strong> をクリック<br><small>※リージョン：アジアパシフィック（東京）であること確認</small></li>
+          <img src="../image/session/5/s3/1-create.png" alt="S3バケット作成画面" class="img-w800">
+          <li><strong>バケット名：</strong>任意（例：<code>aws-study-session5-20260208</code>）<br><small>※世界で一意である必要があります。被ったら末尾に乱数を足します。</small></li>
+          <img src="../image/session/5/s3/2-name.png" alt="S3バケット作成画面" class="img-w800">
+          <li><strong>オブジェクト所有者：</strong>基本は <strong>「ACL無効（推奨）」</strong> のまま進めます</li>
+          <img src="../image/session/5/s3/3-object-owner.png" alt="S3バケット作成画面" class="img-w800">
+          <li>「パブリックアクセスをすべてブロック」はONのまま進めます<br></li>
+          <img src="../image/session/5/s3/4-public-access.png" alt="S3バケット作成画面" class="img-w800">
+          <li>画面下部の <strong>[バケットを作成]</strong> をクリック</li>
+          <li>バケットが作成されたことを確認</li>
+          <img src="../image/session/5/s3/5-done.png" alt="S3バケット作成画面" class="img-w800">
+        </ol>
+
+        <h4>4.2 S3にindex.htmlをアップロード</h4>
+        <p>S3はprivateだと、URLを叩いても見えないことを体験します。Access Denied が正しい挙動です。</p>
+        <ol>
+          <li>ローカルで index.html を作成（v1）</li>
+        </ol>
+        <div class="code-wrapper">
+          <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+          <pre class="code-block"><code>&lt;html&gt;
+  &lt;body&gt;
+    &lt;h1&gt;Hello CloudFront!&lt;/h1&gt;
+    &lt;p&gt;This is v1.&lt;/p&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</code></pre>
+        </div>
+        <ol start="2">
+          <li>作成したバケットを開き、[アップロード]をクリック</li>
+          <img src="../image/session/5/s3/5-upload.png" alt="S3アップロード画面" class="img-w800">
+          <li>「ファイルを追加」からindex.html を追加し、 <strong>[アップロード]をクリック</strong></li>
+          <img src="../image/session/5/s3/6-upload2.png" alt="S3アップロード画面" class="img-w800">
+          <li>index.htmlがアップロードされたことを確認する。公開されていないか確かめるため、index.htmlをクリックしてオブジェクト詳細を開く</li>
+          <img src="../image/session/5/s3/7-index-html.png" alt="S3アップロード画面" class="img-w800">
+          <li><strong>オブジェクトURL</strong> をコピーして、シークレットウィンドウで開く<br>
+            ※ブラウザにキャッシュされないよう、シークレットウィンドウを使用します
+          </li>
+          <img src="../image/session/5/s3/8-url.png" alt="S3アップロード画面" class="img-w800">
+          <li>AccessDeniedが表示されることを確認する</li>
+          <img src="../image/session/5/s3/9-access-denied.png" alt="S3アップロード画面" class="img-w800">
+        </ol>
+
+        <h4>4.3 CloudFrontを作成（S3オリジン + OAC）</h4>
+        <p>目的：入口＝CloudFront、置き場＝S3（privateのまま） を完成させる。</p>
+        <ol>
+          <li>CloudFront コンソールを開く</li>
+          <li>ディストリビューション → <strong>ディストリビューションを作成</strong></li>
+          <img src="../image/session/5/cloudfront/1-create.png" alt="CloudFrontディストリビューション作成画面" class="img-w800">
+          <li>pay as you go を選択して次へ</li>
+          <img src="../image/session/5/cloudfront/2-plan.png" alt="CloudFrontディストリビューション作成画面" class="img-w800">
+          <p>※ pay as you goを選んでも今回のハンズオンは無料枠内で実施可能です。無料プランを選んだ場合は、後片付けで完全にリソースを削除できるタイミングが翌月になるため、注意が必要です。</p>
+          <li>ディストリビューションの名前を入力し次へ</li>
+          <img src="../image/session/5/cloudfront/3-name.png" alt="CloudFrontディストリビューション作成画面" class="img-w800">
+          <li>Origin typeはS3とし、originに作成済みのS3バケットを選択<br></li>
+          <img src="../image/session/5/cloudfront/4-origin.png" alt="CloudFrontディストリビューション作成画面" class="img-w800">
+          <li>Settingsはそのまま(推奨設定)で次へ</li>
+          <img src="../image/session/5/cloudfront/5-settings.png" alt="CloudFrontディストリビューション作成画面" class="img-w800">
+          <li>WAFはそのままで次へ(有効か無効かの選択肢が表示された場合は無効を選択)</li>
+          <img src="../image/session/5/cloudfront/6-waf.png" alt="CloudFrontディストリビューション作成画面" class="img-w800">
+          <li>残りはデフォルトのまま <strong>Create distribution</strong> を実行</li>
+          <img src="../image/session/5/cloudfront/7-create.png" alt="CloudFrontディストリビューション作成画面" class="img-w800">
+          <li >ディストリビューションが作成されたことを確認する</li>
+          <img src="../image/session/5/cloudfront/8-done.png" alt="CloudFrontディストリビューション作成画面" class="img-w800">
+        </ol>
+
+        <h4>4.3.1 S3バケットポリシーの更新(必要に応じて)</h4>
+        <p>※S3バケットポリシーの更新はディストリビューション作成時にSettingsを推奨設定にした場合、自動で行われるようです<br>
+        ※S3バケットのアクセス許可からバケットポリシーを確認し、CloudFrontからのアクセスが許可されている場合、4.3.1の対応は必要ありません</p>
+        <img src="../image/session/5/cloudfront/9-bucket-policy.png" alt="S3バケットポリシー画面" class="img-w800">
+        <ol>
+          <li>CloudFrontコンソールの作成完了画面に、バケットポリシーのコピーボタンが表示されるので、それをコピー</li>
+          <li>S3バケット → <strong>アクセス許可</strong> → <strong>バケットポリシー</strong> → <strong>編集</strong></li>
+          <li>CloudFrontの案内で出たポリシーを貼り付け → <strong>保存</strong></li>
+        </ol>
+
+        <h4>4.4 デフォルトルートオブジェクトの設定</h4>
+        <ol>
+          <li>CloudFrontコンソール → 作成したディストリビューションをクリック</li>
+          <li><strong>一般</strong> タブの <strong>編集</strong> をクリック</li>
+          <img src="../image/session/5/cloudfront/10-default-root-object.png" alt="デフォルトルートポリシー画面" class="img-w800">
+          <li><strong>Default root object</strong> に <code>index.html</code> を入力</li>
+          <img src="../image/session/5/cloudfront/11-set-index-html.png" alt="デフォルトルートポリシー画面" class="img-w800">
+          <li><strong>変更を保存</strong> をクリック</li>
+        </ol>
+
+        <h4>4.5 表示確認（CloudFrontのURLで Webページが見える）</h4>
+        <ol>
+          <li>CloudFrontディストリビューションを開く</li>
+          <li><strong>ディストリビューションドメイン名</strong>（<code>xxxxx.cloudfront.net</code>）をコピー</li>
+          <img src="../image/session/5/cloudfront/12-cf-url.png" alt="ディストリビューションドメイン名画面" class="img-w800">
+          <li>ブラウザ(シークレットモード)からアクセスし、Webページ(v1)が表示されることを確認<br>
+          </li>
+          <img src="../image/session/5/cloudfront/13-v1.png" alt="表示確認画面" class="img-w400">
+        </ol>
+        <p>S3に直接アクセスするとAccess Deniedでしたが、CloudFrontからは Webページが表示されることを確認しました。</p>
+
+        <h3>Part B：キャッシュを体験する</h3>
+
+        <h4>4.6 キャッシュ機能の確認(index.html を v2 に更新した際に、v1が表示されることを確認する)</h4>
+
+        <h5>4.6.1 S3の index.html を v2 に更新</h5>
+        <ol>
+          <li>ローカルの index.html を v2 に変更して保存（例）：</li>
+                  <div class="code-wrapper">
+          <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+          <pre class="code-block"><code>&lt;html&gt;
+  &lt;body&gt;
+    &lt;h1&gt;Hello CloudFront!&lt;/h1&gt;
+    &lt;p&gt;This is v2.&lt;/p&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</code></pre>
+        </div>
+          <li>AWSコンソール → S3 → 対象バケット → 作成したオブジェクトを開く</li>
+          <li>アップロード</strong> をクリック</li>
+          <li>index.html再度をアップロード（同名のためv1からv2に上書きされます）</li>
+        </ol>
+
+        <h5>4.6.2 CloudFrontで反映されない（v1のまま）ことを観察する</h5>
+        <ol>
+          <li>ブラウザ(シークレットモード)から CloudFront のURL（さきほどのディストリビューションドメイン名）を再読み込み</li>
+          <li>v1が表示されることを確認（＝CloudFrontキャッシュによりv2が反映されていない）</li>
+          <img src="../image/session/5/cloudfront/13-v1.png" alt="表示確認画面" class="img-w400">
+        </ol>
+
+        <h4>4.7 CloudFrontでキャッシュ削除(invalidation)を作成して v2 を反映する</h4>
+        <ol>
+          <li>ディストリビューションのキャッシュ削除のタブから、キャッシュ削除を作成をクリック</li>
+          <img src="../image/session/5/cloudfront/14-cash.png" alt="キャッシュ削除画面" class="img-w800">
+          <li>オブジェクトパスに <code>/*</code> を入力し、キャッシュ削除を作成をクリック</li>
+          <img src="../image/session/5/cloudfront/15-path.png" alt="キャッシュ削除画面" class="img-w800">
+          <li>キャッシュ削除のステータスが進行中から完了済みとなるのを確認</li>
+          <img src="../image/session/5/cloudfront/16-done.png" alt="キャッシュ削除画面" class="img-w800">
+        </ol>
+
+        
+        <h5>反映確認</h5>
+        <ol>
+          <li>CloudFront URLを再読み込みし、v2が表示されることを確認</li>
+          <img src="../image/session/5/cloudfront/17-v2.png" alt="表示確認画面" class="img-w400">
+
+        </ol>
+        <p>補足：キャッシュ削除(Invalidation)は「緊急手段」として理解するのが安全です（普段は TTL / Cache-Control でキャッシュをコントロールする）。Invalidationは 月あたり合計1,000パスまでは無料で、超えると課金対象です。</p>
+
+        <h3>Part C：(実施任意)Cache-Controlで"設計で効かせる"を体験</h3>
+
+        <h4>4.8 Cache-Control を触る</h4>
+        <p>Invalidationで強制反映できるのは分かったので、次は <strong>「設計（Cache-Control）でキャッシュ寿命をコントロールできる」</strong>ことを体験します。</p>
+
+        <h5>4.8.1 事前確認：CloudFront側で"キャッシュ無効"になっていないことを確認</h5>
+        <ol>
+          <li>CloudFrontコンソール → ディストリビューション → ビヘイビアタブ → デフォルト(*)のビヘイビアを選択 → 編集</li>
+          <li>Cache policy が <code>CachingDisabled</code> になっていないことを確認<br>
+            <small>※多くの構成では CachingOptimized 系になっています</small>
+          </li>
+        </ol>
+
+        <h5>4.8.2 S3の index.html に Cache-Control を設定する（例：max-age=60）</h5>
+        <ol>
+          <li>S3コンソール → 対象バケット → Objects</li>
+          <li>アップロード → ファイルを追加 → index.html</li>
+          <li>画面下部のプロパティを開く</li>
+          <li>画面下部のメタデータセクションでメタデータを追加(タイプ：システム定義、キー：Cache-Control、値: max-age=60)</li>
+          <li>アップロードする</li>
+        </ol>
+
+        <h5>4.8.3（推奨）CloudFrontに"新しいヘッダー込み"で取り直させる</h5>
+        <ol>
+          <li>CloudFrontコンソール → 対象Distribution</li>
+          <li>Invalidations タブ → Create invalidation</li>
+          <li>Object path：<code>/*</code> </li>
+          <li>Create invalidation</li>
+          <li>Status が Completed になったら次へ</li>
+        </ol>
+
+        <h5>4.8.4 CloudFront経由で「Cache-Controlが効いている」を確認（レスポンスヘッダーを見る）</h5>
+        <ol>
+          <li>ブラウザで CloudFront URL（<code>https://xxxxx.cloudfront.net/</code>）を開く</li>
+          <li>開発者ツール（DevTools）を開く</li>
+          <li>Network タブ</li>
+          <li>（重要）Networkタブ上部の <strong>Disable cache</strong> をON（DevToolsを開いている間だけブラウザキャッシュを無効化）</li>
+          <li>ページをリロード</li>
+          <li>Network一覧から cloudfront.net(document)をクリック</li>
+          <li>HeadersからResponse Headers を確認<br>
+            <ul>
+              <li><code>cache-control: max-age=60</code> が見えること</li>
+              <li>可能なら <code>x-cache</code> も確認（1回目：<code>Miss from cloudfront</code>、2回目以降：<code>Hit from cloudfront</code>）</li>
+            </ul>
+          </li>
+        </ol>
+        <p><strong>確認ポイント：</strong>CloudFrontのレスポンスに <code>cache-control: max-age=60</code> が載っている</p>
+
+        <h5>4.8.5（余力）v3に更新して「60秒は古いのが返る」→「時間経過で反映」を観察</h5>
+        <ol>
+          <li>ローカルの index.html を v3 に変更（例：<code>This is v3.</code>）</li>
+          <li>S3に index.html を上書きアップロード（Cache-Controlはそのまま max-age=60 でOK）</li>
+          <li>すぐに CloudFront URL をリロード → v2が表示されることがある（= TTLが残っている想定の挙動）</li>
+          <li>60秒以上 待ってからリロード → v3が反映されることがある</li>
+        </ol>
+      </section>
+
+      <section id="cleanup">
+        <h2>5. 後片付け</h2>
+        <p>コスト事故を防ぐため、必ずリソースを削除してください。</p>
+
+        <h3>5.1 CloudFront（Distribution）を削除する（必須）</h3>
+        <p>CloudFrontは 無効 → Free planのキャンセル → 削除 の順でしか削除できません。</p>
+        
+        <h4>5.1.1 無効化（配信停止）</h4>
+        <ol>
+          <li>CloudFront → Distributions → 対象にチェック → <strong>無効</strong></li>
+          <li>最終更新日の表示が<strong>デプロイ</strong>から日付表示に変わるまで数分待ちます</li>
+        </ol>
+        <h4>5.1.2 プランの変更(4.3の3で無料プランを選択した場合のみ)</h4>
+        <ol>
+          <li>CloudFront → 対象ディストリビューション → Manage plan(Billing) → <strong>Cancel plan</strong></li>
+          <li>※無料プランをキャンセルしPay-as-you-goに切り替えます。切り替わるタミングが翌月になるため、削除は翌月以降に行う必要があります</li>
+        </ol>
+
+        <h4>5.1.3 削除</h4>
+        <ol>
+          <li>ステータスが<strong>無効</strong>になったら、対象にチェック → <strong>削除</strong></li>
+        </ol>
+        <p><small>※ 削除完了まで数分かかることがあります</small></p>
+
+        <h3>5.2 S3（バケット）を削除する（必須）</h3>
+        <p>S3は 中身が残っていると削除できません。</p>
+
+        <h4>5.2.1 バケットの中身を空にする</h4>
+        <ol>
+          <li>S3 → Buckets → 対象バケット → Objects → index.htmlをチェック → <strong>削除(「完全に削除」と入力し削除を行う)</strong></li>
+        </ol>
+
+        <h4>5.2.2 バケットを削除する</h4>
+        <ol>
+          <li>汎用バケット → 対象にチェック → <strong>削除(バケット名を入力し削除を行う)</strong></li>
+        </ol>
+
+        <h3>5.3 最終チェック</h3>
+        <ul>
+          <li>CloudFront のDistributionが一覧から消えた</li>
+          <li>S3のバケットが一覧から消えた</li>
+        </ul>
+      </section>
+
+      <section id="advanced">
+        <h2>6. 周辺サービスの位置づけ整理（Route 53 / ACM / WAF / Shield）</h2>
         <p>
-          DNSは、<code>aws.cloud-n-code.com</code> のようなドメイン名を、CloudFront等の配信先に紐づける仕組みです。<br>
-          CloudFrontへ向ける場合は、Aレコードの <strong>Alias（エイリアス）</strong> 機能を使用します。
+          本番に近づける際に関わる周辺サービス（Route 53 / ACM / WAF / Shield）を整理します。ハンズオンは行いません（ドメイン取得や追加課金が絡むため）。
         </p>
 
-        <h3>3.4 ACM：HTTPS（TLS証明書）</h3>
+        <h3>6.1 Route 53とは</h3>
+        
+        <h4>6.1.1 役割</h4>
         <p>
-          ACMは、HTTPS化に必要な証明書を発行・管理するサービスです。
+          Amazon Route 53 は <strong>DNS（Domain Name System）</strong> のサービスです。<br>
+          人間が覚えやすい ドメイン名（例：cloud-n-code.com）と、実際の接続先（IPアドレスやCloudFront/ALBなどのエンドポイント）を結び付けて、ユーザーのアクセスを「正しい宛先」に案内します。
         </p>
+
+        <h4>6.1.2 ユースケース</h4>
+        <ul>
+          <li><strong>Webサイト／APIの名前解決（基本）：</strong>www.cloud-n-code.com → CloudFront / ALB / EC2 など、公開エンドポイントへ誘導</li>
+          <li><strong>DNSフェイルオーバー：</strong>2つ以上の同機能エンドポイントを用意し、片方が不調ならもう片方へ切り替える（ヘルスチェックと組み合わせ）</li>
+          <li><strong>ルーティング（振り分け）：</strong>重み付け、レイテンシ、地理、フェイルオーバーなど「どこへ案内するか」をポリシーで制御</li>
+          <li><strong>VPC内専用DNS：</strong>インターネット非公開の内部サービスを、VPCの中だけで名前解決させる</li>
+        </ul>
+
+        <h4>6.1.3 重要機能</h4>
+        <ul>
+          <li><strong>Hosted Zone：</strong>DNSレコードの管理単位。Public（インターネット向け）と Private（VPC内限定）があります</li>
+          <li><strong>Aliasレコード（Route 53独自機能）：</strong>AWSリソース（CloudFront/ALB等）へ"DNS的に安全に"向けるための仕組み。ゾーン頂点（apex）にも設定でき、AWSリソースへのAliasクエリは課金されない</li>
+          <li><strong>ルーティングポリシー：</strong>Weighted（重み付け）、Latency、Failover、Geoproximity/Geolocation 等</li>
+          <li><strong>ヘルスチェック & DNSフェイルオーバー：</strong>エンドポイントの正常/異常を監視し、異常時に別宛先へ切り替え</li>
+        </ul>
+
+        <h3>6.2 ACMとは（AWS Certificate Manager）</h3>
+        
+        <h4>6.2.1 役割</h4>
+        <p>
+          AWS Certificate Manager（ACM）は、WebサイトやAPIをHTTPS化するための <strong>SSL/TLS 証明書（X.509）</strong>を、<strong>発行・保管・更新（リニューアル）</strong>まで含めて管理するサービスです。<br>
+          証明書を「買う／更新する／期限切れを監視する」などの運用負担を減らしつつ、AWSの各サービス（例：ELB、CloudFront、API Gateway など）に証明書を安全に関連付けられるようにします。
+        </p>
+
+        <h4>6.2.2 ユースケース</h4>
+        <ul>
+          <li><strong>Webサイト／APIのHTTPS化（最頻出）：</strong>CloudFront、Elastic Load Balancing（ALB/NLB）、API Gateway などに証明書を設定</li>
+          <li><strong>ワイルドカード／複数ドメイン（SAN）証明書の運用：</strong><code>*.cloud-n-code.com</code> のようなワイルドカード、または複数FQDNを1枚で管理</li>
+          <li><strong>他社証明書の取り込み管理：</strong>既に持っている証明書をACMにインポートして管理を集約</li>
+        </ul>
+
+        <h4>6.2.3 重要機能</h4>
+        <ul>
+          <li><strong>証明書の種類：</strong>パブリック証明書（Amazon発行）、エクスポート可能なパブリック証明書、プライベート証明書</li>
+          <li><strong>ドメイン所有確認：</strong>DNS検証（運用上おすすめ）、メール検証</li>
+          <li><strong>更新（リニューアル）運用：</strong>DNS検証は自動更新に寄せやすく、メール検証は期限が近づくと通知・再承認が必要</li>
+          <li><strong>「リージョン」の考え方：</strong><strong>CloudFrontでACM証明書を使う場合、証明書は us-east-1（バージニア北部）で用意する必要があります</strong></li>
+        </ul>
+
         <div class="alert-box warning">
           <span class="alert-title">⚠️ リージョン注意</span>
           <p>
@@ -144,165 +545,72 @@
           </p>
         </div>
 
-        <h3>3.5 OAC：S3を非公開にする（推奨）</h3>
+        <h3>6.3 WAFとは（AWS WAF）</h3>
+        
+        <h4>6.3.1 役割</h4>
         <p>
-          S3を全面公開すると、意図しない公開事故のリスクがあります。<br>
-          <strong>OAC（Origin Access Control）</strong> を使うことで、S3自体は非公開（Block Public Access ON）のまま、CloudFrontからのアクセスだけを許可する構成が作れます。これが実務での推奨構成です。
+          AWS WAF（Web Application Firewall）は、Webアプリケーションに届く HTTP/HTTPS リクエストを検査して、許可・遮断・計測できる<strong>「アプリ層の防御」</strong>サービスです。<br>
+          SQLインジェクションやXSSなどの典型的なWeb攻撃、Botアクセス、過剰なリクエスト（L7のDoS寄り）などに対して、<strong>"入口で止める"</strong>ことを目的に使います。
         </p>
 
-        <h3>3.6 WAF & Shield：防御レイヤ</h3>
+        <h4>6.3.2 ユースケース</h4>
         <ul>
-          <li><strong>WAF (Web Application Firewall)：</strong>SQLインジェクションやXSSなどの攻撃、Bot、過剰アクセスを入口で遮断します。</li>
-          <li><strong>Shield：</strong>DDoS攻撃対策です。Standard（標準）とAdvanced（有料・強化版）があります。</li>
+          <li><strong>典型的なWeb攻撃の遮断：</strong>SQLi / XSS など、よくある攻撃パターンをルール（またはマネージドルール）で弾く</li>
+          <li><strong>IPベースの制御：</strong>特定IPの拒否、管理画面は社内IPのみ許可、など</li>
+          <li><strong>Bot対策：</strong>スクレイピング、クレデンシャルスタッフィングの入口対策</li>
+          <li><strong>レート制限：</strong>短時間の大量アクセス対策（Rate-based ルール）</li>
+          <li><strong>段階導入：</strong>まず "Count（計測）" で影響を観測してから "Block" に切り替える</li>
         </ul>
-      </section>
 
-      <section id="handson">
-        <h2>4. ハンズオン</h2>
+        <h4>6.3.3 重要機能</h4>
+        <ul>
+          <li><strong>Web ACL：</strong>WAF設定の本体。どのリソースを守るか、デフォルト動作、ルールの優先順位などをまとめます</li>
+          <li><strong>ルール / ルールグループ：</strong>「こういう条件のリクエストを、こう扱う（Allow/Block/Count…）」の集合</li>
+          <li><strong>マネージドルール：</strong>AWSが用意したルールセットを取り込んで"基本の守り"を作れます（例：Bot Control）</li>
+          <li><strong>CAPTCHA / Challenge：</strong>「怪しいが即ブロックは怖い」トラフィックに対して、人間/自動化を切り分ける</li>
+          <li><strong>レートベースルール：</strong>短時間に大量アクセスする送信元などを検知してブロック/制限</li>
+        </ul>
+
+        <h3>6.4 Shieldとは（AWS Shield）</h3>
+        
+        <h4>6.4.1 役割</h4>
         <p>
-          今回は <strong>CloudFront（Distribution）＋ S3（Origin）</strong> で配信を成立させます。<br>
-          S3静的Webホスティング機能は <strong>無効</strong> のまま進めます。
+          AWS Shield は、AWS上のシステムを <strong>DDoS攻撃（大量トラフィックでサービス妨害する攻撃）</strong> から守るための マネージド型DDoS防御サービス です。<br>
+          主に ネットワーク〜トランスポート層（L3/L4） の防御を土台として提供し、アプリ層（L7）はWAF等と組み合わせて入口で守る設計に寄せるのが一般的です。
         </p>
 
-        <h3>Step 1: S3バケット作成</h3>
-        <ol>
-          <li>S3コンソールで「バケットを作成」をクリック</li>
-          <li><strong>バケット名：</strong>任意（例：<code>aws-study-session5-static-yourname</code>）<br><small>※世界で一意である必要があります。</small></li>
-          <li><strong>リージョン：</strong>アジアパシフィック（東京）</li>
-          <li><strong>ブロックパブリックアクセス：</strong>「パブリックアクセスをすべてブロック」に <strong>チェックを入れたまま（ON）</strong> にする</li>
-          <li>「バケットを作成」をクリック</li>
-        </ol>
+        <h4>6.4.2 2つのレベル</h4>
+        <ul>
+          <li><strong>Shield Standard（標準）：</strong>多くのAWS利用で自動的に有効。追加料金なし。代表的なエッジ/入口系サービス利用で自動的に有効化され、追加料金もありません</li>
+          <li><strong>Shield Advanced（強化）：</strong>有料サブスク。より高度な検知・緩和、専門チーム支援、コスト保護などが追加されます。月額$3,000（※ 2026年2月時点 料金表参照） のサブスクに加え、データ転送等の従量が発生し得ます</li>
+        </ul>
 
-        <h3>Step 2: index.html をアップロード</h3>
-        <ol>
-          <li>作成したバケットを開き、以下の内容で作成した <code>index.html</code> をアップロードします。</li>
-        </ol>
-        <div class="code-wrapper">
-          <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
-          <pre class="code-block"><code>&lt;html&gt;
-&lt;body&gt;
-  &lt;h1&gt;Hello CloudFront!&lt;/h1&gt;
-  &lt;p&gt;This is v1.&lt;/p&gt;
-&lt;/body&gt;
-&lt;/html&gt;</code></pre>
-        </div>
-        <p>
-          アップロード後、ファイルをクリックして「オブジェクトURL」を開いてみてください。<br>
-          <strong>Access Denied</strong> となり、表示できないはずです（S3が非公開のため）。
-        </p>
-
-        <h3>Step 3: 一時的にS3を公開して表示確認（暫定）</h3>
-        <div class="alert-box warning">
-          <span class="alert-title">⚠️ 注意</span>
-          <p>
-            この手順は学習のために一時的に実施します。実務ではOAC（後述）を使い、この手順は行いません。
-          </p>
-        </div>
-        <ol>
-          <li>バケットの「アクセス許可」タブを開く</li>
-          <li><strong>ブロックパブリックアクセス：</strong>「編集」→ チェックをすべて外して保存（確認入力が必要）</li>
-          <li><strong>バケットポリシー：</strong>「編集」→ 以下のJSONを貼り付けて保存<br>
-            <small>※<code>YOUR-BUCKET-NAME</code> の部分を自分のバケット名に書き換えてください。</small>
-          </li>
-        </ol>
-        <div class="code-wrapper">
-          <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
-          <pre class="code-block"><code>{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "PublicReadGetObject",
-            "Effect": "Allow",
-            "Principal": "*",
-            "Action": "s3:GetObject",
-            "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME/*"
-        }
-    ]
-}</code></pre>
-        </div>
-        <p>
-          設定後、再度オブジェクトURLにアクセスし、ページが表示されることを確認します。
-        </p>
-
-        <h3>Step 4: CloudFront Distribution 作成</h3>
-        <ol>
-          <li>CloudFrontコンソールで「ディストリビューションを作成」をクリック</li>
-          <li><strong>オリジンドメイン：</strong>プルダウンから先ほどのS3バケットを選択</li>
-          <li><strong>オリジンアクセス：</strong>今回は「Public」のまま（Step 3で公開済みのため）</li>
-          <li><strong>デフォルトルートオブジェクト (Default root object)：</strong><code>index.html</code> と入力 <strong>（必須）</strong></li>
-          <li>残りはデフォルトのまま「ディストリビューションを作成」をクリック</li>
-        </ol>
-        <p>
-          作成後、ステータスが「Deploying」になりますが、ドメイン名（<code>xxxxx.cloudfront.net</code>）はすぐに発行されます。<br>
-          ブラウザでアクセスし、S3と同じページが表示されることを確認します。
-        </p>
-
-        <h3>Step 5: キャッシュ体験（更新が即時反映されない）</h3>
-        <ol>
-          <li>PC上の <code>index.html</code> を編集（例：<code>v1</code> → <code>v2</code>）し、S3に上書きアップロードします。</li>
-          <li>CloudFrontのURLにアクセスします。更新が反映されず、古い内容（v1）が表示されることを確認します。<br>
-            <small>※これが「キャッシュ」です。</small></li>
-          <li><strong>Invalidation（キャッシュ削除）：</strong>
-            <ul>
-              <li>CloudFrontコンソールの「キャッシュ削除 (Invalidations)」タブ → 「キャッシュ削除を作成」</li>
-              <li>オブジェクトパス：<code>/*</code> （すべて削除）</li>
-              <li>作成をクリック</li>
-            </ul>
-          </li>
-          <li>完了後、ブラウザをリロードして更新（v2）が反映されることを確認します。</li>
-        </ol>
-      </section>
-
-      <section id="next-step">
-        <h2>5. 次の一歩（本番運用に寄せる）</h2>
-        <p>
-          ハンズオンでは「まず動かす」ことを優先しましたが、本番運用では以下の構成を目指します。
-        </p>
-
-        <h3>5.1 OACでS3を非公開化（推奨形）</h3>
-        <p>
-          S3をインターネットに全公開するのはリスクがあります。<br>
-          <strong>OAC</strong> を設定し、S3のバケットポリシーを「CloudFrontからのアクセスのみ許可」に書き換えることで、S3を非公開（Block Public Access ON）に戻せます。
-        </p>
-
-        <h3>5.2 Route 53 + ACMで独自ドメイン＆HTTPS</h3>
-        <p>
-          <code>cloudfront.net</code> ではなく独自のドメインで配信する場合です。<br>
-          ACM（us-east-1）で証明書を発行し、CloudFrontにセット。Route 53のAliasレコードで紐付けます。
-        </p>
-
-        <h3>5.3 WAF & Shieldで防御</h3>
-        <p>
-          CloudFrontにWAF（Web ACL）を関連付けることで、SQLインジェクションや過剰なアクセス（DDoSの一種）を入口で防ぐことができます。
-        </p>
-      </section>
-
-      <section id="cleanup">
-        <h2>6. 後片付け（コスト事故を防ぐ）</h2>
-        <ol>
-          <li><strong>CloudFront：</strong>ディストリビューションを「無効化」し、その後「削除」します。<br><small>※削除完了まで時間がかかる場合があります。</small></li>
-          <li><strong>S3：</strong>
-            <ul>
-              <li>バケットの中身（index.html）を削除</li>
-              <li>バケットポリシーを削除</li>
-              <li>ブロックパブリックアクセスを「ON」に戻す</li>
-              <li>バケット自体を削除</li>
-            </ul>
-          </li>
-        </ol>
+        <h4>6.4.3 重要機能</h4>
+        <ul>
+          <li><strong>可視化（通知・診断）：</strong>Shield Advancedは、DDoSイベントの可視化や通知（CloudWatchなど）や診断情報を提供</li>
+          <li><strong>SRT支援とプロアクティブエンゲージメント：</strong>攻撃で可用性に影響が出たときに、専門チームへ支援を求められる</li>
+          <li><strong>DDoSコスト保護：</strong>DDoSが原因で保護リソースがスケールして費用が増えた場合、条件を満たせばクレジットを申請できる</li>
+          <li><strong>Protection group：</strong>複数リソースを"1つの単位"として検知・緩和の精度を上げる</li>
+        </ul>
       </section>
 
       <section id="summary">
-        <h2>7. まとめ</h2>
+        <h2>7. おわりに</h2>
         <p>
-          本セッションでは、S3に置いた静的ファイルをCloudFrontで配信する構成を通じて、以下を学びました。
+          第5回では、静的コンテンツ配信を題材に <strong>S3（保管）＋ CloudFront（配信の入口）</strong> という基本形を作りながら、次のポイントを押さえました。
         </p>
         <ul>
-          <li><strong>S3：</strong>配信元（格納場所）。Webサーバー機能は使わず、単なるストレージとして利用。</li>
-          <li><strong>CloudFront：</strong>配信の入口。キャッシュにより高速化するが、更新反映にはInvalidation等が必要。</li>
-          <li><strong>Default root object：</strong>RESTオリジン構成では必須の設定。</li>
-          <li><strong>次の一歩：</strong>実務ではOACによる非公開化、Route 53/ACMによる独自ドメイン化、WAFによる防御を組み合わせる。</li>
+          <li><strong>S3は「ファイルを置く場所」</strong>として使い、まずは private のまま 扱えることを確認しました</li>
+          <li><strong>CloudFrontを入口にする</strong>ことで、速さ・安定性を得つつ、オリジン（S3）を直接公開しない設計に寄せられることを学びました</li>
+          <li><strong>キャッシュは強力</strong>ですが更新反映にクセがあるため、Invalidation や Cache-Control などで「反映を設計する」考え方が必要だと体験しました</li>
+          <li><strong>OAC</strong> を使うことで、S3を非公開（Block Public Access ON）のまま、CloudFrontからのみアクセスできる推奨構成を実現できます</li>
         </ul>
+        <p>
+          また、Route 53 / ACM / WAF / Shield は、この構成を運用として整える際に関わる周辺要素として、役割と位置づけを整理しました。
+        </p>
+        <p>
+          次回は Docker を学習します。AWSサービスそのものではありませんが、ECSを理解するうえで欠かせない仕組みになります。
+        </p>
       </section>
 
     </div>
@@ -311,12 +619,12 @@
       <h2>目次</h2>
       <ul>
         <li><a href="#intro">1. はじめに</a></li>
-        <li><a href="#goal">2. ゴール</a></li>
-        <li><a href="#lecture">3. 解説</a></li>
+        <li><a href="#s3">2. S3とは（Amazon S3）</a></li>
+        <li><a href="#cloudfront">3. CloudFrontとは（Amazon CloudFront）</a></li>
         <li><a href="#handson">4. ハンズオン</a></li>
-        <li><a href="#next-step">5. 次の一歩</a></li>
-        <li><a href="#cleanup">6. 後片付け</a></li>
-        <li><a href="#summary">7. まとめ</a></li>
+        <li><a href="#cleanup">5. 後片付け</a></li>
+        <li><a href="#advanced">6. 周辺サービスの位置づけ整理</a></li>
+        <li><a href="#summary">7. おわりに</a></li>
       </ul>
     </nav>
   </div>

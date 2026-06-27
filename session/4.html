@@ -1,18 +1,29 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
-
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>第4回：スケーラブル構成とモニタリングの基本 | 勉強会 for AWS</title>
-  <link rel="stylesheet" href="../common/style.css">
-  <style>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>第4回：スケーラブル構成とモニタリングの基本 | 勉強会 for AWS</title>
+    <link rel="stylesheet" href="../common/style.css" />
+    <style>
       header .insider-header {
         max-width: 1160px;
       }
-      .img-w800 { width: 100%; max-width: 800px; height: auto; display: block; margin: 20px auto; }
-      .img-w600 { width: 100%; max-width: 600px; height: auto; display: block; margin: 20px auto; }
-      
+      .img-w800 {
+        width: 100%;
+        max-width: 800px;
+        height: auto;
+        display: block;
+        margin: 20px auto;
+      }
+      .img-w600 {
+        width: 100%;
+        max-width: 600px;
+        height: auto;
+        display: block;
+        margin: 20px auto;
+      }
+
       .alert-box {
         padding: 15px;
         margin: 20px 0;
@@ -36,196 +47,675 @@
         margin-bottom: 5px;
       }
     </style>
-</head>
+  </head>
 
-<body>
-  <header>
-        <div class="insider-header">
-          <a href="../index.html" class="logo">勉強会 <span style="font-size: 0.8em">for</span> AWS</a
-          >
-          <span class="header-spacer"></span>
-          <a href="../board/signin.html" class="header-btn">質問板</a>
-        </div>
-  </header>
-  <main>
-  <div class="container">
-    <div class="content">
-      <h1>第4回：スケーラブル構成とモニタリングの基本</h1>
-      <div class="post-date">Posted at 2025-12-30</div>
-      
-      <section id="intro">
-        <h2>1. はじめに</h2>
-        <p>
-          Webサービスのアクセス数は一定ではありません。SNS拡散やキャンペーンで急増することもあれば、夜間は減ることもあります。<br>
-          EC2が1台だけの構成だと、アクセス急増時に落ちたり、逆にアクセスが少ないときにコストが無駄になります。
-        </p>
-        <p>
-          今回のテーマは <strong>「負荷に応じて自動で増減するサーバー群と、その監視」</strong>です。ゴールは次の2つです。
-        </p>
-        <ul>
-          <li>アクセスが増えても <strong>落ちにくい構成</strong>にする</li>
-          <li>落ちそうな兆候を <strong>数値で検知</strong>して、自動対処できるようにする</li>
-        </ul>
+  <body>
+    <header>
+      <div class="insider-header">
+        <a href="../index.html" class="logo"
+          >勉強会 <span style="font-size: 0.8em">for</span> AWS</a
+        >
+        <span class="header-spacer"></span>
+        <span
+          class="header-btn header-btn-disabled"
+          aria-label="質問板は停止中です"
+        >
+          質問板（停止中）
+        </span>
+      </div>
+    </header>
+    <main>
+      <div class="container">
+        <div class="content">
+          <h1>第4回：スケーラブル構成とモニタリングの基本</h1>
+          <div class="post-date">Posted at 2025-12-30</div>
 
-        <div class="alert-box warning">
-          <span class="alert-title">⚠️ 課金注意（重要）</span>
-          <p>
-            このハンズオンでは <strong>ALB (Application Load Balancer)</strong> を使用します。ALBは起動している時間に対して課金が発生します（無料利用枠は新規アカウント等の条件があるため、対象外の場合があります）。<br>
-            また、Auto Scalingにより複数のEC2インスタンスが起動するため、長時間放置するとコストがかさみます。<br>
-            <strong>ハンズオン終了後は必ずリソースを削除してください。</strong>
-          </p>
-        </div>
-      </section>
-
-      <section id="goal">
-        <h2>2. ゴール</h2>
-        <ul>
-          <li>Multi-AZで可用性（Availability）を上げる考え方を理解する</li>
-          <li>ALBで「入口（DNS）を固定しつつ分散・ヘルスチェックする」仕組みを理解する</li>
-          <li>ASGで「増減（スケールアウト/イン）＋自動交換（セルフヒーリング）」を体験する</li>
-          <li>CloudWatchで「メトリクス→アラーム→スケーリング」の流れを体験する</li>
-          <li>SSM（Session Manager）で <strong>鍵なし・SSHなし</strong> の運用アクセスを体験する</li>
-        </ul>
-      </section>
-
-      <section id="lecture">
-        <h2>3. 解説</h2>
-        
-        <h3>3.1 可用性（Availability）：Multi-AZが必要な理由</h3>
-        <p>
-          <strong>なぜ必要か：</strong>サーバーやAZには障害が起きる前提で考えます。1台（または1つのAZ）に依存すると、その一点が壊れた瞬間にサービス全体が止まります。
-        </p>
-        <p>
-          <strong>どう使うか：</strong>複数AZにEC2を分散配置し、ALBで生きているインスタンスへ振り分けることで、片方のAZに問題が起きてもサービス継続しやすくします。
-        </p>
-        <img src="../image/session/4/multi-az.png" alt="Multi-AZ構成のイメージ図" class="img-w600">
-
-        <h3>3.2 ELB (ALB)：分散とヘルスチェック</h3>
-        <p>
-          <strong>なぜ必要か：</strong>台数を増やしたとき、ユーザーの入口が毎回変わると運用できません。また、死んだサーバーにリクエストを送ると障害時の影響が広がります。
-        </p>
-        <p>
-          <strong>どう使うか：</strong>ALBは固定のDNS名を入口として提供し、ターゲットグループのEC2へ分散します。ヘルスチェックで異常なインスタンスを自動的に外せます。
-        </p>
-
-        <h3>3.3 Auto Scaling：増減とセルフヒーリング</h3>
-        <p>
-          <strong>なぜ必要か：</strong>負荷が増えたのに台数固定だと遅延・障害につながります。負荷が低いのに台数が多いとコストが無駄です。
-        </p>
-        <p><strong>どう使うか：</strong>ASGで次を実現します。</p>
-        <ul>
-          <li><strong>スケールアウト：</strong> 負荷が高い → 台数を増やす</li>
-          <li><strong>スケールイン：</strong> 負荷が低い → 台数を減らす</li>
-          <li><strong>セルフヒーリング：</strong> 異常インスタンスを検知 → 自動で置き換える</li>
-        </ul>
-
-        <h3>3.4 CloudWatch：メトリクスとアラーム</h3>
-        <p>
-          <strong>なぜ必要か：</strong>システムは感覚ではなく数値（CPU、リクエスト数、レイテンシ等）で状態を把握します。数値で見えると自動化につなげられます。
-        </p>
-        <p>
-          <strong>どう使うか：</strong>今回は <strong>CPU使用率</strong> のメトリクスを監視し、しきい値超えで <strong>アラーム → ASGスケールアウト</strong>を体験します。
-        </p>
-
-        <h3>3.5 SSM（Session Manager）：SSHなしでサーバーに入る理由</h3>
-        <p>
-          <strong>なぜ必要か：</strong>SSHは鍵管理や22番ポート公開が必要になり、運用事故や攻撃面が増えます。
-        </p>
-        <p>
-          <strong>どう使うか：</strong>SSM Session Managerを使うと、<strong>キーペア不要</strong>、<strong>22番ポート不要</strong>でEC2へ接続できます。ASGで増えたインスタンスにも同じやり方で入れるため、運用がシンプルになります。
-        </p>
-      </section>
-
-      <section id="handson">
-        <h2>4. ハンズオン</h2>
-        <p>
-          実際にALBとAuto Scalingを構築し、CPU負荷をかけて自動的にサーバーが増える様子を観察します。<br>
-          運用アクセスは <strong>SSM（Session Manager）</strong> を使います。
-        </p>
-        
-        <div class="alert-box info">
-          <span class="alert-title">ℹ️ 今回の前提（簡易化）</span>
-          <p>
-            学習用に、EC2は <strong>パブリックサブネット</strong>で起動し <strong>パブリックIPを自動割り当て</strong>します。<br>
-            ただし運用アクセスは <strong>SSHではなくSSM（Session Manager）</strong> を使い、<strong>22番ポートを開けない</strong>方針で進めます。<br>
-            実務ではプライベートサブネット＋SSM（＋必要に応じてNAT/Endpoint）が推奨ですが、今回は理解優先でシンプルにします。
-          </p>
-        </div>
-
-        <div class="alert-box info">
-          <span class="alert-title">ℹ️ 事前に決めておくと迷いません</span>
-          <p>
-            使うVPC、そして <strong>異なる2つのAZのパブリックサブネット</strong>（例：ap-northeast-1a / 1c など）を最初に選んでおくと手戻りが減ります。
-          </p>
-        </div>
-
-        <h3>Step 0: IAMロールの作成 (SSM用)</h3>
-        <p>
-          EC2インスタンスがSystems Manager (SSM) と通信できるようにするための権限（IAMロール）を作成します。先に作っておくと後の手順がスムーズです。
-        </p>
-        <ol>
-          <li>IAMダッシュボードの左メニュー「ロール」→「ロールを作成」をクリック</li>
-          <li><strong>信頼されたエンティティタイプ:</strong> AWSのサービス</li>
-          <li><strong>ユースケース:</strong> EC2 を選択して「次へ」</li>
-          <li><strong>許可ポリシー:</strong> 検索ボックスに <code>SSM</code> と入力し、<br>
-            <code>AmazonSSMManagedInstanceCore</code> にチェックを入れて「次へ」</li>
-          <li><strong>ロール名:</strong> <code>handson-ssm-role</code> と入力して「ロールを作成」</li>
-        </ol>
-
-        <h3>Step 1: セキュリティグループの作成</h3>
-        <p>
-          ALBはインターネットからHTTPを受け付けますが、EC2は「ALBからのHTTPだけ」を許可することで安全性が上がります。今回はSSMで入るため、SSH(22)は作りません。
-        </p>
-        
-        <h4>1. ALB用セキュリティグループ (ALB-SG)</h4>
-        <ul>
-          <li><strong>名前:</strong> <code>ALB-SG</code></li>
-          <li><strong>インバウンドルール:</strong>
+          <section id="intro">
+            <h2>1. はじめに</h2>
+            <p>
+              Webサービスのアクセス数は、SNSキャンペーンによる急増や、夜間の減少など一定ではありません。<br />
+              EC2が1台だけだと、アクセスが増えたときにその1台に負荷が集中します。その結果、表示が遅くなったり、障害時にサービスが止まる恐れがあります。<br />
+              逆に、ピークに備え常に複数台使用した場合、平常時にはリソースが余りコスト効率が下がります。
+            </p>
+            <p>
+              こうした課題は、アクセス状況に応じてEC2の台数を柔軟に増減させることで解決できます。今回は<strong>負荷に応じてサーバーを自動増減させるスケーラブルな構成と、その監視</strong>について学習します。以下のAWSサービスを使います。
+            </p>
             <ul>
-              <li>タイプ: HTTP (80) / ソース: 0.0.0.0/0 (Anywhere)</li>
+              <li>ALB(Application Load Balancer)</li>
+              <li>ASG(Auto Scaling Group)</li>
+              <li>CloudWatch</li>
+              <li>Session Manager</li>
             </ul>
-          </li>
-        </ul>
+          </section>
 
-        <h4>2. EC2用セキュリティグループ (EC2-SG)</h4>
-        <ul>
-          <li><strong>名前:</strong> <code>EC2-SG</code></li>
-          <li><strong>インバウンドルール:</strong>
+          <section id="goal">
+            <h2>2. ゴール</h2>
             <ul>
-              <li>タイプ: HTTP (80) / ソース: <strong>カスタム (ALB-SGを選択)</strong> <br><small>※ALBからの通信のみ許可します。SSH(22)の許可は不要です。</small></li>
-            </ul>
-          </li>
-        </ul>
-
-        <h3>Step 2: 起動テンプレートの作成</h3>
-        <p>
-          Auto ScalingがEC2を自動作成する際の「設計図」となる起動テンプレートを作成します。<br>
-          EC2ダッシュボードの左メニュー「起動テンプレート」から作成します。
-        </p>
-        <ul>
-          <li><strong>テンプレート名:</strong> <code>handson-template</code></li>
-          <li><strong>OS (AMI):</strong> Amazon Linux 2023</li>
-          <li><strong>インスタンスタイプ:</strong> t2.micro (または t3.micro)</li>
-          <li><strong>キーペア:</strong> <strong>キーペアなし</strong> (SSMを使うため不要です)</li>
-          <li><strong>ネットワーク設定:</strong>
-            <ul>
-              <li>セキュリティグループ: <code>EC2-SG</code> を選択</li>
-              <li>パブリックIPの自動割り当て: <strong>有効化</strong></li>
-            </ul>
-          </li>
-          <li><strong>高度な詳細:</strong>
-            <ul>
-              <li><strong>IAMインスタンスプロフィール:</strong> <code>handson-ssm-role</code> を選択 (Step 0で作成したロール)</li>
-              <li><strong>ユーザーデータ:</strong><br>
-                以下のスクリプトをコピーして貼り付けます。Webサーバーを起動し、どのインスタンスか分かるように画面にIDを表示するスクリプトです。
+              <li>Multi-AZで可用性（Availability）を上げる考え方を理解する</li>
+              <li>
+                ALBで「入口（DNS）を固定しつつ分散・ヘルスチェックする」仕組みを理解する
+              </li>
+              <li>
+                ASGで「負荷に応じた増減（スケールアウト/イン）」を体験する
+              </li>
+              <li>
+                CloudWatchの「アラーム」を確認し、スケーリングの判断に使われることを理解する
+              </li>
+              <li>
+                Session Managerで
+                <strong>鍵なし・SSHなし</strong> の運用アクセスを体験する
               </li>
             </ul>
-          </li>
-        </ul>
+          </section>
 
-        <div class="code-wrapper">
-          <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
-          <pre class="code-block"><code>#!/bin/bash
+          <section id="lecture">
+            <h2>3. 解説</h2>
+
+            <h3>3.1 ALB（Application Load Balancer）とは</h3>
+            <p>
+              ALB は、HTTP/HTTPS
+              のリクエストを受け取り、転送先（ターゲット：EC2、IPアドレス、Lambdaなど）へ振り分けて届ける
+              AWS のロードバランサーです。
+            </p>
+            <p>
+              WebサイトやAPIなどにアクセスが集中すると、1台のサーバーだけでは処理しきれず遅延や障害が起きやすくなります。そこで
+              ALB
+              が入口（窓口）となり、受け取ったリクエストを複数台のバックエンドサーバーへ分散して転送することで、負荷を分散し、台数を増やしてスケールしやすい構成にできます。<br />
+              また、ヘルスチェックに失敗した転送先にはリクエストを送らないため、障害時でも影響を広げにくい特徴があります。
+            </p>
+            <img
+              src="../image/session/4/lecture/1-alb.png"
+              alt="ALBの概要図"
+              class="img-w600"
+            />
+            <p
+              style="
+                text-align: center;
+                font-size: 0.9em;
+                color: #555;
+                margin-top: 5px;
+              "
+            >
+              ALBとAuto Scalingグループを使用した構成図（<a
+                href="https://docs.aws.amazon.com/ja_jp/autoscaling/ec2/userguide/tutorial-ec2-auto-scaling-load-balancer.html"
+                target="_blank"
+                rel="noopener"
+                >公式link</a
+              >）
+            </p>
+            <h4>ELB（Elastic Load Balancing）と、その種類</h4>
+            <p>
+              AWSのロードバランサーは ELB（Elastic Load
+              Balancing）というカテゴリにまとまっており、用途に応じて種類があります。
+            </p>
+            <ul>
+              <li>
+                <strong>ALB（Application Load Balancer）：</strong
+                >レイヤー7（L7）。HTTP/HTTPS向け。URLパスやホスト名など、リクエスト内容を見て振り分けできる
+              </li>
+              <li>
+                <strong>NLB（Network Load Balancer）：</strong
+                >レイヤー4（L4）。TCP/UDP向け。高スループット・低遅延での転送が得意
+              </li>
+              <li>
+                <strong>GWLB（Gateway Load Balancer）：</strong
+                >セキュリティ製品（FW/IDS/IPSなど）を挟む用途向け
+              </li>
+              <li>
+                <strong>（参考）CLB（Classic Load Balancer）：</strong
+                >旧世代。既存システムで見かけることはあるが、新規は基本ALB/NLBが主流
+              </li>
+            </ul>
+            <p>
+              この勉強会では、Webサービスの入口として使いやすい ALB を扱います。
+            </p>
+
+            <h4>ALBの特徴</h4>
+            <p>
+              ALBは、アプリケーション層（L7）でリクエスト内容を見て振り分けを制御できる点が特徴です。
+            </p>
+            <p>例：</p>
+            <ul>
+              <li>
+                パスベースルーティング：<code>/api</code> はAPI用、<code
+                  >/</code
+                >
+                はWeb用へ
+              </li>
+              <li>
+                ホストベースルーティング：<code>admin.example.com</code>
+                は管理画面用、<code>www.example.com</code> は一般向けへ
+              </li>
+            </ul>
+            <p>また、スケーラブル構成の基盤として重要な機能も持っています。</p>
+            <ul>
+              <li>
+                <strong>入口を1つに固定できる：</strong
+                >EC2が増減しても、ユーザーは同じ入り口(ALBのDNS名)へアクセスし続けられる
+              </li>
+              <li>
+                <strong>負荷分散できる：</strong
+                >複数台へ転送して、1台への集中を避ける
+              </li>
+              <li>
+                <strong>ヘルスチェック：</strong
+                >不調な宛先には転送しない（復旧すれば戻る）
+              </li>
+            </ul>
+
+            <p>
+              ハンズオンではHTTPを使用しますが、HTTPSの復号をALBで行うことも可能です。
+            </p>
+            <ul>
+              <li>
+                <strong>TLS終端（ALBでHTTPSを受けて復号する）：</strong>ALB
+                に証明書（ACM）を設定すると、ブラウザ↔ALB 間を HTTPS
+                にできます。これにより、証明書の管理を ALB
+                側に集約でき、バックエンド（EC2など）へ証明書を配布・更新する手間を減らせます。<br />
+                <small
+                  >※ バックエンド（ALB→EC2）は
+                  HTTPでも運用されることが多い（要件によりHTTPSも可）。</small
+                >
+              </li>
+            </ul>
+
+            <h4>ALBを構成する重要パーツ</h4>
+            <ul>
+              <li>
+                <strong>リスナー（Listener）：</strong
+                >どのプロトコル/ポートで受付するか（例：HTTP 80）
+              </li>
+              <li>
+                <strong>ルール（Rules）：</strong
+                >どこへ送るかの条件分岐（ホスト名・パスなど）
+              </li>
+              <li>
+                <strong>ターゲットグループ（Target Group）：</strong
+                >転送先（EC2など）をまとめた宛先リスト<br />
+                <small
+                  >※AWSでは、ロードバランサーの転送先を ターゲット（Target）
+                  と呼び、転送先のまとまりを ターゲットグループ
+                  として管理します。</small
+                >
+              </li>
+            </ul>
+
+            <h4>なぜスケーラブル構成でALBが必要なのか</h4>
+            <p>
+              ASGで台数が増減しても、利用者がアクセスする入口（DNS）を固定したまま、裏側を自動で入れ替えられるのがALBの役割です。
+            </p>
+
+            <h4>ALBの可用性設計（マルチAZ）</h4>
+            <p>
+              可用性のため、ALBは通常2つ以上のAZにまたがるサブネットを選んで作成します。
+            </p>
+            <h3>3.2 Auto Scaling グループ（ASG）とは</h3>
+            <p>
+              Auto Scaling グループ（ASG）は、EC2
+              インスタンスの台数と状態を、指定したルールどおりに保つための仕組みです。<br />
+              ASGがやることは大きく次の2つです。
+            </p>
+
+            <h4>1) 台数を保つ（キャパシティ管理）</h4>
+            <p>
+              ASGでは、あらかじめ
+              <strong
+                >希望する容量／最小の希望する容量／最大の希望する容量</strong
+              >
+              の台数を決めます。<br />
+              負荷に応じて EC2
+              を起動／終了し、最小から最大の容量の範囲で台数を増減させます。
+            </p>
+            <ul>
+              <li><strong>希望する容量：</strong>最初の台数</li>
+              <li>
+                <strong>最小/最大の希望する容量：</strong>増減の下限／上限
+              </li>
+            </ul>
+
+            <h4>2) 異常なEC2を置き換える（ヘルスチェック連動の自動置換）</h4>
+            <p>
+              ASGは、ヘルスチェックで異常と判断したインスタンスを
+              <strong>終了 → 新規起動</strong>
+              で置き換えます（自動置換）。<br />
+              このときヘルスチェックは、次の2系統があります。
+            </p>
+            <ul>
+              <li>
+                <strong>EC2ステータスチェック：</strong
+                >OS/ハード障害などの基本的な異常検知
+              </li>
+              <li>
+                <strong>ELB（ALB/ターゲットグループ）ヘルスチェック：</strong
+                >アプリが応答できているかまで含めた検知
+              </li>
+            </ul>
+
+            <h4>ASGがEC2を作るための「設計図」：起動テンプレート</h4>
+            <p>
+              ASGがEC2を起動するときは、<strong
+                >起動テンプレート（Launch Template）</strong
+              >
+              を使います。<br />
+              AMI／インスタンスタイプ／セキュリティグループ／IAMロール／User
+              Data
+              などをまとめて定義でき、スケールアウト時も同じ設定のEC2を自動で増やせます。
+            </p>
+            <p>
+              ※ 台数を増やすことを <strong>スケールアウト</strong>、減らすことを
+              <strong>スケールイン</strong> と呼びます。
+            </p>
+            <h4>どの基準で増減するのか（スケーリングポリシー）</h4>
+            <p>
+              スケーリングポリシー（Scaling
+              Policy）は、ASGが「いつ・どれだけ増やす／減らすか」を決めるルールです。<br />
+              ポリシーは CloudWatch
+              のメトリクスなどを材料にして判断し、条件に合えば
+              台数を増減させます。
+            </p>
+
+            <h4>スケーリングの主な方法</h4>
+            <p>主に次のパターンがあります。</p>
+
+            <h5>A) 動的スケーリング（メトリクス連動）</h5>
+            <p>
+              CloudWatch
+              メトリクスをもとに負荷状況に応じて自動で増減します。代表的なポリシーは次のとおりです。
+            </p>
+            <ul>
+              <li>
+                <strong>ターゲット追跡（Target Tracking）：</strong
+                >メトリクスを「目標値」に近づけるよう自動調整（例：平均CPU
+                40%を維持）<br />
+                <small
+                  >※内部的に CloudWatch
+                  の仕組み（必要に応じてアラーム等）を利用して動作します</small
+                >
+              </li>
+              <li>
+                <strong>ステップスケーリング（Step Scaling）：</strong
+                >しきい値超過の度合いで増減量を段階的に変更（例：CPU
+                60%で+1、80%で+2）
+              </li>
+              <li>
+                <strong>シンプルスケーリング（Simple Scaling）：</strong
+                >しきい値を超えたら一定量増減（学習向けだが調整はやや粗め）
+              </li>
+            </ul>
+
+            <p><strong>よく使う判断材料（メトリクス例）</strong></p>
+            <ul>
+              <li>CPU使用率（学習向き）</li>
+              <li>RequestCountPerTarget（1台あたりのリクエスト数）</li>
+              <li>TargetResponseTime（応答時間）</li>
+              <li>カスタムメトリクス（例：SQSのキュー滞留数 など）</li>
+            </ul>
+
+            <h5>B) スケジュールスケーリング（時間で増減）</h5>
+            <p>
+              「平日9時は増やす」「深夜は減らす」など、決まった時刻に Desired
+              台数を変更します。<br />
+              アクセスパターンが読みやすい業務システムで有効です。
+            </p>
+
+            <h5>C) 予測スケーリング</h5>
+            <p>
+              過去の傾向から需要を予測し、増える前にスケールアウトします。<br />
+              「増えてから増やす」だと間に合わない時間帯ピークに強いです。
+            </p>
+            <h4>今回のハンズオンでやること</h4>
+            <p>
+              今回は
+              <strong>動的スケーリング（ターゲット追跡）× CPU使用率</strong>
+              を使い、負荷を上げた際にEC2が増えることを確認します。
+            </p>
+
+            <h3>3.3 Multi-AZとは（可用性を上げる配置戦略）</h3>
+            <p>
+              ここまでの仕組み（ALB＋ASG）を、障害に強くするのがMulti-AZです。<br />
+              複数のEC2があったとしても、1つの同じAZだけで構成されていた場合、そのAZで障害が発生するとサービス全体が止まる可能性があります。
+            </p>
+            <p>
+              複数AZにEC2を分散し、ALBで振り分けることで、いずれかのAZに問題が起きても継続しやすい構成になります。
+            </p>
+            <p><strong>ポイント</strong></p>
+            <ul>
+              <li>
+                Multi-AZは「台数を増やす仕組み」ではなく、サービスを止まりにくくする配置戦略です。
+              </li>
+            </ul>
+
+            <h3>
+              3.4 CloudWatch とは（モニタリングの基本：メトリクス / ログ /
+              アラーム）
+            </h3>
+            <p>
+              CloudWatch
+              は、AWS上のリソースの状態を見える化し、必要に応じて通知や自動対処につなげるためのサービスです。<br />
+              モニタリングの基本は、次の3つをセットで捉えることです。
+            </p>
+            <ul>
+              <li>
+                メトリクス（Metrics）：システムの状態を「数値」で見る（例：CPU、リクエスト数、遅延）
+              </li>
+              <li>
+                ログ（Logs）：何が起きたかを「記録」で追う（例：アクセスログ、エラーログ、アプリログ）
+              </li>
+              <li>
+                アラーム（Alarms）：異常の兆候を検知して「知らせる／動かす」
+              </li>
+            </ul>
+            <p>
+              ※実務では、よく見るメトリクスを CloudWatch Dashboard
+              にまとめ、アラーム通知は SNS（メール等） に送る構成が一般的です。
+            </p>
+
+            <h4>1) メトリクス（Metrics）とは</h4>
+            <p>
+              メトリクスは、CPU使用率やリクエスト数などの時系列の数値データです。<br />
+              グラフで追えるため、「いま負荷が高いのか」「いつから悪化したのか」を感覚ではなく数値で把握できます。
+            </p>
+            <p>例（今回関係するもの）</p>
+            <ul>
+              <li>EC2：CPU使用率（CPUUtilization）</li>
+              <li>
+                ALB：RequestCountPerTarget（1台あたりのリクエスト数）、TargetResponseTime（応答時間）
+              </li>
+              <li>
+                ASG：Desired / InService（稼働台数。ASG画面やEC2台数で確認）
+              </li>
+            </ul>
+
+            <h4>2) ログ（Logs）とは</h4>
+            <p>
+              ログは「何が起きたか」を後から追える証拠です。<br />
+              メトリクスで異常を見つけたら、原因はログで掘る、という流れが基本になります。
+            </p>
+            <p>例（今回の構成で関係するログ）</p>
+            <ul>
+              <li>Webサーバー（Apache）：アクセスログ / エラーログ</li>
+              <li>OS：システムログ</li>
+              <li>
+                ALB：アクセスログ（※基本は S3へ出力。CloudWatch Logs
+                ではありません）
+              </li>
+            </ul>
+            <h4>3) アラーム（Alarms）とは</h4>
+            <p>
+              アラームは、メトリクスが<strong>しきい値を超えた（または下回った）</strong>ときに状態を変え、通知やアクションを実行できる仕組みです。<br />
+              例えば「CPUが40%を超えたらアラーム状態にする」といった設定ができます。
+            </p>
+
+            <h4>今回の構成で CloudWatch は何をしているのか</h4>
+            <p>
+              今回のスケールアウトは、ASGの 動的スケーリング（ターゲット追跡）
+              により実行されます。<br />
+              ASGのスケーリングポリシーが CloudWatch
+              のメトリクスを参照し、目標値に近づくように台数を増減させます。<br />
+            </p>
+            <p>次のような流れになります。</p>
+            <ul>
+              <li>メトリクス：CPU使用率が上がる（グラフで確認）</li>
+              <li>アラーム：しきい値に達して状態が変わる（OK → ALARM など）</li>
+              <li>自動対処：ASGが判断してスケールアウトする</li>
+            </ul>
+
+            <h3>3.5 Session Manager</h3>
+            <p>
+              Session Managerは、AWS Systems
+              Managerの機能の1つで、SSHなしでEC2に接続できます。<br />
+              ブラウザ（AWSマネジメントコンソール）から接続でき、キーペア管理や22番ポート公開が不要になります。<br />
+              そのため、ASGで増えたインスタンスにも同じ方法で入れて、運用をシンプルにできます。
+            </p>
+          </section>
+
+          <section id="handson">
+            <h2>4. ハンズオン</h2>
+            <p>
+              実際にALBとAuto
+              Scalingを構築し、CPU負荷をかけて自動的にサーバーが増える様子を観察します。<br />
+              運用アクセスは <strong>Session Manager</strong> を使います。
+            </p>
+
+            <div class="alert-box info">
+              <span class="alert-title">ℹ️ 事前準備</span>
+              <p>
+                VPC: session2-vpc（第2回で作成したVPC）<br />
+                サブネット: 以下のパブリックサブネット二つ
+              </p>
+              <ul style="margin-bottom: 0px">
+                <li>
+                  <strong>session4-public-subnet-a</strong
+                  >（第2回のsession2-subnetが残っている場合は、名前変更し流用可）
+                  <ul style="margin-bottom: 0px">
+                    <li>IPv4 CIDR：10.0.0.0/24</li>
+                    <li>AZ：ap-northeast-1a</li>
+                  </ul>
+                </li>
+                <li style="margin-bottom: 0px">
+                  <strong>session4-public-subnet-c</strong>
+                  <ul style="margin-bottom: 0px">
+                    <li>IPv4 CIDR：10.0.1.0/24</li>
+                    <li>AZ：ap-northeast-1c</li>
+                  </ul>
+                </li>
+              </ul>
+              <p>
+                ※
+                第2回のサブネット作成を参考に準備してください。パブリックIPv4アドレスの自動割り当てを有効化とルートテーブルのサブネットへの関連付けが必要になります。<br />
+                ※
+                学習用にEC2をパブリックサブネットで起動しますが、実務ではプライベートサブネット＋必要に応じてNAT/Endpointが推奨です。
+              </p>
+            </div>
+
+            <h3>Step 0: IAMロールの作成 (Session Manager用)</h3>
+            <p>
+              EC2インスタンスがSession
+              Managerと通信できるようにするための権限（IAMロール）を作成します。
+            </p>
+
+            <ol>
+              <li>
+                IAMダッシュボードの左メニュー「ロール」→「ロールを作成」をクリック
+                <img
+                  src="../image/session/4/iam/1-create.png"
+                  alt="ロールを作成の選択"
+                  class="img-w800"
+                />
+              </li>
+              <li>
+                <strong>信頼されたエンティティタイプ:</strong>
+                AWSのサービス<br />
+                <img
+                  src="../image/session/4/iam/2-entitytype.png"
+                  alt="信頼されたエンティティタイプの選択"
+                  class="img-w800"
+                />
+              </li>
+              <li>
+                <strong>ユースケース:</strong> EC2 を選択して「次へ」<br />
+                <img
+                  src="../image/session/4/iam/3-usecase.png"
+                  alt="ユースケースの選択"
+                  class="img-w800"
+                />
+              </li>
+              <li>
+                <strong>許可ポリシー:</strong> 検索ボックスに
+                <code>SSM</code> と入力し、<br />
+                <code>AmazonSSMManagedInstanceCore</code>
+                にチェックを入れて「次へ」<br />
+                <img
+                  src="../image/session/4/iam/4-select-policy.png"
+                  alt="許可ポリシーの選択"
+                  class="img-w800"
+                />
+              </li>
+              <li>
+                <strong>ロール名:</strong>
+                <code>session4-ssm-role</code> と入力して「ロールを作成」<br />
+                <img
+                  src="../image/session/4/iam/5-rolename.png"
+                  alt="ロール名の入力"
+                  class="img-w800"
+                />
+                <img
+                  src="../image/session/4/iam/5-create.png"
+                  alt="ロール名の入力"
+                  class="img-w800"
+                />
+                <img
+                  src="../image/session/4/iam/6-done.png"
+                  alt="ロール名の入力"
+                  class="img-w800"
+                />
+              </li>
+            </ol>
+
+            <h3>Step 1: セキュリティグループの作成</h3>
+            <h4>1. ALB用セキュリティグループ</h4>
+            <p>
+              ALBへのアクセスはHTTPによる自宅のグローバルIPからのみ許可します。また、Session
+              Manager を使うため、SSH（22番ポート）の許可は不要です。
+            </p>
+            <ul>
+              <li><strong>名前:</strong> <code>session4-alb-sg</code></li>
+              <li>
+                <strong>インバウンドルール:</strong>
+                <ul>
+                  <li>タイプ: HTTP (80) / ソース: マイIP</li>
+                </ul>
+                <img
+                  src="../image/session/4/sg/1-alb.png"
+                  alt="ALB用セキュリティグループの設定例"
+                  class="img-w800"
+                />
+              </li>
+            </ul>
+
+            <h4>2. EC2用セキュリティグループ</h4>
+            <p>
+              EC2へのアクセスはALBからのHTTP通信のみ許可します。外部からEC2へ直接アクセスされる経路を遮断します。
+            </p>
+            <ul>
+              <li><strong>名前:</strong> <code>session4-ec2-sg</code></li>
+              <li>
+                <strong>インバウンドルール:</strong>
+                <ul>
+                  <li>
+                    タイプ: HTTP (80) / ソース:
+                    <strong
+                      >カスタム (セキュリティグループ
+                      session4-alb-sgを選択)</strong
+                    >
+                    <br />
+                    <img
+                      src="../image/session/4/sg/2-ec2.png"
+                      alt="EC2用セキュリティグループの設定例"
+                      class="img-w800"
+                    />
+                  </li>
+                </ul>
+              </li>
+            </ul>
+
+            <h3>Step 2: 起動テンプレートの作成</h3>
+            <p>
+              Auto
+              ScalingがEC2を自動作成する際の「設計図」となる起動テンプレートを作成します。<br />
+            </p>
+            <p>
+              1.
+              EC2ダッシュボードの左メニュー「起動テンプレート」から作成します。
+            </p>
+            <img
+              src="../image/session/4/launch-template/1-board.png"
+              alt="起動テンプレートの作成画面"
+              class="img-w800"
+            />
+
+            <p>2. 以下の情報を入力し起動テンプレートを作成します。</p>
+            <ul>
+              <li>
+                <strong>テンプレート名:</strong> <code>session4-template</code>
+              </li>
+              <img
+                src="../image/session/4/launch-template/2-templatename.png"
+                alt="起動テンプレートの作成画面"
+                class="img-w800"
+              />
+
+              <li><strong>OS (AMI):</strong> Amazon Linux 2023</li>
+              <img
+                src="../image/session/4/launch-template/3-ami.png"
+                alt="起動テンプレートの作成画面"
+                class="img-w800"
+              />
+
+              <li>
+                <strong>インスタンスタイプ:</strong> t2.micro (または t3.micro)
+              </li>
+              <img
+                src="../image/session/4/launch-template/4-instancetype.png"
+                alt="起動テンプレートの作成画面"
+                class="img-w800"
+              />
+
+              <li>
+                <strong>キーペア:</strong>
+                <strong>起動テンプレートの設定に含めない</strong>
+              </li>
+              <img
+                src="../image/session/4/launch-template/5-keypair.png"
+                alt="起動テンプレートの作成画面"
+                class="img-w800"
+              />
+
+              <li>
+                <strong>ネットワーク設定:</strong>
+                <ul>
+                  <li>サブネット：起動テンプレートの設定に含めない</li>
+                  <li>
+                    セキュリティグループ: <code>session4-ec2-sg</code> を選択
+                  </li>
+                  <li>パブリックIPの自動割り当て: <strong>有効化</strong></li>
+                </ul>
+              </li>
+              <img
+                src="../image/session/4/launch-template/6-network.png"
+                alt="起動テンプレートの作成画面"
+                class="img-w800"
+              />
+
+              <li>
+                <strong>高度な詳細:</strong>
+                <ul>
+                  <li>
+                    <strong>IAMインスタンスプロフィール:</strong>
+                    <code>session4-ssm-role</code> を選択 (Step
+                    0で作成したロール)
+                  </li>
+                  <img
+                    src="../image/session/4/launch-template/7-iam.png"
+                    alt="起動テンプレートの作成画面"
+                    class="img-w800"
+                  />
+                  <li>
+                    <strong>ユーザーデータ:</strong><br />
+                    以下のスクリプトをコピーして貼り付けます。Webサーバーを起動し、どのインスタンスか分かるように画面にIDを表示するスクリプトです。
+                  </li>
+                  <img
+                    src="../image/session/4/launch-template/8-userdata.png"
+                    alt="起動テンプレートの作成画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+            </ul>
+
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+              <pre class="code-block"><code>#!/bin/bash
 dnf update -y
 dnf install -y httpd
 systemctl enable --now httpd
@@ -236,202 +726,444 @@ INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.2
 AZ=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
 
 echo "&lt;h1&gt;Hello from $INSTANCE_ID ($AZ)&lt;/h1&gt;" &gt; /var/www/html/index.html</code></pre>
-        </div>
+            </div>
 
-        <h3>Step 3: ALB (ロードバランサー) の作成</h3>
-        <p>EC2ダッシュボードの左メニュー「ロードバランサー」から作成します。</p>
-        <ol>
-          <li>「Application Load Balancer」の作成を選択</li>
-          <li><strong>ロードバランサー名:</strong> <code>handson-alb</code></li>
-          <li><strong>スキーム:</strong> インターネット向け (Internet-facing)</li>
-          <li><strong>ネットワークマッピング:</strong>
-            <ul>
-              <li>VPCを選択</li>
-              <li>マッピング: <strong>異なる2つのAZ</strong> (例: 1a と 1c) の<strong>パブリックサブネット</strong>を選択</li>
-            </ul>
-          </li>
-          <li><strong>セキュリティグループ:</strong> <code>ALB-SG</code> を選択 (defaultは削除)</li>
-          <li><strong>リスナーとルーティング:</strong>
-            <ul>
-              <li>プロトコル: HTTP / ポート: 80</li>
-              <li>ターゲットグループの作成リンクをクリック（新しいタブが開きます）
+            <h3>Step 3: ALB (ロードバランサー) の作成</h3>
+            <p>
+              EC2ダッシュボードの左メニュー「ロードバランサー」から作成します。
+            </p>
+            <img
+              src="../image/session/4/alb/1-board.png"
+              alt="ALBの作成画面"
+              class="img-w800"
+            />
+            <ol>
+              <li>「Application Load Balancer」の作成を選択</li>
+              <img
+                src="../image/session/4/alb/2-create-alb.png"
+                alt="ALBの作成画面"
+                class="img-w800"
+              />
+              <li>
+                <strong>ロードバランサー名:</strong> <code>session4-alb</code>
+              </li>
+              <li>
+                <strong>スキーム:</strong> インターネット向け (Internet-facing)
+              </li>
+              <img
+                src="../image/session/4/alb/3-scheme.png"
+                alt="ALBの作成画面"
+                class="img-w800"
+              />
+              <li>
+                <strong>ネットワークマッピング:</strong>
                 <ul>
-                  <li>ターゲットタイプ: インスタンス</li>
-                  <li>ターゲットグループ名: <code>handson-tg</code></li>
-                  <li>「次へ」を押し、ターゲットの登録は<strong>何もせず</strong>に「ターゲットグループの作成」完了</li>
+                  <li>VPC:session2-vpc</li>
+                  <li>
+                    アベイラビリティーゾーンとサブネット: <br />
+                    ap-northeast-1a -> session4-public-subnet-a<br />
+                    ap-northeast-1c -> session4-public-subnet-c<br />
+                    <strong>2つのAZ</strong> (1a と 1c)
+                    の<strong>パブリックサブネット</strong>を選択
+                  </li>
+                  <img
+                    src="../image/session/4/alb/4-network.png"
+                    alt="ALBの作成画面"
+                    class="img-w800"
+                  />
                 </ul>
               </li>
-              <li>ALB作成画面に戻り、更新ボタンを押して <code>handson-tg</code> を選択</li>
-            </ul>
-          </li>
-          <li>「ロードバランサーの作成」をクリック</li>
-        </ol>
+              <li>
+                <strong>セキュリティグループ:</strong>
+                <code>session4-alb-sg</code> を選択 (defaultは削除)
+              </li>
+              <img
+                src="../image/session/4/alb/5-sg.png"
+                alt="ALBの作成画面"
+                class="img-w800"
+              />
+              <li>
+                <strong>リスナーとルーティング:</strong>
+                <ul>
+                  <li>プロトコル: HTTP / ポート: 80</li>
+                  <li>
+                    ターゲットグループの作成リンクをクリック（新しいタブが開きます）
+                    <ul>
+                      <li>ターゲットタイプ: インスタンス</li>
+                      <li>ターゲットグループ名: <code>session4-tg</code></li>
+                      <li>
+                        「次へ」を押し、ターゲットの登録は<strong>何もせず</strong>に「ターゲットグループの作成」完了
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    ALB作成画面に戻り、更新ボタンを押して
+                    <code>session4-tg</code> を選択
+                  </li>
+                  <img
+                    src="../image/session/4/alb/6-listener.png"
+                    alt="ALBの作成画面"
+                    class="img-w800"
+                  />
+                  <img
+                    src="../image/session/4/alb/7-target-group.png"
+                    alt="ALBの作成画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+              <li>「ロードバランサーの作成」をクリック</li>
+            </ol>
 
-        <div class="alert-box info">
-          <span class="alert-title">ℹ️ ターゲットグループは「ASGで登録される先」</span>
-          <p>
-            ALBはターゲットグループを通してEC2へルーティングします。あとでASG作成時に「このターゲットグループに登録する」を指定します。
-          </p>
-        </div>
+            <h3>Step 4: Auto Scaling グループ (ASG) の作成</h3>
+            <p>
+              EC2ダッシュボードの左メニュー「Auto Scaling
+              グループ」から作成します。
+            </p>
+            <img
+              src="../image/session/4/asg/1-board.png"
+              alt="ALBの作成画面"
+              class="img-w800"
+            />
+            <ol>
+              <li><strong>名前:</strong> <code>session4-asg</code></li>
+              <li>
+                <strong>起動テンプレート:</strong>
+                <code>session4-template</code> を選択し、次へをクリック
+              </li>
+              <img
+                src="../image/session/4/asg/2-name.png"
+                alt="ALBの作成画面"
+                class="img-w800"
+              />
+              <li>
+                <strong>ネットワーク:</strong>
+                <ul>
+                  <li>VPCを選択</li>
+                  <li>
+                    アベイラビリティーゾーンとサブネット:
+                    ALBで選択したのと同じ<strong>2つのパブリックサブネット</strong>を選択
+                  </li>
+                  <img
+                    src="../image/session/4/asg/3-network.png"
+                    alt="ALBの作成画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+              <li>
+                <strong>ロードバランシング:</strong>
+                <ul>
+                  <li>「既存のロードバランサーにアタッチ」を選択</li>
+                  <li>
+                    「ターゲットグループから選択」→
+                    <code>session4-tg</code> を選択
+                  </li>
+                  <img
+                    src="../image/session/4/asg/4-load-balancing.png"
+                    alt="ALBの作成画面"
+                    class="img-w800"
+                  />
+                  <li>
+                    ヘルスチェックのタイプ: 「ELB」にチェックを入れる（推奨）
+                  </li>
+                  <img
+                    src="../image/session/4/asg/5-health-check.png"
+                    alt="ALBの作成画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+              <li>
+                <strong>グループサイズ:</strong>
+                <ul>
+                  <li>希望するキャパシティ: <code>2</code></li>
+                  <li>最小の希望する容量: <code>2</code></li>
+                  <li>最大の希望する容量: <code>3</code></li>
+                  <img
+                    src="../image/session/4/asg/6-group-size.png"
+                    alt="ALBの作成画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+              <li>
+                <strong>スケーリングポリシー (重要):</strong>
+                <ul>
+                  <li>「ターゲット追跡スケーリングポリシー」を選択</li>
+                  <li>メトリクスタイプ: 平均 CPU 使用率</li>
+                  <li>
+                    ターゲット値: <code>40</code> <br /><small
+                      >※学習用に低めに設定します（通常は70–80程度）。※判定は
+                      ASG全体の平均CPU
+                      なので、1台だけに負荷をかけるとスケールアウトしにくい場合があります。</small
+                    >
+                  </li>
+                  <img
+                    src="../image/session/4/asg/7-scaling-policy.png"
+                    alt="ALBの作成画面"
+                    class="img-w800"
+                  />
+                </ul>
+              </li>
+              <img
+                src="../image/session/4/asg/8-cloudwatc.png"
+                alt="ALBの作成画面"
+                class="img-w800"
+              />
+              <li>
+                残りはデフォルトのまま「Auto Scaling グループの作成」をクリック
+              </li>
+            </ol>
 
-        <h3>Step 4: Auto Scaling グループ (ASG) の作成</h3>
-        <p>EC2ダッシュボードの左メニュー「Auto Scaling グループ」から作成します。</p>
-        <ol>
-          <li><strong>名前:</strong> <code>handson-asg</code></li>
-          <li><strong>起動テンプレート:</strong> <code>handson-template</code> を選択</li>
-          <li><strong>ネットワーク:</strong>
-            <ul>
-              <li>VPCを選択</li>
-              <li>アベイラビリティーゾーンとサブネット: ALBで選択したのと同じ<strong>2つのパブリックサブネット</strong>を選択</li>
-            </ul>
-          </li>
-          <li><strong>ロードバランシング:</strong>
-            <ul>
-              <li>「既存のロードバランサーにアタッチ」を選択</li>
-              <li>「ターゲットグループから選択」→ <code>handson-tg</code> を選択</li>
-              <li>ヘルスチェックのタイプ: 「ELB」にチェックを入れる（推奨）</li>
-            </ul>
-          </li>
-          <li><strong>グループサイズ:</strong>
-            <ul>
-              <li>希望する容量: <code>2</code></li>
-              <li>最小希望容量: <code>2</code></li>
-              <li>最大希望容量: <code>4</code></li>
-            </ul>
-          </li>
-          <li><strong>スケーリングポリシー (重要):</strong>
-            <ul>
-              <li>「ターゲット追跡スケーリングポリシー」を選択</li>
-              <li>メトリクスタイプ: 平均 CPU 使用率</li>
-              <li>ターゲット値: <code>40</code> <br><small>※学習用に低めに設定します（通常は70–80程度）。※判定は ASG全体の平均CPU なので、1台だけに負荷をかけるとスケールアウトしにくい場合があります。</small></li>
-            </ul>
-          </li>
-          <li>残りはデフォルトのまま「Auto Scaling グループの作成」をクリック</li>
-        </ol>
+            <h3>Step 5: 動作確認とモニタリング</h3>
 
-        <h3>Step 5: 動作確認とモニタリング</h3>
-        
-        <h4>1. 負荷分散の確認</h4>
-        <p>
-          EC2インスタンス一覧を見ると、自動的に2台のインスタンスが起動しているはずです。<br>
-          ロードバランサーの画面から「DNS名」をコピーし、ブラウザでアクセスします。<br>
-          ページを何度かリロード（更新）して、表示される <strong>Instance ID</strong> や <strong>AZ</strong> が切り替われば、負荷分散が成功しています。
-        </p>
+            <h4>1. 負荷分散の確認</h4>
+            <p>
+              EC2インスタンス一覧を見ると、自動的に2台のインスタンスが起動しているはずです。<br />
+              <img
+                src="../image/session/4/check/1-ec2.png"
+                alt="ALBの作成画面"
+                class="img-w800"
+              />
+              ロードバランサーの画面から「DNS名」をコピーし、ブラウザでアクセスします。<br />
+              <img
+                src="../image/session/4/check/2-alb.png"
+                alt="ALBの作成画面"
+                class="img-w800"
+              />
+              ページを何度かリロードして、表示される
+              <strong>Instance ID</strong> や
+              <strong>AZ</strong>
+              が切り替われば、負荷分散が成功しています。<br />
+              <img
+                src="../image/session/4/check/3-result.png"
+                alt="ALBの作成画面"
+                class="img-w800"
+              />
+              ※ http:// でアクセスする必要があります。https://
+              では表示されません。
+            </p>
 
-        <h4>2. 負荷テストとスケールアウトの確認 (SSM接続)</h4>
-        <p>
-          起動しているEC2の1台に、ブラウザから直接接続して負荷をかけます。
-        </p>
-        
-        <div class="alert-box info">
-          <span class="alert-title">⏳ 接続ボタンが押せない場合</span>
-          <p>
-            インスタンス起動直後はSSMエージェントの準備に時間がかかります（1〜2分程度）。<br>
-            「接続」ボタンがグレーアウトしている場合は、少し待ってからブラウザをリロードしてください。
-          </p>
-        </div>
+            <h4>2. 負荷テストとスケールアウトの確認</h4>
+            <p>
+              起動しているEC2の1台に、Session Manager で接続して負荷をかけます。
+            </p>
 
-        <ol>
-          <li>EC2インスタンス一覧で、起動しているインスタンスの1つを選択し、上部の「接続」ボタンをクリックします。</li>
-          <li>「セッションマネージャー」タブを選択し、「接続」をクリックします。<br>
-            <small>※黒い画面（ターミナル）がブラウザの別タブで開きます。</small></li>
-          <li>以下のコマンドを実行して、CPU負荷をかけます。</li>
-        </ol>
-        <div class="code-wrapper">
-          <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
-          <pre class="code-block"><code># CPU負荷を100%にするコマンドをバックグラウンドで複数実行
-yes > /dev/null &
-yes > /dev/null &
-yes > /dev/null &
-
-# CPU使用率を確認（topコマンドなど。終了は 'q'）
-top
-
-# 【重要】負荷テストを止めたいときは以下のコマンドを実行
-# pkill yes</code></pre>
-        </div>
-
-        <div class="alert-box warning">
-          <span class="alert-title">⚠️ 接続できない時のチェック</span>
-          <ul>
-             <li>起動テンプレートで <strong>IAMロール (handson-ssm-role)</strong> を選び忘れていませんか？</li>
-             <li>パブリックIPは割り当てられていますか？（今回は「SSMがAWSのSystems ManagerエンドポイントへHTTPS(443)で到達できる状態」を手早く確保するため、パブリックIP＋IGW経由で外向き通信できる構成にしています。パブリックIP自体が必須という意味ではありません。実務ではプライベートサブネットでもNAT GatewayやVPCエンドポイントで到達性を確保できます）</li>
-          </ul>
-        </div>
-
-        <h4>3. CloudWatchとスケーリングの確認</h4>
-        <p>
-          負荷をかけたら、AWSマネジメントコンソールで状況を見守ります。<br>
-          <span style="color: red;">※メトリクスの反映と判定には数分のタイムラグがあります。焦らず待ちましょう。</span>
-        </p>
-        <ul>
-          <li><strong>CloudWatch:</strong> アラーム一覧に <code>TargetTracking-...</code> という名前のアラームが自動作成されます。状態が「OK」から「アラーム」に変わるのを確認します。</li>
-          <li><strong>Auto Scaling:</strong> 「アクティビティ」タブを確認すると、"Launching a new EC2 instance" というログが表示されます。</li>
-          <li><strong>EC2一覧:</strong> 新しいインスタンスが自動的に起動し、合計3台（または4台）になります。</li>
-          <li><strong>ターゲットグループ:</strong> 新しいインスタンスが自動的に登録され、ヘルスチェックが「Healthy」になります。</li>
-        </ul>
-
-        <div class="alert-box info">
-          <span class="alert-title">チェックリスト</span>
-          <ul style="margin: 0; padding-left: 20px;">
-            <li>[ ] CloudWatchのアラーム状態が「アラーム」に変わったか？</li>
-            <li>[ ] ASGの「アクティビティ」タブに "Launching a new EC2 instance" が表示されたか？</li>
-            <li>[ ] EC2インスタンス一覧で、新しいインスタンスが増えているか？</li>
-            <li>[ ] ターゲットグループの「Healthy」なターゲット数が増えたか？</li>
-          </ul>
-        </div>
-
-        <h3>Step 6: 後片付け</h3>
-        <p>
-          確認が終わったら、課金を防ぐためにリソースを削除します。
-        </p>
-        <ol>
-          <li>SSM接続しているターミナルで負荷プロセスを停止（またはインスタンスごと終了されるのでそのままでも可ですが、念のため）
-            <div class="code-wrapper">
-              <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
-              <pre class="code-block"><code>pkill yes</code></pre>
+            <div class="alert-box info">
+              <span class="alert-title">⏳ 接続ボタンが押せない場合</span>
+              <p>
+                インスタンス起動直後はSSMエージェントの準備に時間がかかります（1〜2分程度）。<br />
+                「接続」ボタンがグレーアウトしている場合は、少し待ってからブラウザをリロードしてください。
+              </p>
             </div>
-          </li>
-          <li><strong>Auto Scaling グループの削除:</strong> これを削除すると、起動していたEC2インスタンスも自動的に終了（削除）されます。</li>
-          <li><strong>ロードバランサー (ALB) の削除</strong></li>
-          <li><strong>ターゲットグループの削除</strong></li>
-          <li><strong>起動テンプレートの削除</strong></li>
-          <li><strong>セキュリティグループの削除</strong></li>
-          <li><strong>IAMロール (handson-ssm-role) の削除</strong></li>
-        </ol>
-      </section>
 
-      <section id="summary">
-        <h2>5. まとめ</h2>
-        <p>
-          今回は、ALB（入口固定＋分散＋ヘルスチェック）とASG（増減＋自動交換）、CloudWatch（数値監視＋アラーム）を組み合わせて、負荷に応じて勝手に強くなる構成を体験しました。<br>
-          さらに運用アクセスをSSM（Session Manager）に寄せることで、SSH(22)を開けずに管理できる、実務寄りの運用スタイルも体験できたはずです。
-        </p>
-        <p>
-          次のステップとしては、CPUだけでなく <code>RequestCountPerTarget</code> やレイテンシを使ったスケーリング、さらに実務寄りにプライベートサブネット構成へ寄せる（NAT/Endpoint/SSMの到達性設計）と理解が深まります。<br>
-          次回は、S3を使った静的ウェブサイトホスティングと、CloudFrontによるコンテンツ配信について学びます。
-        </p>
-      </section>
+            <ol>
+              <li>
+                EC2インスタンス一覧で、起動しているインスタンスの1つを選択し、上部の「接続」ボタンをクリックします。
+              </li>
+              <img
+                src="../image/session/4/check2/1-connect.png"
+                alt="ALBの作成画面"
+                class="img-w800"
+              />
+              <li>
+                「セッションマネージャー」タブを選択し、「接続」をクリックします。<br />
+                <img
+                  src="../image/session/4/check2/2-connect.png"
+                  alt="ALBの作成画面"
+                  class="img-w800"
+                />
+                <small
+                  >※黒い画面（ターミナル）がブラウザの別タブで開きます。</small
+                >
+              </li>
+              <li>以下のコマンドを実行して、CPU負荷をかけます。</li>
+              <div class="code-wrapper">
+                <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+                <pre
+                  class="code-block"
+                ><code># CPU負荷を100%にするコマンドをバックグラウンドで複数実行
+yes > /dev/null &
+yes > /dev/null &
+yes > /dev/null &
+</code></pre>
+              </div>
+              <p>※ 負荷テストを止めたいときは、以下のコマンドを実行します。</p>
+              <div class="code-wrapper">
+                <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+                <pre
+                  class="code-block"
+                ><code># 【重要】負荷テストを止めたいときは以下のコマンドを実行
+# pkill yes</code></pre>
+              </div>
 
-    </div>
+              <li>
+                CPU使用率を確認します。<br />
+                <code>top</code> コマンドを実行し、<strong>%CPU</strong>
+                の値が上がっていることを確認します。<br />
+                ％CPUの値の例: 64.3 us, 35.7
+                sy(二つの合計値が100%に近いほどCPUがフル稼働している状態)<br />
+                <div class="code-wrapper">
+                  <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+                  <pre
+                    class="code-block"
+                  ><code># CPU使用率を確認（topコマンドの終了は 'q'キー）
+top
+</code></pre>
+                </div>
+              </li>
+              <li>
+                数分待ち、CloudWatchのアラーム状態やASGのアクティビティタブ、新しいEC2インスタンスの起動を確認します。
+              </li>
+            </ol>
 
-    <nav class="toc">
-      <h2>目次</h2>
-      <ul>
-        <li><a href="#intro">1. はじめに</a></li>
-        <li><a href="#goal">2. ゴール</a></li>
-        <li><a href="#lecture">3. 解説</a></li>
-        <li><a href="#handson">4. ハンズオン</a></li>
-        <li><a href="#summary">5. まとめ</a></li>
-      </ul>
-    </nav>
-  </div>
-  </main>
+            <div class="alert-box warning">
+              <span class="alert-title"
+                >⚠️ セッションマネージャーに接続できない時のチェック</span
+              >
+              <ul>
+                <li>
+                  起動テンプレートで
+                  <strong>IAMロール (session4-ssm-role)</strong>
+                  を選び忘れていませんか？
+                </li>
+                <li>
+                  EC2にパブリックIPは割り当てられていますか?(起動テンプレートでパブリックIPの自動割り当てを有効にする必要があります)
+                </li>
+              </ul>
+            </div>
 
-  <footer>
-    &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC BY-SA 4.0.
-  </footer>
-  <!-- 共通スクリプト（コピー機能など） -->
-  <script src="../common/script.js"></script>
-</body>
+            <h4>3. CloudWatchとスケーリングの確認</h4>
+            <p>
+              負荷をかけたら、AWSマネジメントコンソールで状況を見守ります。<br />
+              <span style="color: red"
+                >※メトリクスの反映と判定には数分のタイムラグがあります。焦らず待ちましょう。</span
+              >
+            </p>
+            <ul>
+              <li>
+                <strong>CloudWatch:</strong> CloudWatch
+                コンソールで「アラーム（すべてのアラーム）」を開き、ターゲット追跡スケーリングにより自動作成された
+                TargetTracking-...-AlarmHigh-... /
+                TargetTracking-...-AlarmLow-... を確認します。 CPU 使用率（ASG
+                平均）が 目標値 40% を上回る方向に振れると AlarmHigh
+                側の状態が変化し(アラーム状態に変わる)、必要に応じてスケールアウトが実行されます（逆に下回ると
+                AlarmLow 側でスケールイン側の判断に使われます）。
+              </li>
+              <img
+                src="../image/session/4/check3/1-cloudwatch2.png"
+                alt="ALBの作成画面"
+                class="img-w800"
+              />
+              <img
+                src="../image/session/4/check3/1-cloudwatch.png"
+                alt="ALBの作成画面"
+                class="img-w800"
+              />
+              <li>
+                <strong>Auto Scaling:</strong>
+                「アクティビティ」タブを確認すると、3つ目の"Launching a new EC2
+                instance" というログが表示されます。
+              </li>
+              <img
+                src="../image/session/4/check3/2-asg.png"
+                alt="ALBの作成画面"
+                class="img-w800"
+              />
+              <img
+                src="../image/session/4/check3/2-asg2.png"
+                alt="ALBの作成画面"
+                class="img-w800"
+              />
+              <li>
+                <strong>EC2一覧:</strong>
+                新しいインスタンスが自動的に起動し、合計3台になります。
+              </li>
+              <img
+                src="../image/session/4/check3/3-ecs.png"
+                alt="ALBの作成画面"
+                class="img-w800"
+              />
+              <li>
+                <strong>ターゲットグループ:</strong>
+                新しいインスタンスが自動的に登録され、ヘルスチェックが「Healthy」になります。
+              </li>
+              <img
+                src="../image/session/4/check3/4-tg.png"
+                alt="ALBの作成画面"
+                class="img-w800"
+              />
+            </ul>
+
+            <div class="alert-box info">
+              <span class="alert-title">チェックリスト</span>
+              <ul style="margin: 0; padding-left: 20px">
+                <li>
+                  [ ] CloudWatchのアラームの状態が「アラーム状態」に変わったか？
+                </li>
+                <li>
+                  [ ] ASGの「アクティビティ」タブに 3つ目の"Launching a new EC2
+                  instance" が表示されたか？
+                </li>
+                <li>
+                  [ ] EC2インスタンス一覧で、新しいインスタンスが増えているか？
+                </li>
+                <li>
+                  [ ] ターゲットグループの「Healthy」なターゲット数が増えたか？
+                </li>
+              </ul>
+            </div>
+
+            <h3>Step 6: 後片付け</h3>
+            <p>確認が終わったら、リソースを削除します。</p>
+            <ol>
+              <li>
+                セッションマネージャーで接続しているターミナルで負荷プロセスを停止（インスタンスごと終了されるのでそのままでも可ですが、念のため）
+                <div class="code-wrapper">
+                  <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+                  <pre class="code-block"><code>pkill yes</code></pre>
+                </div>
+              </li>
+              <li>
+                <strong>Auto Scaling グループの削除:</strong>
+                これを削除すると、起動していたEC2インスタンスも自動的に終了（削除）されます。
+              </li>
+              <li><strong>ロードバランサー (ALB) の削除</strong></li>
+              <li><strong>ターゲットグループの削除</strong></li>
+              <li><strong>起動テンプレートの削除</strong></li>
+              <li><strong>セキュリティグループの削除</strong></li>
+              <li><strong>IAMロール (session4-ssm-role) の削除</strong></li>
+            </ol>
+          </section>
+
+          <section id="summary">
+            <h2>5. まとめ</h2>
+            <p>
+              今回は、ALB（入口固定＋分散＋ヘルスチェック）とASG（増減＋自動交換）、CloudWatch（数値監視＋アラーム）を組み合わせて、負荷に応じてスケーリングする構成を体験しました。<br />
+              Session Managerを使った運用スタイルも体験できたはずです。
+            </p>
+            <p>次回は、S3とCloudFrontによるコンテンツ配信について学びます。</p>
+          </section>
+        </div>
+
+        <nav class="toc">
+          <h2>目次</h2>
+          <ul>
+            <li><a href="#intro">1. はじめに</a></li>
+            <li><a href="#goal">2. ゴール</a></li>
+            <li><a href="#lecture">3. 解説</a></li>
+            <li><a href="#handson">4. ハンズオン</a></li>
+            <li><a href="#summary">5. まとめ</a></li>
+          </ul>
+        </nav>
+      </div>
+    </main>
+
+    <footer>
+      &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC BY-SA 4.0.
+    </footer>
+    <!-- 共通スクリプト（コピー機能など） -->
+    <script src="../common/script.js"></script>
+  </body>
 </html>

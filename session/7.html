@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>第7回： | 勉強会 for AWS</title>
+    <link rel="stylesheet" href="../common/style.css" />
+    <style>
+      header .insider-header {
+        max-width: 1160px;
+      }
+      .img-w800 {
+        width: 100%;
+        max-width: 800px;
+        height: auto;
+        display: block;
+        margin: 20px auto;
+        border: 1px solid #ddd;
+      }
+      .img-w600 {
+        width: 100%;
+        max-width: 600px;
+        height: auto;
+        display: block;
+        margin: 20px auto;
+        border: 1px solid #ddd;
+      }
+
+      .alert-box {
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 5px;
+        border-left: 5px solid #ccc;
+        background-color: #f9f9f9;
+      }
+      .alert-box.warning {
+        border-color: #f0ad4e;
+        background-color: #fcf8e3;
+        color: #8a6d3b;
+      }
+      .alert-box.info {
+        border-color: #5bc0de;
+        background-color: #d9edf7;
+        color: #31708f;
+      }
+      .alert-title {
+        font-weight: bold;
+        display: block;
+        margin-bottom: 5px;
+      }
+      .code-wrapper {
+        position: relative;
+        margin: 20px 0;
+      }
+      .copy-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: #eee;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 12px;
+        padding: 2px 5px;
+      }
+      .copy-btn:hover {
+        background: #ddd;
+      }
+      pre.code-block {
+        background: #2d2d2d;
+        color: #f8f8f2;
+        padding: 15px;
+        border-radius: 5px;
+        overflow-x: auto;
+        font-family: 'Consolas', 'Monaco', monospace;
+      }
+    </style>
+    <script>
+      function copyCode(btn) {
+        const pre = btn.nextElementSibling;
+        const code = pre.innerText;
+        navigator.clipboard.writeText(code).then(() => {
+          const originalText = btn.innerText;
+          btn.innerText = 'Copied!';
+          setTimeout(() => {
+            btn.innerText = originalText;
+          }, 2000);
+        });
+      }
+    </script>
+  </head>
+
+  <body>
+    <header>
+      <div class="insider-header">
+        <a href="../index.html" class="logo"
+          >勉強会 <span style="font-size: 0.8em">for</span> AWS</a
+        >
+        <span class="header-spacer"></span>
+        <span
+          class="header-btn header-btn-disabled"
+          aria-label="質問板は停止中です"
+        >
+          質問板（停止中）
+        </span>
+      </div>
+    </header>
+    <main>
+      <div class="container">
+        <div class="content">
+          <h1>第7回：ECSによるコンテナ運用入門</h1>
+          <div class="post-date">Edited at 2026-06-27</div>
+
+          <section id="overview">
+            <h2>使用資料</h2>
+            <ul>
+              <li>
+                <a
+                  href="https://pages.awscloud.com/rs/112-TZM-766/images/AWS-Black-Belt_2024_Amazon_ECS_Introduction_0831_v1.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >ECS入門（AWS Black Belt）</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://pages.awscloud.com/rs/112-TZM-766/images/AWS-Black-Belt_2024_AWS-Fargate-Introduction_1031_v1.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >Fargate入門（AWS Black Belt）</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://catalog.workshops.aws/ecs-web-application-handson/ja-JP/ecs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >ハンズオン(workshop studio ECSハンズオン)</a
+                >
+              </li>
+            </ul>
+            <p>
+              ※この回の勉強会では上記資料を使用しました。なお、「はじめに」以降の内容は上記資料をもとに作成したものではなく、管理人の備忘録として記載しています。作成途中の内容を含むため、正確性は保証できません。
+            </p>
+          </section>
+
+          <section id="intro">
+            <h2>1. はじめに</h2>
+            <p>
+              前回はローカル環境でDockerを使って、コンテナイメージを作成し、コンテナを起動する流れを学びました。<br />
+              今回はそのイメージをAWSへ持っていき、AWS上でコンテナを実行して、ブラウザからアクセスできる状態を作ります。
+            </p>
+            <p>今回使うサービスは次の2つです。</p>
+            <ul>
+              <li>
+                <strong>Amazon ECR</strong>：コンテナイメージを保存する場所
+              </li>
+              <li>
+                <strong>Amazon ECS（Fargate）</strong
+                >：そのイメージを使ってコンテナを実行する場所
+              </li>
+            </ul>
+            <p>
+              Fargate
+              は、コンテナを動かすためのEC2を自分で管理しなくてよい実行基盤です。タスク定義でCPUやメモリを指定してコンテナを実行できます。Fargate
+              のタスク定義では、CPU とメモリの指定が必須です。
+            </p>
+            <div class="alert-box warning">
+              <span class="alert-title">⚠️ 課金に関する注意</span>
+              <p>
+                今回は学習のため、<b>パブリックサブネット + パブリックIP</b>
+                で最短確認できる構成にします。<br />
+                ただし、この方法は本番向けの推奨構成ではありません。また、AWSではパブリックIPv4アドレスに課金があり、2024年2月1日以降は
+                1 IP あたり 0.005 USD/時間
+                がかかります。新規AWSアカウント向けには Free Tier credits
+                の案内がありますが、無料と決め打ちせず、使い終わったら必ず削除する前提で進めてください。
+              </p>
+            </div>
+          </section>
+
+          <section id="goal">
+            <h2>2. ゴール</h2>
+            <p>この回のゴールは次の3つです。</p>
+            <ul>
+              <li>Dockerイメージを <b>ECR に push</b> できる</li>
+              <li>ECS Fargate で <b>コンテナを起動</b> できる</li>
+              <li>AWS上で動くコンテナへ <b>ブラウザからアクセス</b> できる</li>
+            </ul>
+          </section>
+
+          <section id="lecture">
+            <h2>3. 解説</h2>
+
+            <h3>3.1 Amazon ECR とは</h3>
+            <p>
+              Amazon ECR（Elastic Container
+              Registry）は、コンテナイメージを保存・配布するためのレジストリです。<br />
+              ローカルで作った Docker イメージを ECR に push し、ECS がそこから
+              pull して起動します。
+            </p>
+            <p>
+              学習用としては、<b>Docker Hub のAWS版</b>
+              と考えると分かりやすいです。<br />
+              次回以降も、「ローカルで build したイメージを ECR
+              に置く」という流れが基本になります。
+            </p>
+
+            <h3>3.2 Amazon ECS とは</h3>
+            <p>
+              Amazon ECS（Elastic Container
+              Service）は、コンテナ化されたアプリケーションを<b>デプロイ・実行・管理</b>するためのフルマネージドなコンテナオーケストレーションサービスです。ローカル環境での
+              <code>docker run</code>
+              は「1台のマシン上でコンテナを起動する」操作でしたが、ECS
+              ではそれをより整理し、どのコンテナを、どの設定で、何個、どのように維持して動かすかを分けて管理します。
+            </p>
+            <p>
+              ECS を理解するうえで重要なのは、<b
+                >クラスター、タスク定義、タスク、サービス</b
+              >
+              の4つです。ECS
+              は単にコンテナを起動するだけの仕組みではなく、設計図を定義し、その設計図から実体を起動し、それを必要数だけ維持するところまで含めて提供します。
+            </p>
+
+            <!-- img: ECSの構成要素。クラスターの中で、タスク定義をもとにタスクやサービスが動作する関係図 -->
+
+            <h4>クラスター</h4>
+            <p>
+              クラスターは、ECS
+              における<b>コンテナ管理の論理的なまとまり</b>です。タスクやサービスは、必ずどこかのクラスターの中で動作します。クラスターそのものがアプリの設定を書く場所ではなく、どのタスクやサービスをどの単位で管理するかを整理するための入れ物です。
+            </p>
+            <p>
+              Fargate を使う場合でもクラスターは必要ですが、EC2
+              起動タイプのように「クラスター用のサーバー群を自分で運用する」という意味合いは薄くなります。Fargate
+              では実行基盤の管理を AWS
+              側が担うため、クラスターは主に<b>管理上の境界</b>として働きます。
+            </p>
+
+            <h4>タスク定義</h4>
+            <p>
+              タスク定義は、ECS
+              における<b>設計図</b>です。どのコンテナイメージを使うか、どのポートを使うか、CPU
+              とメモリをいくつ割り当てるか、ログをどこへ出すか、どの IAM
+              ロールを使うか、といった<b>起動時の条件</b>をまとめて定義します。ローカルの
+              <code>docker run</code>
+              ではコマンド引数でその場で指定していた内容を、ECS
+              では再利用可能な形で保存する、と考えると理解しやすいです。
+            </p>
+            <p>
+              タスク定義には、1つだけでなく<b>複数のコンテナ</b>を含めることもできます。たとえば、アプリ本体のコンテナに加えて、補助的な処理を行うコンテナを同じタスク内にまとめることができます。つまり、タスク定義は「1コンテナの設定」ではなく、<b>1つの実行単位全体の定義</b>です。
+            </p>
+            <p>
+              また、IAM ロールには似た名前で役割の違うものがあります。<b
+                >task execution role</b
+              >
+              は、ECS/Fargate が ECR からイメージを pull したり、CloudWatch Logs
+              にログを書いたりするためのロールです。これに対して
+              <b>task role</b> は、コンテナの中で動くアプリケーション自身が AWS
+              API
+              を呼ぶためのロールです。前者は<b>起動のための権限</b>、後者は<b>アプリのための権限</b>です。
+            </p>
+
+            <h4>タスク</h4>
+            <p>
+              タスクは、タスク定義をもとに<b>実際に起動された実体</b>です。設計図そのものがタスク定義であり、その設計図から起動された「今動いているもの」がタスクです。同じタスク定義から複数のタスクを起動すれば、同じ設定のコンテナ群を複数動かせます。
+            </p>
+            <p>
+              タスクは起動時にいきなり稼働完了するわけではなく、いくつかの状態を経て実行状態になります。これは、イメージの取得、ネットワークの準備、コンテナ起動などが内部で順番に行われるためです。ECS
+              コンソールで状態が段階的に変わるのは、この流れがあるからです。
+            </p>
+
+            <h4>サービス</h4>
+            <p>
+              サービスは、<b>指定した数のタスクを維持し続ける仕組み</b>です。単発で1回だけタスクを起動するのではなく、「常に1個動いていてほしい」「常に3個維持したい」といった状態を
+              ECS に管理させるために使います。
+            </p>
+            <p>
+              サービスの大きな役割は、<b>継続運用</b>と<b>可用性の維持</b>です。必要数より実行中タスクが減れば、ECS
+              は desired count
+              を満たすように新しいタスクを起動します。また、サービス設定やタスク定義を更新すると、新しい設定でタスクを起動し直すデプロイの土台にもなります。Web
+              アプリや API
+              のように継続公開したいシステムでは、サービスが中心的な役割を持ちます。
+            </p>
+
+            <h4>4つの要素の関係</h4>
+            <p>4つの要素の関係は、次のように整理できます。</p>
+            <ul>
+              <li><b>クラスター</b>：管理のための箱</li>
+              <li><b>タスク定義</b>：何をどう動かすかを書く設計図</li>
+              <li><b>タスク</b>：その設計図から起動された実体</li>
+              <li><b>サービス</b>：その実体を必要数だけ維持する仕組み</li>
+            </ul>
+            <p>
+              この関係が分かると、ECS
+              は「コンテナを起動するサービス」というより、<b>コンテナの実行を設計・実行・維持に分けて管理するサービス</b>だと理解しやすくなります。
+            </p>
+
+            <h3>3.3 Fargate とは</h3>
+            <p>
+              Fargate
+              は、ECSでコンテナを動かすための<b>サーバーレスな実行基盤</b>です。<br />
+              EC2起動タイプのように、コンテナを載せるEC2インスタンスを自分で管理する必要がありません。<br />
+              その代わり、<b>CPU とメモリ、ネットワーク、イメージ</b>
+              を指定してタスクを起動します。
+            </p>
+            <p>
+              なお、Fargate の Linux タスクでは、CPUアーキテクチャとして
+              <code>X86_64</code> と
+              <code>ARM64</code> が使えます。Mac（M1/M2/M3）でローカル build
+              したイメージを使う場合、アーキテクチャをそろえないと起動に失敗することがあります。
+            </p>
+
+            <h3>3.4 今回の構成が「学習用」な理由</h3>
+            <p>
+              本番では、ECS/Fargate は<b>プライベートサブネット</b>で動かし、<b
+                >ALB（Application Load Balancer）</b
+              >経由で公開する構成がよく使われます。AWSのベストプラクティスでも、Fargate
+              サービスは private subnet での利用が推奨されています。
+            </p>
+            <p>
+              ただし今回は、Docker → ECR → ECS の流れを最短で体験するために、
+            </p>
+            <ul>
+              <li>パブリックサブネット</li>
+              <li>パブリックIP有効</li>
+              <li>ブラウザから直接アクセス</li>
+            </ul>
+            <p>という、学習用に簡略化した構成を取ります。</p>
+          </section>
+
+          <section id="handson">
+            <h2>4. ハンズオン</h2>
+
+            <h3 id="step0">Step 0: 事前準備</h3>
+            <p>この回を進める前提は次のとおりです。</p>
+            <ul>
+              <li>AWS にログインできる</li>
+              <li>第6回の内容をもとに Docker イメージを作れる</li>
+              <li>
+                <code>docker</code> と <code>aws</code> CLI が使える<br />（ローカルPCでも
+                CloudShell でも可）
+              </li>
+            </ul>
+            <p>
+              AWS CloudShell では、Docker コンテナをビルドして ECR に push
+              する公式チュートリアルもあります。会社PC制限がある場合は
+              CloudShell を使う選択肢もあります。
+            </p>
+            <div class="alert-box warning">
+              <span class="alert-title">⚠️ M1/M2/M3 Mac の人へ</span>
+              <p>
+                Mac でローカル build したイメージを使う場合、ARM64
+                のイメージになることがあります。<br />
+                その場合は、後で作るタスク定義の OS/アーキテクチャを
+                <b>ARM64 に合わせる</b> のが簡単です。<br />
+                逆に、タスク定義を X86_64
+                にするなら、ローカル側もその前提でビルドする必要があります。
+              </p>
+            </div>
+
+            <h3 id="step1">Step 1: ECR リポジトリを作成する</h3>
+            <p>AWSコンソールで ECR を開き、リポジトリを作成します。</p>
+            <ul>
+              <li>可視性設定：<strong>プライベート</strong></li>
+              <li>リポジトリ名：<code>aws-study-app</code>（任意）</li>
+            </ul>
+            <p>作成後、<b>リポジトリURI</b> を控えます。例：</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>123456789012.dkr.ecr.ap-northeast-1.amazonaws.com/aws-study-app</code></pre>
+            </div>
+
+            <h3 id="step2">Step 2: Docker イメージを ECR に push する</h3>
+            <p>
+              ここでは、第6回で作ったイメージ、または同等のイメージを ECR に
+              push します。
+            </p>
+            <div class="alert-box info">
+              <span class="alert-title">💡 ヒント</span>
+              <p>
+                ECR のコンソールには
+                <b>「プッシュコマンドの表示」</b>
+                があり、そのままコピペできるコマンドが表示されます。基本的な流れは次のとおりです。
+              </p>
+            </div>
+
+            <p>1. ECR へログイン</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>aws ecr get-login-password --region ap-northeast-1 \
+| docker login --username AWS --password-stdin [アカウントID].dkr.ecr.ap-northeast-1.amazonaws.com</code></pre>
+            </div>
+
+            <p>2. イメージをビルド</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>docker build -t aws-study-app .</code></pre>
+            </div>
+
+            <p>3. ECR の URI に合わせてタグ付け</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>docker tag aws-study-app:latest [リポジトリURI]:latest</code></pre>
+            </div>
+
+            <p>4. push</p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>docker push [リポジトリURI]:latest</code></pre>
+            </div>
+
+            <p>これで、ローカルの Docker イメージが ECR に保存されます。</p>
+
+            <h3 id="step3">Step 3: ECS クラスターを作成する</h3>
+            <p>AWSコンソールで ECS を開き、クラスターを作成します。</p>
+            <ul>
+              <li>クラスター名：<code>aws-study-cluster</code></li>
+              <li>インフラストラクチャ：<strong>AWS Fargate</strong></li>
+            </ul>
+            <p>
+              クラスター自体は、コンテナを管理するための論理的なまとまりです。<br />
+              このあと、タスク定義を使ってタスクを起動します。
+            </p>
+
+            <h3 id="step4">Step 4: タスク定義を作成する</h3>
+            <p>
+              タスク定義は、ECS版の実行設定ファイルです。<br />
+              第6回の
+              <code>docker run</code>
+              に相当する設定を、AWS上でまとめて定義します。
+            </p>
+            <p>設定例：</p>
+            <ul>
+              <li>タスク定義ファミリー：<code>aws-study-task</code></li>
+              <li>起動タイプ：<strong>AWS Fargate</strong></li>
+              <li>
+                OS/アーキテクチャ：
+                <ul>
+                  <li>Intel/通常PCなら <strong>Linux / X86_64</strong></li>
+                  <li>
+                    M1/M2/M3 Mac で ARM イメージを使うなら
+                    <strong>Linux / ARM64</strong>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                タスクサイズ：CPU <code>0.25 vCPU</code>、メモリ
+                <code>0.5 GB</code><br />
+                （Fargate で有効な最小の Linux 組み合わせの1つです）
+              </li>
+              <li>
+                コンテナ設定例：
+                <ul>
+                  <li>名前：<code>app-container</code></li>
+                  <li>
+                    イメージURI：Step 1 で控えた ECR URI + <code>:latest</code>
+                  </li>
+                  <li>コンテナポート：<code>80</code></li>
+                </ul>
+              </li>
+            </ul>
+            <div class="alert-box info">
+              <span class="alert-title">💡 ここで追加した方がよい設定</span>
+              <p><b>① task execution role</b></p>
+              <p>
+                ECS/Fargate が ECR からイメージを pull したり、CloudWatch Logs
+                にログを送るためには、task execution role
+                が使われます。コンソールで自動作成されることも多いですが、存在しない場合は
+                <code>ecsTaskExecutionRole</code> を使う必要があります。
+              </p>
+              <p><b>② CloudWatch Logs</b></p>
+              <p>
+                コンテナのログを CloudWatch Logs に送るには、タスク定義で
+                <code>awslogs</code> ログドライバを指定します。<br />
+                ローカルの
+                <code>docker logs</code>
+                に相当する確認手段なので、教材としては入れておいた方が確実です。
+              </p>
+            </div>
+
+            <h3 id="step5">Step 5: タスクを実行する</h3>
+            <p>
+              作成したクラスター <code>aws-study-cluster</code> を開き、<b
+                >新しいタスクの実行</b
+              >
+              を選びます。
+            </p>
+            <p>設定例：</p>
+            <ul>
+              <li>起動タイプ：<strong>FARGATE</strong></li>
+              <li>タスク定義：<code>aws-study-task</code></li>
+              <li>リビジョン：最新</li>
+              <li>
+                ネットワーク設定：
+                <ul>
+                  <li>VPC：デフォルト VPC（または勉強会用VPC）</li>
+                  <li>サブネット：<strong>パブリックサブネット</strong></li>
+                  <li>
+                    セキュリティグループ：新規作成<br />
+                    インバウンド：HTTP / 80 / 0.0.0.0/0
+                  </li>
+                  <li>
+                    <strong>パブリックIPの自動割り当て：ENABLED</strong>
+                    <span style="color: red">※重要</span>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+            <p>
+              Fargate タスクはタスクごとに ENI を持ちます。<br />
+              また、Fargate タスクがコンテナイメージを pull
+              するにはインターネットへの到達性が必要で、パブリックサブネットを使う場合はパブリック
+              IP を割り当てられます。プライベートサブネットを使う場合は NAT
+              Gateway などが必要です。
+            </p>
+
+            <h3 id="step6">Step 6: 動作確認</h3>
+            <p>タスク一覧で、ステータスが</p>
+            <p>
+              <code>PROVISIONING</code> → <code>PENDING</code> →
+              <code>RUNNING</code>
+            </p>
+            <p>へ進むのを待ちます。</p>
+            <p>
+              <code>RUNNING</code> になったらタスク詳細を開き、<b
+                >ネットワーク</b
+              >
+              セクションの <b>Public IP</b> を確認します。<br />
+              その IP に対して、ブラウザで
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+              <pre class="code-block"><code>http://[パブリックIP]</code></pre>
+            </div>
+            <p>へアクセスします。前回作成したHTMLが表示されれば成功です。🎉</p>
+            <div class="alert-box warning">
+              <span class="alert-title">🔎 表示できないときの確認ポイント</span>
+              <ul>
+                <li>セキュリティグループで 80 番を許可しているか</li>
+                <li>コンテナポートが 80 になっているか</li>
+                <li>パブリック IP が有効か</li>
+                <li>タスクのログにエラーが出ていないか</li>
+              </ul>
+              <p>
+                CloudWatch Logs を設定していれば、ローカルの
+                <code>docker logs</code> と同じ感覚で原因を探しやすくなります。
+              </p>
+            </div>
+
+            <h3 id="step7">Step 7: 後片付け</h3>
+            <p>課金を防ぐため、作成したリソースは削除します。おすすめ順序：</p>
+            <ol>
+              <li>実行中タスクを停止</li>
+              <li>（作った場合）サービスを削除</li>
+              <li>ECR リポジトリを削除（中のイメージも削除）</li>
+              <li>タスク定義を登録解除</li>
+              <li>クラスターを削除</li>
+            </ol>
+            <div class="alert-box warning">
+              <span class="alert-title">⚠️ 注意</span>
+              <p>
+                学習用にパブリック IP を使っているため、放置するとパブリック
+                IPv4
+                料金も含めて課金対象になり得ます。使い終わったら必ず片付けてください。
+              </p>
+            </div>
+          </section>
+        </div>
+
+        <nav class="toc">
+          <h2>目次</h2>
+          <ul>
+            <li><a href="#intro">1. はじめに</a></li>
+            <li><a href="#goal">2. ゴール</a></li>
+            <li><a href="#lecture">3. 解説</a></li>
+            <li><a href="#handson">4. ハンズオン</a></li>
+          </ul>
+        </nav>
+      </div>
+    </main>
+
+    <footer>
+      &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC BY-SA 4.0.
+    </footer>
+  </body>
+</html>

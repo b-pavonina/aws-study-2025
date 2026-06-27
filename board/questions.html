@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
@@ -16,7 +16,9 @@
         border: 1px solid #ddd;
         border-radius: 6px;
         background: #fff;
-        transition: background-color 0.3s, color 0.3s;
+        transition:
+          background-color 0.3s,
+          color 0.3s;
       }
 
       .question:hover {
@@ -92,7 +94,10 @@
         text-align: center;
         white-space: nowrap;
         font-weight: 600;
-        transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+        transition:
+          background 0.2s,
+          box-shadow 0.2s,
+          transform 0.1s;
       }
       .ask-btn:hover {
         background: #005bb5;
@@ -224,7 +229,12 @@
             >勉強会 <span style="font-size: 0.8em">for</span> AWS</a
           >
           <span class="header-spacer"></span>
-          <a href="../board/signin.html" class="header-btn">質問板</a>
+          <span
+            class="header-btn header-btn-disabled"
+            aria-label="質問板は停止中です"
+          >
+            質問板（停止中）
+          </span>
         </div>
       </header>
       <main>
@@ -284,8 +294,8 @@
                       transition: background 0.15s;
                       box-sizing: border-box;
                     "
-                    onmouseover="this.style.background='#f5f7fa'"
-                    onmouseout="this.style.background='none'"
+                    onmouseover="this.style.background = '#f5f7fa'"
+                    onmouseout="this.style.background = 'none'"
                   >
                     識別キー確認
                   </button>
@@ -463,8 +473,8 @@
               q.nickname.trim().toLowerCase() !== 'null'
                 ? escapeHTML(q.nickname.trim())
                 : q.nickname
-                ? String(q.nickname)
-                : '匿名'
+                  ? String(q.nickname)
+                  : '匿名'
             }  ${timeString}</div>
           `;
           div.style.cursor = 'pointer';

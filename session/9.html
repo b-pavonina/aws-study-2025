@@ -1,0 +1,2542 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      第9回：イベント駆動アーキテクチャ (SQS, SNS, EventBridge) | 勉強会 for AWS
+    </title>
+    <link rel="stylesheet" href="../common/style.css" />
+    <style>
+      header .insider-header {
+        max-width: 1160px;
+      }
+      .img-w800 {
+        width: 100%;
+        max-width: 800px;
+        height: auto;
+      }
+      .img-w600 {
+        width: 100%;
+        max-width: 600px;
+        height: auto;
+      }
+      .alert-box {
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 5px;
+        border-left: 5px solid #ccc;
+        background-color: #f9f9f9;
+      }
+      .alert-box.warning {
+        border-color: #f0ad4e;
+        background-color: #fcf8e3;
+        color: #8a6d3b;
+      }
+      .alert-box.info {
+        border-color: #5bc0de;
+        background-color: #d9edf7;
+        color: #31708f;
+      }
+      .alert-title {
+        font-weight: bold;
+        display: block;
+        margin-bottom: 5px;
+      }
+      .mini-check {
+        background: #f8fafc;
+        border: 1px solid #e5e8ef;
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin: 14px 0;
+      }
+      .mini-check b {
+        display: inline-block;
+        margin-bottom: 6px;
+      }
+      .architecture-flow {
+        background: #f8fafc;
+        border: 1px solid #e5e8ef;
+        border-radius: 8px;
+        padding: 14px 16px;
+        margin: 18px 0;
+      }
+      .architecture-flow pre {
+        margin: 0;
+        white-space: pre;
+        overflow-x: auto;
+        font-family: 'Fira Code', monospace;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <div class="insider-header">
+        <a href="../index.html" class="logo"
+          >勉強会 <span style="font-size: 0.8em">for</span> AWS</a
+        >
+        <span class="header-spacer"></span>
+        <span
+          class="header-btn header-btn-disabled"
+          aria-label="質問板は停止中です"
+        >
+          質問板（停止中）
+        </span>
+      </div>
+    </header>
+
+    <main>
+      <div class="container">
+        <div class="content">
+          <h1>第9回：イベント駆動アーキテクチャ (SQS, SNS, EventBridge)</h1>
+          <div class="post-date">Edited at 2026-06-27</div>
+
+          <section id="overview">
+            <h2>使用資料</h2>
+            <ul>
+              <li>
+                <a
+                  href="https://d1.awsstatic.com/webinars/jp/pdf/services/20190717_AWS-BlackBelt_AmazonSQS.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >SQS（AWS Black Belt）</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://pages.awscloud.com/rs/112-TZM-766/images/20190604_AWS-Blackbelt_AmazonSNS.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >SNS（AWS Black Belt）</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://d1.awsstatic.com/webinars/jp/pdf/services/20200122_BlackBelt_EventBridge.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >EventBridge（AWS Black Belt）</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://pages.awscloud.com/rs/112-TZM-766/images/AWS-Black-Belt_2023_Amazon-EventBridge-Scheduler_0930_v1.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >EventBridge Scheduler（AWS Black Belt）</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://catalog.workshops.aws/workshops/63320e83-6abc-493d-83d8-f822584fb3cb/ja-JP"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >ハンズオン：AWS Workshops の「Serverless Event-Driven
+                  Architecture」</a
+                >
+              </li>
+            </ul>
+            <p>
+              ※この回の勉強会では上記資料を使用しました。なお、「はじめに」以降の内容は上記資料をもとに作成したものではなく、管理人の備忘録として記載しています。作成途中の内容を含むため、正確性は保証できません。
+            </p>
+          </section>
+
+          <section id="intro">
+            <h2>1. はじめに</h2>
+            <p>
+              第8回では、API Gateway と Lambda
+              を使って、HTTPリクエストを受け取り、Lambdaで処理するサーバーレスAPIの基本を学びました。
+            </p>
+            <p>
+              API Gateway と Lambda
+              を使うと、サーバーを自分で管理しなくてもAPIを作れます。これは非常に便利です。
+            </p>
+            <p>
+              しかし、実際のシステムでは、すべての処理を1回のAPIリクエストの中で完結させようとすると、問題が起きやすくなります。
+            </p>
+            <p>
+              たとえば、質問板アプリで「質問を投稿する」処理を考えてみます。
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>質問投稿API
+  ↓
+入力チェック
+  ↓
+RDSへ保存
+  ↓
+管理者へメール通知
+  ↓
+未回答一覧の更新
+  ↓
+ログ集計
+  ↓
+レスポンス返却</code></pre>
+            </div>
+            <p>一見すると、1つのLambdaで全部やれば簡単そうに見えます。</p>
+            <p>しかし、実務ではこの作り方は危険です。</p>
+            <p>
+              なぜなら、メール通知が遅いだけでAPI全体が遅くなったり、通知処理でエラーが出ただけで質問投稿まで失敗扱いになったりするからです。
+            </p>
+            <p>
+              本来、ユーザーにとって一番大事なのは「質問が投稿できたこと」です。
+            </p>
+            <p>
+              管理者通知や集計処理は、質問投稿のあとで少し遅れて実行されても問題ない場合が多いです。
+            </p>
+            <p>
+              このように、すぐ終わらせるべき処理と、あとで処理してもよい処理を分ける考え方が重要です。
+            </p>
+            <p>
+              この回では、AWSで非同期処理やイベント駆動設計を実現する代表的なサービスとして、以下の3つを学びます。
+            </p>
+            <ul>
+              <li>Amazon SQS</li>
+              <li>Amazon SNS</li>
+              <li>Amazon EventBridge Scheduler</li>
+            </ul>
+            <p>今回の目的は、サービス名を暗記することではありません。</p>
+            <p>目的は、次の考え方を身につけることです。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn"></button>
+              <pre
+                class="code-block"
+              ><code>今すぐ返すべき処理と、あとで処理してよい処理を分ける</code></pre>
+            </div>
+            <p>
+              この考え方がわかると、壊れにくく、拡張しやすいシステムを設計しやすくなります。
+            </p>
+            <!-- img: API Gateway + Lambda の同期処理から、SQS / SNS / EventBridge Scheduler を使った非同期処理へ広がる構成図 -->
+            <figure>
+              <img
+                src="../image/session/9/explain/event-driven-overview.png"
+                alt="同期処理から非同期処理へ広がる構成図"
+                class="img-w800"
+              />
+              <figcaption class="img-caption">
+                API Gateway + Lambda の同期処理から、SQS / SNS / EventBridge
+                Scheduler を使った非同期処理へ広がる構成図
+              </figcaption>
+            </figure>
+          </section>
+
+          <section id="goal">
+            <h2>2. この回のゴール</h2>
+            <p>このセッションのゴールは、以下のとおりです。</p>
+            <ul>
+              <li>同期処理と非同期処理の違いを説明できる</li>
+              <li>
+                SQSが「処理待ちのメッセージをためるキュー」であることを理解する
+              </li>
+              <li>SNSが「複数の宛先へ通知を配る仕組み」であることを理解する</li>
+              <li>
+                EventBridge
+                Schedulerが「決まった時間や間隔で処理を起動する仕組み」であることを理解する
+              </li>
+              <li>
+                LambdaとSQSを連携し、キューに入ったメッセージを非同期で処理できる
+              </li>
+              <li>LambdaからSNSへ通知を送信できる</li>
+              <li>EventBridge SchedulerからLambdaを定期実行できる</li>
+              <li>DLQ、可視性タイムアウト、リトライ、冪等性の基本を理解する</li>
+            </ul>
+            <p>
+              この回が終わると、次のような構成を自分で作れるようになります。
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>EventBridge Scheduler
+        ↓
+  Producer Lambda
+        ↓
+      SQS
+        ↓
+   Worker Lambda
+        ↓
+      SNS
+        ↓
+  Email Notification</code></pre>
+            </div>
+          </section>
+
+          <section id="architecture">
+            <h2>3. 今回作る構成</h2>
+            <p>
+              今回のハンズオンでは、質問板アプリを題材にして、質問投稿後の通知処理を非同期化する構成を作ります。
+            </p>
+            <p>
+              実際の質問板アプリ本体に組み込む前段階として、まずはシンプルな検証用構成を作ります。
+            </p>
+
+            <h3>3.1 構成概要</h3>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>手動実行 または EventBridge Scheduler
+        ↓
+Producer Lambda
+        ↓
+SQS Queue
+        ↓
+Worker Lambda
+        ↓
+SNS Topic
+        ↓
+Email</code></pre>
+            </div>
+            <!-- img: Producer Lambda、SQS、Worker Lambda、SNS、EventBridge Scheduler の全体構成図 -->
+            <figure>
+              <img
+                src="../image/session/9/explain/handson-architecture.png"
+                alt="第9回ハンズオン構成図"
+                class="img-w800"
+              />
+              <figcaption class="img-caption">
+                Producer Lambda、SQS、Worker Lambda、SNS、EventBridge Scheduler
+                の全体構成図
+              </figcaption>
+            </figure>
+            <h3>3.2 各コンポーネントの役割</h3>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>コンポーネント</th>
+                    <th>役割</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Producer Lambda</td>
+                    <td>質問投稿イベントを作り、SQSへメッセージを送る</td>
+                  </tr>
+                  <tr>
+                    <td>SQS Queue</td>
+                    <td>処理待ちのメッセージをためる</td>
+                  </tr>
+                  <tr>
+                    <td>Worker Lambda</td>
+                    <td>SQSからメッセージを受け取り、処理する</td>
+                  </tr>
+                  <tr>
+                    <td>SNS Topic</td>
+                    <td>通知を配信する</td>
+                  </tr>
+                  <tr>
+                    <td>Email Subscription</td>
+                    <td>SNSから送られた通知メールを受け取る</td>
+                  </tr>
+                  <tr>
+                    <td>EventBridge Scheduler</td>
+                    <td>決まった間隔でProducer Lambdaを起動する</td>
+                  </tr>
+                  <tr>
+                    <td>DLQ</td>
+                    <td>処理に失敗し続けたメッセージを退避する</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <h3>3.3 今回の学習ポイント</h3>
+            <p>
+              今回の構成で重要なのは、Producer Lambda と Worker Lambda
+              を分けることです。
+            </p>
+            <p>Producer Lambdaは、メッセージをSQSに入れるだけです。</p>
+            <p>Worker Lambdaは、SQSに入ったメッセージをあとから処理します。</p>
+            <p>つまり、処理が以下のように分離されます。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>ユーザーに近い処理
+  → すぐ終わらせる
+
+時間がかかる処理・失敗しても再試行したい処理
+  → SQSに入れてあとで処理する</code></pre>
+            </div>
+            <p>この分離が、非同期処理の基本です。</p>
+          </section>
+
+          <section id="async">
+            <h2>4. なぜ非同期処理が必要なのか</h2>
+
+            <h3>4.1 同期処理とは</h3>
+            <p>同期処理とは、処理が終わるまで呼び出し元が待つ方式です。</p>
+            <p>
+              たとえば、ブラウザからAPIを呼び出し、LambdaがRDSに保存し、その結果をブラウザに返す処理は同期処理です。
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>ブラウザ
+  ↓ リクエスト
+API Gateway
+  ↓
+Lambda
+  ↓
+RDS
+  ↓
+Lambda
+  ↓ レスポンス
+ブラウザ</code></pre>
+            </div>
+            <p>同期処理はわかりやすいです。</p>
+            <p>ユーザーがボタンを押して、その結果がすぐ画面に返ってきます。</p>
+            <p>
+              ログイン、投稿、検索、詳細表示など、ユーザーが結果をすぐ知りたい処理には同期処理が向いています。
+            </p>
+
+            <h3>4.2 同期処理だけで作ると何が困るのか</h3>
+            <p>
+              同期処理だけでシステムを作ると、以下の問題が起きやすくなります。
+            </p>
+            <p>1つ目は、レスポンスが遅くなることです。</p>
+            <p>
+              APIの中でメール送信、画像処理、外部API連携、集計処理などを全部実行すると、ユーザーはそれらが終わるまで待たされます。
+            </p>
+            <p>2つ目は、一部の処理の失敗が全体の失敗になりやすいことです。</p>
+            <p>
+              たとえば、質問自体はDBに保存できたのに、メール通知だけ失敗したとします。
+            </p>
+            <p>
+              このとき、API全体をエラーにしてしまうと、ユーザーから見ると「質問投稿に失敗した」ように見えてしまいます。
+            </p>
+            <p>しかし実際には、質問は保存されています。</p>
+            <p>
+              このような状態は、ユーザー体験としても、運用としても扱いづらいです。
+            </p>
+            <p>3つ目は、負荷が一気に集中したときに弱いことです。</p>
+            <p>
+              たとえば、勉強会直後に質問が大量に投稿された場合、すべての通知処理や集計処理をその場で実行すると、Lambda、DB、外部サービスに一気に負荷がかかります。
+            </p>
+
+            <h3>4.3 非同期処理とは</h3>
+            <p>
+              非同期処理とは、今すぐ終わらせる必要がない処理を、あとで別の処理として実行する方式です。
+            </p>
+            <p>質問板アプリで考えると、以下のようになります。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>質問投稿API
+  ↓
+RDSへ保存
+  ↓
+SQSへメッセージ送信
+  ↓
+ユーザーへレスポンス
+
+その後、別のLambdaがSQSを処理
+  ↓
+SNSで管理者へ通知</code></pre>
+            </div>
+            <p>ユーザーへのレスポンスは早く返せます。</p>
+            <p>
+              通知処理が一時的に失敗しても、質問投稿自体は成功として扱えます。
+            </p>
+            <p>
+              さらに、SQSにメッセージをためておけるため、後続処理が一時的に遅くなっても、メッセージを失いにくくなります。
+            </p>
+
+            <h3>4.4 同期処理と非同期処理の使い分け</h3>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>処理</th>
+                    <th>向いている方式</th>
+                    <th>理由</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>ログイン</td>
+                    <td>同期</td>
+                    <td>結果をすぐ返す必要がある</td>
+                  </tr>
+                  <tr>
+                    <td>質問投稿のDB保存</td>
+                    <td>同期</td>
+                    <td>保存成功・失敗をユーザーに伝える必要がある</td>
+                  </tr>
+                  <tr>
+                    <td>管理者への通知</td>
+                    <td>非同期</td>
+                    <td>少し遅れてもよい</td>
+                  </tr>
+                  <tr>
+                    <td>集計処理</td>
+                    <td>非同期</td>
+                    <td>ユーザーを待たせる必要がない</td>
+                  </tr>
+                  <tr>
+                    <td>画像変換</td>
+                    <td>非同期</td>
+                    <td>時間がかかることがある</td>
+                  </tr>
+                  <tr>
+                    <td>外部API連携</td>
+                    <td>非同期にしたい場合が多い</td>
+                    <td>外部サービスの遅延・障害の影響を分離したい</td>
+                  </tr>
+                  <tr>
+                    <td>毎日決まった時刻のチェック</td>
+                    <td>スケジュール実行</td>
+                    <td>ユーザー操作をきっかけにしない</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>実務では、まず次の問いを考えると判断しやすいです。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>この処理の完了を、ユーザーは今すぐ待つ必要があるか？</code></pre>
+            </div>
+            <p>答えが「はい」なら同期処理です。</p>
+            <p>答えが「いいえ」なら、非同期処理を検討します。</p>
+          </section>
+
+          <section id="sqs">
+            <h2>5. Amazon SQSとは</h2>
+
+            <h3>5.1 SQSの役割</h3>
+            <p>Amazon SQSは、メッセージキューのサービスです。</p>
+            <p>
+              キューとは、処理待ちのメッセージを一時的にためておく場所です。
+            </p>
+            <p>身近な例で言うと、飲食店の注文票に近いです。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>お客さんが注文する
+  ↓
+注文票が並ぶ
+  ↓
+厨房が順番に処理する</code></pre>
+            </div>
+            <p>
+              注文が一気に来ても、厨房は注文票を見ながら順番に処理できます。
+            </p>
+            <p>SQSも同じです。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>Producer
+  ↓ メッセージ送信
+SQS
+  ↓ メッセージ受信
+Consumer</code></pre>
+            </div>
+            <!-- img: Producer が SQS にメッセージを送り、Consumer があとから処理する図 -->
+            <figure>
+              <img
+                src="../image/session/9/explain/sqs-producer-consumer.png"
+                alt="SQSのProducerとConsumer"
+                class="img-w600"
+              />
+              <figcaption class="img-caption">
+                Producer が SQS にメッセージを送り、Consumer
+                があとから処理する図
+              </figcaption>
+            </figure>
+            <p>Producerは、メッセージを送る側です。</p>
+            <p>Consumerは、メッセージを受け取って処理する側です。</p>
+            <p>今回のハンズオンでは、以下の対応になります。</p>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>役割</th>
+                    <th>今回の構成</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Producer</td>
+                    <td>Producer Lambda</td>
+                  </tr>
+                  <tr>
+                    <td>Queue</td>
+                    <td>SQS Queue</td>
+                  </tr>
+                  <tr>
+                    <td>Consumer</td>
+                    <td>Worker Lambda</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <h3>5.2 SQSを使う理由</h3>
+            <p>SQSを使う理由は、処理を分離するためです。</p>
+            <p>
+              SQSを入れることで、送る側と処理する側が直接つながらなくなります。
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>SQSなし:
+Producer → Consumer
+
+SQSあり:
+Producer → SQS → Consumer</code></pre>
+            </div>
+            <p>SQSなしの場合、Consumerが遅いとProducerも影響を受けます。</p>
+            <p>
+              SQSありの場合、ProducerはSQSにメッセージを入れれば一旦処理を終えられます。
+            </p>
+            <p>Consumerは自分のペースでメッセージを処理できます。</p>
+            <p>これにより、以下のメリットがあります。</p>
+            <ul>
+              <li>後続処理が遅くても、前段の処理を早く終えられる</li>
+              <li>一時的な負荷をキューで吸収できる</li>
+              <li>処理に失敗したメッセージを再試行できる</li>
+              <li>処理に失敗し続けたメッセージをDLQに退避できる</li>
+              <li>ProducerとConsumerを疎結合にできる</li>
+            </ul>
+            <p>疎結合とは、システムの部品同士の依存を弱くすることです。</p>
+            <p>
+              依存が弱くなると、一部の変更や障害が全体に波及しにくくなります。
+            </p>
+
+            <h3>5.3 Standard QueueとFIFO Queue</h3>
+            <p>SQSには、大きく分けて2種類のキューがあります。</p>
+            <ul>
+              <li>Standard Queue</li>
+              <li>FIFO Queue</li>
+            </ul>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>種類</th>
+                    <th>特徴</th>
+                    <th>向いている用途</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Standard Queue</td>
+                    <td>
+                      高スループット。順序は厳密には保証されない。重複配信される可能性がある
+                    </td>
+                    <td>通知、ログ処理、一般的な非同期処理</td>
+                  </tr>
+                  <tr>
+                    <td>FIFO Queue</td>
+                    <td>順序を守る。重複を抑える仕組みがある</td>
+                    <td>注文処理、決済処理など順序が重要な処理</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>今回のハンズオンでは、Standard Queueを使います。</p>
+            <p>理由は、質問投稿通知では厳密な順序が必須ではないからです。</p>
+            <p>
+              たとえば、質問Aの通知と質問Bの通知の順番が多少前後しても、大きな問題にはなりにくいです。
+            </p>
+            <p>
+              一方、銀行の送金処理や在庫引当のように順番が重要な処理では、FIFO
+              Queueを検討します。
+            </p>
+
+            <h3>5.4 Standard Queueでは冪等性が重要</h3>
+            <p>
+              SQS Standard
+              Queueでは、メッセージが重複して配信される可能性があります。
+            </p>
+            <p>
+              そのため、Consumer側の処理は、同じメッセージが2回来ても壊れないように作る必要があります。
+            </p>
+            <p>これを冪等性と呼びます。</p>
+            <p>
+              冪等性とは、同じ処理を何度実行しても、結果が変わらない性質です。
+            </p>
+            <p>
+              たとえば、同じ通知メールが2回来る程度なら許容できる場合もあります。
+            </p>
+            <p>しかし、同じ請求処理が2回走ると重大な問題になります。</p>
+            <p>そのため、非同期処理では以下のような設計を考えます。</p>
+            <ul>
+              <li>
+                eventId
+                のような業務上の一意キーをDBに記録し、同じイベントが再実行された場合はスキップする。
+              </li>
+              <li>同じ通知を複数回送っても重大な問題にならないようにする</li>
+              <li>更新処理では上書き型にする</li>
+              <li>加算処理では二重加算を防ぐ</li>
+            </ul>
+            <p>「SQSを使えば必ず1回だけ処理される」と考えるのは危険です。</p>
+            <p>
+              特にStandard
+              Queueでは、「複数回処理されても壊れない」ように作ることが重要です。
+            </p>
+
+            <h3>5.5 可視性タイムアウト</h3>
+            <p>SQSで特に重要なのが、可視性タイムアウトです。</p>
+            <p>
+              可視性タイムアウトとは、あるConsumerがメッセージを受け取ったあと、そのメッセージを一定時間ほかのConsumerから見えなくする仕組みです。
+            </p>
+            <p>流れは以下のとおりです。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>1. Worker LambdaがSQSからメッセージを受け取る
+2. そのメッセージは一時的に見えなくなる
+3. Worker Lambdaが処理に成功する
+4. メッセージが削除される</code></pre>
+            </div>
+            <!-- img: Worker Lambda が処理中のメッセージを一時的に隠す可視性タイムアウトの図 -->
+            <figure>
+              <img
+                src="../image/session/9/explain/sqs-visibility-timeout.png"
+                alt="SQS可視性タイムアウト"
+                class="img-w600"
+              />
+              <figcaption class="img-caption">
+                Worker Lambda
+                が処理中のメッセージを一時的に隠す可視性タイムアウトの図
+              </figcaption>
+            </figure>
+            <p>
+              もしWorker
+              Lambdaが処理に失敗した場合、メッセージは削除されません。
+            </p>
+            <p>
+              その場合、可視性タイムアウトが切れたあと、メッセージは再び見えるようになります。
+            </p>
+            <p>すると、再度処理されます。</p>
+            <p>ここで誤解しやすい点があります。</p>
+            <p>可視性タイムアウトは、メッセージの保存期間ではありません。</p>
+            <p>
+              可視性タイムアウトは、「処理中のメッセージを一時的に隠す時間」です。
+            </p>
+            <p>メッセージの保存期間は、別の設定です。</p>
+
+            <h3>5.6 LambdaとSQSを組み合わせるときの可視性タイムアウト</h3>
+            <p>
+              LambdaでSQSを処理する場合、可視性タイムアウトはLambdaのタイムアウトより十分に長く設定します。
+            </p>
+            <p>目安としては、以下です。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>SQSの可視性タイムアウト
+  &gt;= Lambdaのタイムアウト × 6 + バッチングウィンドウ</code></pre>
+            </div>
+            <p>
+              今回のハンズオンでは、Worker Lambdaのタイムアウトを10秒にします。
+            </p>
+            <p>バッチングウィンドウは0秒にします。</p>
+            <p>そのため、可視性タイムアウトは少なくとも60秒以上が目安です。</p>
+            <p>今回は少し余裕を見て、70秒に設定します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>10秒 × 6 + 0秒 = 60秒
+→ 今回は70秒に設定</code></pre>
+            </div>
+            <h3>5.7 DLQ</h3>
+            <p>DLQは Dead Letter Queue の略です。</p>
+            <p>処理に失敗し続けたメッセージを退避するためのキューです。</p>
+            <p>
+              たとえば、あるメッセージが3回処理に失敗したら、通常のキューからDLQへ移動させる、という設定ができます。
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>SQS Queue
+  ↓ 失敗
+SQS Queue
+  ↓ 失敗
+SQS Queue
+  ↓ 失敗
+DLQ</code></pre>
+            </div>
+            <!-- img: 処理に失敗し続けたメッセージがDLQへ移動する図 -->
+            <figure>
+              <img
+                src="../image/session/9/explain/sqs-dlq.png"
+                alt="SQS DLQ"
+                class="img-w600"
+              />
+              <figcaption class="img-caption">
+                処理に失敗し続けたメッセージがDLQへ移動する図
+              </figcaption>
+            </figure>
+            <p>DLQは、失敗したメッセージを調査するために使います。</p>
+            <p>
+              DLQに入ったメッセージは、自動的に解決されるわけではありません。
+            </p>
+            <p>運用者が確認し、原因を調べる必要があります。</p>
+            <p>たとえば、以下のような原因が考えられます。</p>
+            <ul>
+              <li>メッセージ形式が壊れている</li>
+              <li>必須項目が足りない</li>
+              <li>後続の外部サービスがエラーを返している</li>
+              <li>Lambdaのコードにバグがある</li>
+              <li>IAM権限が足りない</li>
+            </ul>
+            <p>実務では、DLQを設定しただけで安心してはいけません。</p>
+            <p>DLQにメッセージが入ったことを検知する仕組みも必要です。</p>
+          </section>
+
+          <section id="sns">
+            <h2>6. Amazon SNSとは</h2>
+
+            <h3>6.1 SNSの役割</h3>
+            <p>Amazon SNSは、通知を配信するサービスです。</p>
+            <p>SNSは、Topicという単位で通知先をまとめます。</p>
+            <p>
+              TopicにメッセージをPublishすると、そのTopicを購読している宛先にメッセージが配信されます。
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>Publisher
+  ↓
+SNS Topic
+  ├─ Email
+  ├─ Lambda
+  ├─ SQS
+  └─ HTTPS Endpoint</code></pre>
+            </div>
+            <!-- img: SNS Topic に Publish されたメッセージが複数の購読先へ配信される図 -->
+            <figure>
+              <img
+                src="../image/session/9/explain/sns-topic-subscriptions.png"
+                alt="SNSトピックとサブスクリプション"
+                class="img-w600"
+              />
+              <figcaption class="img-caption">
+                SNS Topic に Publish
+                されたメッセージが複数の購読先へ配信される図
+              </figcaption>
+            </figure>
+            <p>SNSは、1つのメッセージを複数の宛先に配るのが得意です。</p>
+            <p>このような形を Pub/Sub と呼びます。</p>
+            <p>Pub/Subは Publish / Subscribe の略です。</p>
+            <ul>
+              <li>Publish: メッセージを発行する</li>
+              <li>Subscribe: メッセージを購読する</li>
+            </ul>
+
+            <h3>6.2 SNSを使う理由</h3>
+            <p>SNSを使う理由は、通知先を柔軟に増やせるからです。</p>
+            <p>たとえば、最初は管理者にメール通知するだけだったとします。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>Worker Lambda
+  ↓
+SNS Topic
+  ↓
+Email</code></pre>
+            </div>
+            <p>
+              あとから、Slack通知や別のLambda処理も追加したくなるかもしれません。
+            </p>
+            <p>
+              SNSを使っていれば、Publisher側のコードを大きく変えずに購読先を増やせます。
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>Worker Lambda
+  ↓
+SNS Topic
+  ├─ Email
+  ├─ Lambda
+  └─ SQS</code></pre>
+            </div>
+            <p>
+              通知先が増えても、Worker LambdaはSNS TopicにPublishするだけです。
+            </p>
+            <p>このように、SNSも疎結合な設計に役立ちます。</p>
+
+            <h3>6.3 SNSとSQSの違い</h3>
+            <p>SQSとSNSは名前が似ていますが、役割はかなり違います。</p>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>サービス</th>
+                    <th>主な役割</th>
+                    <th>イメージ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>SQS</td>
+                    <td>処理待ちメッセージをためる</td>
+                    <td>行列・順番待ち</td>
+                  </tr>
+                  <tr>
+                    <td>SNS</td>
+                    <td>通知を複数宛先に配る</td>
+                    <td>放送・配信</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>SQSは、Consumerが処理するまでメッセージを保持します。</p>
+            <p>SNSは、TopicにPublishされたメッセージを購読者へ配信します。</p>
+            <p>単純化すると、以下のように覚えるとよいです。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>あとで処理したいなら SQS
+みんなに知らせたいなら SNS</code></pre>
+            </div>
+            <h3>6.4 SNSのフィルタリング</h3>
+            <p>
+              SNSでは、サブスクリプションごとにフィルターポリシーを設定できます。
+            </p>
+            <p>たとえば、以下のように通知の種類を分けられます。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>SNS Topic
+  ├─ eventType = QUESTION_CREATED のときだけ管理者へ通知
+  ├─ eventType = ANSWER_CREATED のときだけ投稿者へ通知
+  └─ eventType = ERROR のときだけ運用担当へ通知</code></pre>
+            </div>
+            <p>
+              今回のハンズオンでは、基本を優先してフィルタリングまでは実装しません。
+            </p>
+            <p>ただし、実務では非常に便利な機能です。</p>
+            <p>通知先が増えるほど、SNSフィルタリングの価値が出てきます。</p>
+          </section>
+
+          <section id="eventbridge">
+            <h2>7. Amazon EventBridge Schedulerとは</h2>
+
+            <h3>7.1 EventBridge Schedulerの役割</h3>
+            <p>
+              EventBridge
+              Schedulerは、指定した時間や間隔でAWSサービスを呼び出すためのサービスです。
+            </p>
+            <p>たとえば、以下のような処理に使えます。</p>
+            <ul>
+              <li>毎日9:00にLambdaを実行する</li>
+              <li>5分ごとにバッチ処理を起動する</li>
+              <li>1回だけ指定時刻に処理を実行する</li>
+              <li>毎週月曜日にレポート作成処理を起動する</li>
+            </ul>
+            <p>
+              今回のハンズオンでは、5分ごとにProducer
+              Lambdaを実行するスケジュールを作ります。
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>EventBridge Scheduler
+  ↓ 5分ごと
+Producer Lambda
+  ↓
+SQS</code></pre>
+            </div>
+            <!-- img: EventBridge Scheduler が定期的に Producer Lambda を起動する図 -->
+            <figure>
+              <img
+                src="../image/session/9/explain/eventbridge-scheduler-flow.png"
+                alt="EventBridge Schedulerの定期実行"
+                class="img-w600"
+              />
+              <figcaption class="img-caption">
+                EventBridge Scheduler が定期的に Producer Lambda を起動する図
+              </figcaption>
+            </figure>
+            <h3>7.2 cronとrateとat</h3>
+            <p>
+              EventBridge
+              Schedulerでは、主に以下のようなスケジュール表現を使います。
+            </p>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>種類</th>
+                    <th>例</th>
+                    <th>意味</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>rate</td>
+                    <td><code>rate(5 minutes)</code></td>
+                    <td>5分ごと</td>
+                  </tr>
+                  <tr>
+                    <td>cron</td>
+                    <td><code>cron(0 9 ? * MON-FRI *)</code></td>
+                    <td>平日9:00</td>
+                  </tr>
+                  <tr>
+                    <td>at</td>
+                    <td><code>at(2026-06-06T12:00:00)</code></td>
+                    <td>指定時刻に1回だけ</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>rateは、一定間隔で実行したいときに使います。</p>
+            <p>cronは、曜日や時刻を細かく指定したいときに使います。</p>
+            <p>atは、1回だけ実行したいときに使います。</p>
+
+            <h3>7.3 EventBridge Schedulerの注意点</h3>
+            <p>
+              EventBridge
+              Schedulerは、秒単位で完全にぴったり実行される仕組みではありません。
+            </p>
+            <p>
+              スケジュール実行は、おおむね指定した時刻の範囲で呼び出されます。
+            </p>
+            <p>そのため、「1秒単位で厳密に実行したい処理」には向きません。</p>
+            <p>
+              一方で、日次バッチ、定期チェック、定期通知、古いデータの削除などには非常に向いています。
+            </p>
+
+            <h3>7.4 EventBridge SchedulerとEventBridge Ruleの違い</h3>
+            <p>
+              AWSには、以前からEventBridge
+              Ruleのスケジュール実行機能がありました。
+            </p>
+            <p>
+              ただし、現在はスケジュール実行にはEventBridge
+              Schedulerを使うのが基本です。
+            </p>
+            <p>
+              EventBridge
+              Schedulerの方が、スケジュール管理に特化しており、柔軟な設定ができます。
+            </p>
+            <p>
+              この勉強会では、古い書き方を覚えるより、現在使うべきEventBridge
+              Schedulerを中心に扱います。
+            </p>
+          </section>
+
+          <section id="design">
+            <h2>8. 設計の考え方</h2>
+
+            <h3>8.1 どのサービスを使うべきか</h3>
+            <p>SQS、SNS、EventBridge Schedulerは、それぞれ役割が違います。</p>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>やりたいこと</th>
+                    <th>使うサービス</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>処理をあと回しにしたい</td>
+                    <td>SQS</td>
+                  </tr>
+                  <tr>
+                    <td>処理失敗時に再試行したい</td>
+                    <td>SQS</td>
+                  </tr>
+                  <tr>
+                    <td>処理失敗メッセージを退避したい</td>
+                    <td>SQS + DLQ</td>
+                  </tr>
+                  <tr>
+                    <td>複数の宛先へ通知したい</td>
+                    <td>SNS</td>
+                  </tr>
+                  <tr>
+                    <td>メール通知したい</td>
+                    <td>SNS</td>
+                  </tr>
+                  <tr>
+                    <td>決まった時間に処理を起動したい</td>
+                    <td>EventBridge Scheduler</td>
+                  </tr>
+                  <tr>
+                    <td>毎日・毎週のバッチを動かしたい</td>
+                    <td>EventBridge Scheduler</td>
+                  </tr>
+                  <tr>
+                    <td>APIを外部から呼び出したい</td>
+                    <td>API Gateway + Lambda</td>
+                  </tr>
+                  <tr>
+                    <td>ユーザーにすぐ結果を返したい</td>
+                    <td>同期処理</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <h3>8.2 よくある組み合わせ</h3>
+
+            <h4>パターン1：API + SQS + Lambda</h4>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>API Gateway
+  ↓
+Lambda
+  ↓
+SQS
+  ↓
+Worker Lambda</code></pre>
+            </div>
+            <p>APIの後続処理を非同期化したいときに使います。</p>
+            <p>例：</p>
+            <ul>
+              <li>画像変換</li>
+              <li>メール送信</li>
+              <li>外部API連携</li>
+              <li>集計処理</li>
+              <li>ログ加工</li>
+            </ul>
+
+            <h4>パターン2：Lambda + SNS</h4>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>Lambda
+  ↓
+SNS
+  ├─ Email
+  ├─ SQS
+  └─ Lambda</code></pre>
+            </div>
+            <p>1つのイベントを複数の処理に広げたいときに使います。</p>
+            <p>例：</p>
+            <ul>
+              <li>管理者通知</li>
+              <li>運用アラート</li>
+              <li>複数システムへのイベント配信</li>
+            </ul>
+
+            <h4>パターン3：EventBridge Scheduler + Lambda</h4>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>EventBridge Scheduler
+  ↓
+Lambda</code></pre>
+            </div>
+            <p>決まった時間に処理を実行したいときに使います。</p>
+            <p>例：</p>
+            <ul>
+              <li>毎朝の集計</li>
+              <li>未回答質問のチェック</li>
+              <li>古いデータの削除</li>
+              <li>定期レポート作成</li>
+            </ul>
+
+            <h4>パターン4：EventBridge Scheduler + Lambda + SQS + SNS</h4>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>EventBridge Scheduler
+  ↓
+Lambda
+  ↓
+SQS
+  ↓
+Lambda
+  ↓
+SNS</code></pre>
+            </div>
+            <p>
+              定期的に処理を起動し、後続処理はキューで分離し、結果を通知したいときに使います。
+            </p>
+            <p>今回のハンズオンは、このパターンに近い構成です。</p>
+          </section>
+
+          <section id="handson-overview">
+            <h2>9. ハンズオン概要</h2>
+
+            <h3>9.1 作るもの</h3>
+            <p>
+              今回作るものは、質問投稿イベントを非同期で通知するミニシステムです。
+            </p>
+            <p>流れは以下のとおりです。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>1. Producer Lambdaを実行する
+2. Producer LambdaがSQSへメッセージを送る
+3. SQSがWorker Lambdaを起動する
+4. Worker LambdaがSNSへ通知を送る
+5. SNSがメールを送る
+6. EventBridge SchedulerでProducer Lambdaを定期実行する</code></pre>
+            </div>
+            <h3>9.2 前提条件</h3>
+            <p>このハンズオンでは、以下を前提にします。</p>
+            <ul>
+              <li>AWSアカウントを持っている</li>
+              <li>AWS CLIが利用できる</li>
+              <li>AWS CLIで認証済みである</li>
+              <li>リージョンは ap-northeast-1 を使う</li>
+              <li>Node.js と npm がローカルで使える</li>
+              <li>zip コマンドが使える</li>
+              <li>メールを受信できるアドレスがある</li>
+            </ul>
+            <p>AWS CLIの認証確認は、以下で行えます。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>aws sts get-caller-identity</code></pre>
+            </div>
+            <p>アカウントIDなどが表示されれば、AWS CLIの認証はできています。</p>
+
+            <h3>9.3 課金に関する注意</h3>
+            <div class="alert-box warning">
+              <span class="alert-title">⚠️ 課金に関する注意</span>
+              <p>
+                このハンズオンでは、SQS、SNS、Lambda、EventBridge
+                Scheduler、CloudWatch Logsを使用します。
+              </p>
+              <p>
+                少量の利用であれば大きな金額にはなりにくいですが、AWSは従量課金です。
+              </p>
+              <p>
+                特に、EventBridge
+                Schedulerを作成したまま放置すると、定期的にLambdaが実行され続けます。
+              </p>
+              <p>ハンズオン終了後は、必ずクリーンアップしてください。</p>
+            </div>
+          </section>
+
+          <section id="handson">
+            <h2>10. ハンズオン手順</h2>
+
+            <h3>10.1 作業ディレクトリを作成する</h3>
+            <p>まず、作業用ディレクトリを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>mkdir session9-event-handson
+cd session9-event-handson</code></pre>
+            </div>
+            <p>今回使う変数を設定します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>export AWS_REGION=ap-northeast-1
+export APP=session9-event
+export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)</code></pre>
+            </div>
+            <p>確認します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>echo $AWS_REGION
+echo $APP
+echo $ACCOUNT_ID</code></pre>
+            </div>
+            <h3>10.2 SNS Topicを作成する</h3>
+            <p>まず、通知先となるSNS Topicを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>SNS_TOPIC_ARN=$(aws sns create-topic \
+  --name ${APP}-topic \
+  --region $AWS_REGION \
+  --query TopicArn \
+  --output text)</code></pre>
+            </div>
+            <p>確認します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>echo $SNS_TOPIC_ARN</code></pre>
+            </div>
+            <p>次に、メールアドレスをSNS TopicにSubscribeします。</p>
+            <p>
+              以下の
+              <code>YOUR_EMAIL_ADDRESS</code>
+              は、自分が受信できるメールアドレスに置き換えてください。
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>export NOTIFY_EMAIL=&quot;YOUR_EMAIL_ADDRESS&quot;</code></pre>
+            </div>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws sns subscribe \
+  --topic-arn &quot;$SNS_TOPIC_ARN&quot; \
+  --protocol email \
+  --notification-endpoint &quot;$NOTIFY_EMAIL&quot; \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <p>実行後、指定したメールアドレスに確認メールが届きます。</p>
+            <p>メール内の Confirm subscription をクリックしてください。</p>
+            <p>確認が完了するまで、SNSからメールは届きません。</p>
+
+            <h3>10.3 SQSのDLQを作成する</h3>
+            <p>次に、失敗したメッセージを退避するためのDLQを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>DLQ_URL=$(aws sqs create-queue \
+  --queue-name ${APP}-dlq \
+  --region $AWS_REGION \
+  --query QueueUrl \
+  --output text)</code></pre>
+            </div>
+            <p>DLQのARNを取得します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>DLQ_ARN=$(aws sqs get-queue-attributes \
+  --queue-url &quot;$DLQ_URL&quot; \
+  --attribute-names QueueArn \
+  --region $AWS_REGION \
+  --query &#x27;Attributes.QueueArn&#x27; \
+  --output text)</code></pre>
+            </div>
+            <p>確認します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>echo $DLQ_URL
+echo $DLQ_ARN</code></pre>
+            </div>
+            <h3>10.4 メインのSQS Queueを作成する</h3>
+            <p>次に、通常処理用のSQS Queueを作成します。</p>
+            <p>このキューには、以下の設定を入れます。</p>
+            <ul>
+              <li>VisibilityTimeout: 70秒</li>
+              <li>MessageRetentionPeriod: 4日</li>
+              <li>RedrivePolicy: 3回失敗したらDLQへ移動</li>
+            </ul>
+            <p>今回、Worker Lambdaのタイムアウトは10秒にします。</p>
+            <p>
+              SQSとLambdaを組み合わせる場合、可視性タイムアウトはLambdaのタイムアウトより十分に長くする必要があります。
+            </p>
+            <p>今回は以下の考え方で70秒にします。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>Worker Lambda timeout: 10秒
+推奨目安: 10秒 × 6 + 0秒 = 60秒以上
+今回の設定: 70秒</code></pre>
+            </div>
+            <p>まず、キュー属性のJSONファイルを作ります。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>cat &gt; queue-attributes.json &lt;&lt;EOF
+{
+  &quot;VisibilityTimeout&quot;: &quot;70&quot;,
+  &quot;MessageRetentionPeriod&quot;: &quot;345600&quot;,
+  &quot;RedrivePolicy&quot;: &quot;{\&quot;deadLetterTargetArn\&quot;:\&quot;$DLQ_ARN\&quot;,\&quot;maxReceiveCount\&quot;:\&quot;3\&quot;}&quot;
+}
+EOF</code></pre>
+            </div>
+            <p>メインキューを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>QUEUE_URL=$(aws sqs create-queue \
+  --queue-name ${APP}-queue \
+  --attributes file://queue-attributes.json \
+  --region $AWS_REGION \
+  --query QueueUrl \
+  --output text)</code></pre>
+            </div>
+            <p>キューのARNを取得します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>QUEUE_ARN=$(aws sqs get-queue-attributes \
+  --queue-url &quot;$QUEUE_URL&quot; \
+  --attribute-names QueueArn \
+  --region $AWS_REGION \
+  --query &#x27;Attributes.QueueArn&#x27; \
+  --output text)</code></pre>
+            </div>
+            <p>確認します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>echo $QUEUE_URL
+echo $QUEUE_ARN</code></pre>
+            </div>
+            <h3>10.5 Lambda用の信頼ポリシーを作成する</h3>
+            <p>
+              Producer Lambda と Worker Lambda
+              用に、それぞれ別のIAMロールを作ります。
+            </p>
+            <p>
+              まず、LambdaがIAMロールを引き受けられるようにする信頼ポリシーを作成します。
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>cat &gt; lambda-trust-policy.json &lt;&lt;&#x27;EOF&#x27;
+{
+  &quot;Version&quot;: &quot;2012-10-17&quot;,
+  &quot;Statement&quot;: [
+    {
+      &quot;Effect&quot;: &quot;Allow&quot;,
+      &quot;Principal&quot;: {
+        &quot;Service&quot;: &quot;lambda.amazonaws.com&quot;
+      },
+      &quot;Action&quot;: &quot;sts:AssumeRole&quot;
+    }
+  ]
+}
+EOF</code></pre>
+            </div>
+            <h3>10.6 Producer Lambda用IAMロールを作成する</h3>
+            <p>Producer Lambdaは、SQSへメッセージを送信するだけです。</p>
+            <p>そのため、必要な権限は主に以下です。</p>
+            <ul>
+              <li>CloudWatch Logsへログを書き込む権限</li>
+              <li>SQSへメッセージを送信する権限</li>
+            </ul>
+            <p>Producer用ロールを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>PRODUCER_ROLE_ARN=$(aws iam create-role \
+  --role-name ${APP}-producer-role \
+  --assume-role-policy-document file://lambda-trust-policy.json \
+  --query Role.Arn \
+  --output text)</code></pre>
+            </div>
+            <p>CloudWatch Logs用のAWS管理ポリシーを付与します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws iam attach-role-policy \
+  --role-name ${APP}-producer-role \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole</code></pre>
+            </div>
+            <p>Producer用のインラインポリシーを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>cat &gt; producer-inline-policy.json &lt;&lt;EOF
+{
+  &quot;Version&quot;: &quot;2012-10-17&quot;,
+  &quot;Statement&quot;: [
+    {
+      &quot;Effect&quot;: &quot;Allow&quot;,
+      &quot;Action&quot;: [
+        &quot;sqs:SendMessage&quot;,
+        &quot;sqs:GetQueueAttributes&quot;
+      ],
+      &quot;Resource&quot;: &quot;$QUEUE_ARN&quot;
+    }
+  ]
+}
+EOF</code></pre>
+            </div>
+            <p>ポリシーを付与します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws iam put-role-policy \
+  --role-name ${APP}-producer-role \
+  --policy-name ${APP}-producer-policy \
+  --policy-document file://producer-inline-policy.json</code></pre>
+            </div>
+            <h3>10.7 Worker Lambda用IAMロールを作成する</h3>
+            <p>
+              Worker Lambdaは、SQSからメッセージを受け取り、SNSへ通知します。
+            </p>
+            <p>そのため、必要な権限は主に以下です。</p>
+            <ul>
+              <li>CloudWatch Logsへログを書き込む権限</li>
+              <li>SQSからメッセージを受け取る権限</li>
+              <li>SQSのメッセージを削除する権限</li>
+              <li>SQSの属性を取得する権限</li>
+              <li>SNSへPublishする権限</li>
+            </ul>
+            <p>Worker用ロールを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>WORKER_ROLE_ARN=$(aws iam create-role \
+  --role-name ${APP}-worker-role \
+  --assume-role-policy-document file://lambda-trust-policy.json \
+  --query Role.Arn \
+  --output text)</code></pre>
+            </div>
+            <p>CloudWatch Logs用のAWS管理ポリシーを付与します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws iam attach-role-policy \
+  --role-name ${APP}-worker-role \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole</code></pre>
+            </div>
+            <p>Worker用のインラインポリシーを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>cat &gt; worker-inline-policy.json &lt;&lt;EOF
+{
+  &quot;Version&quot;: &quot;2012-10-17&quot;,
+  &quot;Statement&quot;: [
+    {
+      &quot;Effect&quot;: &quot;Allow&quot;,
+      &quot;Action&quot;: [
+        &quot;sqs:ReceiveMessage&quot;,
+        &quot;sqs:DeleteMessage&quot;,
+        &quot;sqs:GetQueueAttributes&quot;,
+        &quot;sqs:ChangeMessageVisibility&quot;
+      ],
+      &quot;Resource&quot;: &quot;$QUEUE_ARN&quot;
+    },
+    {
+      &quot;Effect&quot;: &quot;Allow&quot;,
+      &quot;Action&quot;: [
+        &quot;sns:Publish&quot;
+      ],
+      &quot;Resource&quot;: &quot;$SNS_TOPIC_ARN&quot;
+    }
+  ]
+}
+EOF</code></pre>
+            </div>
+            <p>ポリシーを付与します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws iam put-role-policy \
+  --role-name ${APP}-worker-role \
+  --policy-name ${APP}-worker-policy \
+  --policy-document file://worker-inline-policy.json</code></pre>
+            </div>
+            <p>IAMロール作成直後は反映に少し時間がかかることがあります。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>sleep 10</code></pre>
+            </div>
+            <h3>10.8 Producer Lambdaを作成する</h3>
+            <p>
+              Producer
+              Lambdaは、質問投稿イベントを作成し、SQSへメッセージを送信します。
+            </p>
+            <p>まず、Producer用ディレクトリを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>mkdir producer
+cd producer</code></pre>
+            </div>
+            <p>npmプロジェクトを作成し、AWS SDKをインストールします。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>npm init -y
+npm install @aws-sdk/client-sqs</code></pre>
+            </div>
+            <p>Lambdaコードを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>cat &gt; index.mjs &lt;&lt;&#x27;EOF&#x27;
+import { SQSClient, SendMessageCommand } from &quot;@aws-sdk/client-sqs&quot;;
+
+const sqs = new SQSClient({});
+
+export const handler = async (event) =&gt; {
+  const now = new Date().toISOString();
+
+  const payload = {
+    type: &quot;QUESTION_CREATED&quot;,
+    questionId: event.questionId ?? `q-${Date.now()}`,
+    title: event.title ?? &quot;第9回ハンズオンのテスト質問&quot;,
+    nickname: event.nickname ?? &quot;匿名&quot;,
+    createdAt: now
+  };
+
+  await sqs.send(
+    new SendMessageCommand({
+      QueueUrl: process.env.QUEUE_URL,
+      MessageBody: JSON.stringify(payload),
+      MessageAttributes: {
+        eventType: {
+          DataType: &quot;String&quot;,
+          StringValue: payload.type
+        }
+      }
+    })
+  );
+
+  console.log(&quot;Sent message to SQS:&quot;, payload);
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      message: &quot;Message sent to SQS&quot;,
+      payload
+    })
+  };
+};
+EOF</code></pre>
+            </div>
+            <p>zipファイルを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>zip -r ../producer.zip .
+cd ..</code></pre>
+            </div>
+            <p>Lambda関数を作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws lambda create-function \
+  --function-name ${APP}-producer \
+  --runtime nodejs22.x \
+  --role &quot;$PRODUCER_ROLE_ARN&quot; \
+  --handler index.handler \
+  --zip-file fileb://producer.zip \
+  --timeout 10 \
+  --environment &quot;Variables={QUEUE_URL=$QUEUE_URL}&quot; \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <h3>10.9 Worker Lambdaを作成する</h3>
+            <p>
+              Worker Lambdaは、SQSからメッセージを受け取り、SNSへ通知します。
+            </p>
+            <p>Worker用ディレクトリを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>mkdir worker
+cd worker</code></pre>
+            </div>
+            <p>npmプロジェクトを作成し、AWS SDKをインストールします。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>npm init -y
+npm install @aws-sdk/client-sns</code></pre>
+            </div>
+            <p>Lambdaコードを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>cat &gt; index.mjs &lt;&lt;&#x27;EOF&#x27;
+import { SNSClient, PublishCommand } from &quot;@aws-sdk/client-sns&quot;;
+
+const sns = new SNSClient({});
+
+export const handler = async (event) =&gt; {
+  const failures = [];
+
+  for (const record of event.Records ?? []) {
+    try {
+      const message = JSON.parse(record.body);
+
+      if (message.title &amp;&amp; message.title.includes(&quot;FAIL&quot;)) {
+        throw new Error(&quot;Intentional failure for DLQ test&quot;);
+      }
+
+      const notificationText = [
+        &quot;質問が投稿されました。&quot;,
+        &quot;&quot;,
+        `質問ID: ${message.questionId}`,
+        `タイトル: ${message.title}`,
+        `投稿者: ${message.nickname}`,
+        `作成日時: ${message.createdAt}`
+      ].join(&quot;\n&quot;);
+
+      await sns.send(
+        new PublishCommand({
+          TopicArn: process.env.TOPIC_ARN,
+          Subject: &quot;AWS勉強会 質問板通知&quot;,
+          Message: notificationText,
+          MessageAttributes: {
+            eventType: {
+              DataType: &quot;String&quot;,
+              StringValue: message.type ?? &quot;UNKNOWN&quot;
+            }
+          }
+        })
+      );
+
+      console.log(&quot;Processed message:&quot;, record.messageId);
+    } catch (error) {
+      console.error(&quot;Failed to process message:&quot;, record.messageId, error);
+
+      failures.push({
+        itemIdentifier: record.messageId
+      });
+    }
+  }
+
+  return {
+    batchItemFailures: failures
+  };
+};
+EOF</code></pre>
+            </div>
+            <p>
+              このコードでは、<code>FAIL</code>
+              という文字を含むタイトルの場合、わざとエラーにしています。
+            </p>
+            <p>これは後でDLQの動きを確認するためです。</p>
+            <p>
+              また、<code>batchItemFailures</code>
+              を返すことで、バッチ内の一部メッセージだけが失敗した場合に、失敗したメッセージだけを再試行対象にできます。
+            </p>
+            <p>zipファイルを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>zip -r ../worker.zip .
+cd ..</code></pre>
+            </div>
+            <p>Lambda関数を作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws lambda create-function \
+  --function-name ${APP}-worker \
+  --runtime nodejs22.x \
+  --role &quot;$WORKER_ROLE_ARN&quot; \
+  --handler index.handler \
+  --zip-file fileb://worker.zip \
+  --timeout 10 \
+  --environment &quot;Variables={TOPIC_ARN=$SNS_TOPIC_ARN}&quot; \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <h3>10.10 SQSとWorker Lambdaを連携する</h3>
+            <p>
+              次に、SQSにメッセージが入ったらWorker
+              Lambdaが起動するように設定します。
+            </p>
+            <p>これは、Lambdaのイベントソースマッピングで設定します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>EVENT_SOURCE_UUID=$(aws lambda create-event-source-mapping \
+  --function-name ${APP}-worker \
+  --event-source-arn &quot;$QUEUE_ARN&quot; \
+  --batch-size 5 \
+  --maximum-batching-window-in-seconds 0 \
+  --function-response-types ReportBatchItemFailures \
+  --region $AWS_REGION \
+  --query UUID \
+  --output text)</code></pre>
+            </div>
+            <p>確認します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>echo $EVENT_SOURCE_UUID</code></pre>
+            </div>
+            <p>
+              この設定により、SQSにメッセージが入るとLambdaがポーリングして処理します。
+            </p>
+            <h3>10.11 Producer Lambdaを手動実行する</h3>
+            <p>Producer Lambdaを手動実行して、SQSへメッセージを送ります。</p>
+            <p>まず、payloadファイルを作ります。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>cat &gt; payload.json &lt;&lt;&#x27;EOF&#x27;
+{
+  &quot;questionId&quot;: &quot;q-001&quot;,
+  &quot;title&quot;: &quot;SQSの可視性タイムアウトとは？&quot;,
+  &quot;nickname&quot;: &quot;handson&quot;
+}
+EOF</code></pre>
+            </div>
+            <p>Producer Lambdaを実行します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws lambda invoke \
+  --function-name ${APP}-producer \
+  --payload file://payload.json \
+  --cli-binary-format raw-in-base64-out \
+  --region $AWS_REGION \
+  response.json</code></pre>
+            </div>
+            <p>結果を確認します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>cat response.json</code></pre>
+            </div>
+            <p>しばらくすると、SNSに登録したメールアドレスへ通知が届きます。</p>
+            <p>届かない場合は、以下を確認してください。</p>
+            <ul>
+              <li>SNSの確認メールを承認したか</li>
+              <li>Lambdaの実行ログにエラーが出ていないか</li>
+              <li>SQSにメッセージが残っていないか</li>
+              <li>IAM権限が不足していないか</li>
+            </ul>
+            <p>Worker Lambdaのログは以下で確認できます。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>aws logs tail /aws/lambda/${APP}-worker \
+  --since 10m \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <p>Producer Lambdaのログは以下で確認できます。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>aws logs tail /aws/lambda/${APP}-producer \
+  --since 10m \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <h3>10.12 SQSのメッセージ数を確認する</h3>
+            <p>SQSのメッセージ数を確認します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws sqs get-queue-attributes \
+  --queue-url &quot;$QUEUE_URL&quot; \
+  --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <p>主な項目の意味は以下です。</p>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>項目</th>
+                    <th>意味</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>ApproximateNumberOfMessages</td>
+                    <td>キュー内で見える状態のメッセージ数</td>
+                  </tr>
+                  <tr>
+                    <td>ApproximateNumberOfMessagesNotVisible</td>
+                    <td>処理中などで一時的に見えないメッセージ数</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              Worker
+              Lambdaが正常に処理できていれば、最終的にはメッセージ数は0に近くなります。
+            </p>
+            <h3>10.13 DLQの動きを確認する</h3>
+            <p>
+              次に、わざと失敗するメッセージを送って、DLQの動きを確認します。
+            </p>
+            <p>
+              Worker Lambdaのコードでは、タイトルに
+              <code>FAIL</code>
+              が含まれる場合にエラーを発生させるようにしています。
+            </p>
+            <p>まず、失敗用payloadを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>cat &gt; fail-payload.json &lt;&lt;&#x27;EOF&#x27;
+{
+  &quot;questionId&quot;: &quot;q-fail&quot;,
+  &quot;title&quot;: &quot;FAIL DLQ test&quot;,
+  &quot;nickname&quot;: &quot;handson&quot;
+}
+EOF</code></pre>
+            </div>
+            <p>Producer Lambdaを実行します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws lambda invoke \
+  --function-name ${APP}-producer \
+  --payload file://fail-payload.json \
+  --cli-binary-format raw-in-base64-out \
+  --region $AWS_REGION \
+  fail-response.json</code></pre>
+            </div>
+            <p>このメッセージは、Worker Lambdaで処理に失敗します。</p>
+            <p>SQSでは、一定回数失敗したメッセージがDLQへ移動します。</p>
+            <p>今回の設定では、3回失敗するとDLQへ移動します。</p>
+            <p>すぐにはDLQに移動しない場合があります。</p>
+            <p>
+              可視性タイムアウトやLambdaの再試行の関係で、数分待ってから確認してください。
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws sqs get-queue-attributes \
+  --queue-url &quot;$DLQ_URL&quot; \
+  --attribute-names ApproximateNumberOfMessages \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <p>
+              DLQにメッセージが入っていれば、失敗メッセージを退避できています。
+            </p>
+            <p>DLQのメッセージ内容を確認するには、以下を実行します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws sqs receive-message \
+  --queue-url &quot;$DLQ_URL&quot; \
+  --max-number-of-messages 1 \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <p>確認後、必要に応じてメッセージを削除します。</p>
+            <p>ただし、実務では原因調査前に削除しない方がよいです。</p>
+            <h3>10.14 EventBridge Scheduler用IAMロールを作成する</h3>
+            <p>
+              次に、EventBridge SchedulerからProducer
+              Lambdaを起動できるようにします。
+            </p>
+            <p>Scheduler用のIAMロールを作成します。</p>
+            <p>まず、信頼ポリシーを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>cat &gt; scheduler-trust-policy.json &lt;&lt;&#x27;EOF&#x27;
+{
+  &quot;Version&quot;: &quot;2012-10-17&quot;,
+  &quot;Statement&quot;: [
+    {
+      &quot;Effect&quot;: &quot;Allow&quot;,
+      &quot;Principal&quot;: {
+        &quot;Service&quot;: &quot;scheduler.amazonaws.com&quot;
+      },
+      &quot;Action&quot;: &quot;sts:AssumeRole&quot;
+    }
+  ]
+}
+EOF</code></pre>
+            </div>
+            <p>ロールを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>SCHEDULER_ROLE_ARN=$(aws iam create-role \
+  --role-name ${APP}-scheduler-role \
+  --assume-role-policy-document file://scheduler-trust-policy.json \
+  --query Role.Arn \
+  --output text)</code></pre>
+            </div>
+            <p>確認します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>echo $SCHEDULER_ROLE_ARN</code></pre>
+            </div>
+            <p>Producer LambdaのARNを取得します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>PRODUCER_ARN=$(aws lambda get-function \
+  --function-name ${APP}-producer \
+  --region $AWS_REGION \
+  --query Configuration.FunctionArn \
+  --output text)</code></pre>
+            </div>
+            <p>確認します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>echo $PRODUCER_ARN</code></pre>
+            </div>
+            <p>
+              SchedulerがProducer
+              LambdaをInvokeできるように、権限ポリシーを作成します。
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>cat &gt; scheduler-inline-policy.json &lt;&lt;EOF
+{
+  &quot;Version&quot;: &quot;2012-10-17&quot;,
+  &quot;Statement&quot;: [
+    {
+      &quot;Effect&quot;: &quot;Allow&quot;,
+      &quot;Action&quot;: &quot;lambda:InvokeFunction&quot;,
+      &quot;Resource&quot;: &quot;$PRODUCER_ARN&quot;
+    }
+  ]
+}
+EOF</code></pre>
+            </div>
+            <p>ポリシーをロールに付与します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws iam put-role-policy \
+  --role-name ${APP}-scheduler-role \
+  --policy-name ${APP}-scheduler-policy \
+  --policy-document file://scheduler-inline-policy.json</code></pre>
+            </div>
+            <p>IAMロールの反映を待ちます。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>sleep 10</code></pre>
+            </div>
+            <h3>10.15 EventBridge Schedulerを作成する</h3>
+            <p>5分ごとにProducer Lambdaを実行するスケジュールを作成します。</p>
+            <p>まず、Schedulerのターゲット設定ファイルを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>cat &gt; scheduler-target.json &lt;&lt;EOF
+{
+  &quot;Arn&quot;: &quot;$PRODUCER_ARN&quot;,
+  &quot;RoleArn&quot;: &quot;$SCHEDULER_ROLE_ARN&quot;,
+  &quot;Input&quot;: &quot;{\&quot;questionId\&quot;:\&quot;scheduled\&quot;,\&quot;title\&quot;:\&quot;EventBridge Schedulerからの定期実行\&quot;,\&quot;nickname\&quot;:\&quot;scheduler\&quot;}&quot;
+}
+EOF</code></pre>
+            </div>
+            <p>スケジュールを作成します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws scheduler create-schedule \
+  --name ${APP}-every-5-min \
+  --schedule-expression &quot;rate(5 minutes)&quot; \
+  --flexible-time-window &#x27;{&quot;Mode&quot;:&quot;OFF&quot;}&#x27; \
+  --target file://scheduler-target.json \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <p>作成したスケジュールを確認します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws scheduler get-schedule \
+  --name ${APP}-every-5-min \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <p>
+              5分ほど待つと、EventBridge SchedulerがProducer
+              Lambdaを起動します。
+            </p>
+            <p>その後、以下の流れで通知が届きます。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>EventBridge Scheduler
+  ↓
+Producer Lambda
+  ↓
+SQS
+  ↓
+Worker Lambda
+  ↓
+SNS
+  ↓
+Email</code></pre>
+            </div>
+            <p>
+              メールが届いたら、スケジュール実行から非同期通知まで成功しています。
+            </p>
+            <p>
+              なお、EventBridge
+              Schedulerは秒単位で完全にぴったり実行するための仕組みではありません。
+            </p>
+            <p>
+              今回のような定期チェックや定期通知には向いていますが、秒単位の厳密な制御が必要な処理には向きません。
+            </p>
+
+            <h3>10.16 EventBridge Schedulerを停止する</h3>
+            <p>確認が終わったら、すぐにスケジュールを削除します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws scheduler delete-schedule \
+  --name ${APP}-every-5-min \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <p>削除せずに放置すると、5分ごとにLambdaが実行され続けます。</p>
+          </section>
+
+          <section id="cleanup">
+            <h2>11. クリーンアップ</h2>
+            <p>ハンズオン終了後は、作成したリソースを削除します。</p>
+
+            <h3>11.1 EventBridge Schedulerを削除する</h3>
+            <p>すでに削除済みであれば、このコマンドは不要です。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws scheduler delete-schedule \
+  --name ${APP}-every-5-min \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <p>存在しないというエラーが出た場合は、すでに削除済みです。</p>
+            <h3>11.2 Lambdaイベントソースマッピングを削除する</h3>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>aws lambda delete-event-source-mapping \
+  --uuid &quot;$EVENT_SOURCE_UUID&quot; \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <h3>11.3 Lambda関数を削除する</h3>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws lambda delete-function \
+  --function-name ${APP}-producer \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws lambda delete-function \
+  --function-name ${APP}-worker \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <h3>11.4 IAMロールを削除する</h3>
+            <p>Producer用ロールからインラインポリシーを削除します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws iam delete-role-policy \
+  --role-name ${APP}-producer-role \
+  --policy-name ${APP}-producer-policy</code></pre>
+            </div>
+            <p>Producer用ロールからAWS管理ポリシーをデタッチします。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws iam detach-role-policy \
+  --role-name ${APP}-producer-role \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole</code></pre>
+            </div>
+            <p>Producer用ロールを削除します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws iam delete-role \
+  --role-name ${APP}-producer-role</code></pre>
+            </div>
+            <p>Worker用ロールからインラインポリシーを削除します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws iam delete-role-policy \
+  --role-name ${APP}-worker-role \
+  --policy-name ${APP}-worker-policy</code></pre>
+            </div>
+            <p>Worker用ロールからAWS管理ポリシーをデタッチします。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws iam detach-role-policy \
+  --role-name ${APP}-worker-role \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole</code></pre>
+            </div>
+            <p>Worker用ロールを削除します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws iam delete-role \
+  --role-name ${APP}-worker-role</code></pre>
+            </div>
+            <p>Scheduler用ロールのインラインポリシーを削除します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws iam delete-role-policy \
+  --role-name ${APP}-scheduler-role \
+  --policy-name ${APP}-scheduler-policy</code></pre>
+            </div>
+            <p>Scheduler用ロールを削除します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws iam delete-role \
+  --role-name ${APP}-scheduler-role</code></pre>
+            </div>
+            <h3>11.5 SQS Queueを削除する</h3>
+            <p>メインキューを削除します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws sqs delete-queue \
+  --queue-url &quot;$QUEUE_URL&quot; \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <p>DLQを削除します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws sqs delete-queue \
+  --queue-url &quot;$DLQ_URL&quot; \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <h3>11.6 SNS Topicを削除する</h3>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws sns delete-topic \
+  --topic-arn &quot;$SNS_TOPIC_ARN&quot; \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <h3>11.7 CloudWatch Logsを削除する</h3>
+            <p>
+              Lambdaを実行すると、CloudWatch Logsにロググループが作成されます。
+            </p>
+            <p>
+              今回のハンズオンでは、以下のようなロググループが作成される可能性があります。
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>/aws/lambda/session9-event-producer
+/aws/lambda/session9-event-worker</code></pre>
+            </div>
+            <p>
+              必要に応じて、CloudWatch Logsのロググループも削除してください。
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws logs delete-log-group \
+  --log-group-name /aws/lambda/${APP}-producer \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws logs delete-log-group \
+  --log-group-name /aws/lambda/${APP}-worker \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <p>
+              ロググループが存在しないというエラーが出た場合は、すでに削除済み、またはLambdaがまだ一度も実行されていない可能性があります。
+            </p>
+          </section>
+
+          <section id="practice">
+            <h2>12. 実務での設計ポイント</h2>
+
+            <h3>12.1 SQSを使うときは冪等性を考える</h3>
+            <p>
+              SQS Standard
+              Queueでは、メッセージが重複して処理される可能性があります。
+            </p>
+            <p>
+              そのため、Consumer側の処理は、同じメッセージが2回来ても壊れないように作る必要があります。
+            </p>
+            <p>これを冪等性と呼びます。</p>
+            <p>
+              冪等性とは、同じ処理を何度実行しても、結果が変わらない性質です。
+            </p>
+            <p>たとえば、以下のような設計が考えられます。</p>
+            <ul>
+              <li>messageIdをDBに記録し、処理済みならスキップする</li>
+              <li>questionIdとeventTypeの組み合わせを一意にする</li>
+              <li>同じ通知を複数回送っても重大な問題にならないようにする</li>
+              <li>更新処理では上書き型にする</li>
+              <li>加算処理では二重加算を防ぐ</li>
+            </ul>
+            <p>非同期処理では、冪等性は非常に重要です。</p>
+            <p>
+              「1回だけ必ず処理される」と考えるのではなく、「複数回処理されても壊れない」ように設計します。
+            </p>
+
+            <h3>12.2 可視性タイムアウトは処理時間より十分に長くする</h3>
+            <p>
+              可視性タイムアウトが短すぎると、Worker
+              Lambdaがまだ処理中なのに、同じメッセージが再び見えるようになる可能性があります。
+            </p>
+            <p>
+              その結果、同じメッセージが複数のWorkerで処理されることがあります。
+            </p>
+            <p>
+              基本的には、可視性タイムアウトはLambdaの最大処理時間より十分に長く設定します。
+            </p>
+            <p>
+              LambdaとSQSを組み合わせる場合は、Lambdaのタイムアウト、バッチサイズ、バッチングウィンドウを合わせて考える必要があります。
+            </p>
+            <p>
+              今回のハンズオンでは、Worker
+              Lambdaのタイムアウトを10秒、SQSの可視性タイムアウトを70秒にしました。
+            </p>
+
+            <h3>12.3 DLQは設定して終わりではない</h3>
+            <p>DLQは、失敗したメッセージを退避する場所です。</p>
+            <p>
+              しかし、DLQに入ったメッセージを誰も見なければ意味がありません。
+            </p>
+            <p>実務では、以下のような運用が必要です。</p>
+            <ul>
+              <li>DLQのメッセージ数をCloudWatch Alarmで監視する</li>
+              <li>DLQにメッセージが入ったらSNSで通知する</li>
+              <li>DLQのメッセージを調査する手順を決める</li>
+              <li>修正後に再処理する方法を用意する</li>
+            </ul>
+            <p>DLQは、失敗を隠す場所ではありません。</p>
+            <p>失敗を見つけ、調査し、復旧するための場所です。</p>
+
+            <h3>12.4 SNS通知は失敗しても本処理を止めない設計にする</h3>
+            <p>
+              通知は重要ですが、通知の失敗で本処理まで失敗させるべきではない場合があります。
+            </p>
+            <p>
+              たとえば、質問投稿自体は成功しているのに、メール通知だけ失敗したとします。
+            </p>
+            <p>
+              この場合、質問投稿を失敗扱いにすると、ユーザーに誤解を与えます。
+            </p>
+            <p>そのため、通知は非同期化し、本処理と分けることが多いです。</p>
+
+            <h3>12.5 EventBridge Schedulerの削除忘れに注意する</h3>
+            <p>
+              EventBridge
+              Schedulerは、作成すると指定した間隔で処理を実行し続けます。
+            </p>
+            <p>
+              検証用に
+              <code>rate(5 minutes)</code>
+              のようなスケジュールを作った場合、削除し忘れるとLambdaが実行され続けます。
+            </p>
+            <p>ハンズオンでは、確認後すぐに削除してください。</p>
+
+            <h3>12.6 IAM権限は必要最小限にする</h3>
+            <p>
+              今回のハンズオンでは、Producer Lambda、Worker
+              Lambda、SchedulerでIAMロールを分けました。
+            </p>
+            <p>これは、必要な権限をできるだけ小さくするためです。</p>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ロール</th>
+                    <th>必要な権限</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Producer Lambda Role</td>
+                    <td><code>sqs:SendMessage</code></td>
+                  </tr>
+                  <tr>
+                    <td>Worker Lambda Role</td>
+                    <td>
+                      <code>sqs:ReceiveMessage</code>,
+                      <code>sqs:DeleteMessage</code>,
+                      <code>sqs:GetQueueAttributes</code>,
+                      <code>sns:Publish</code>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Scheduler Role</td>
+                    <td><code>lambda:InvokeFunction</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>権限は、必要最小限にするのが基本です。</p>
+            <p>これを最小権限の原則と呼びます。</p>
+          </section>
+
+          <section id="troubleshooting">
+            <h2>13. よくあるエラーと確認ポイント</h2>
+
+            <h3>13.1 メールが届かない</h3>
+            <p>考えられる原因は以下です。</p>
+            <ul>
+              <li>SNSの確認メールを承認していない</li>
+              <li>迷惑メールに入っている</li>
+              <li>Worker Lambdaが失敗している</li>
+              <li>SNS Topic ARNが間違っている</li>
+              <li>Worker LambdaのIAMロールにsns:Publish権限がない</li>
+            </ul>
+            <p>確認コマンドです。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>aws logs tail /aws/lambda/${APP}-worker \
+  --since 10m \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <h3>13.2 SQSにメッセージが残り続ける</h3>
+            <p>考えられる原因は以下です。</p>
+            <ul>
+              <li>Worker Lambdaが失敗している</li>
+              <li>イベントソースマッピングが作成されていない</li>
+              <li>LambdaのIAMロールにSQSを読む権限がない</li>
+              <li>Lambdaのタイムアウトが短い</li>
+              <li>コードのJSONパースで失敗している</li>
+            </ul>
+            <p>イベントソースマッピングを確認します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>aws lambda list-event-source-mappings \
+  --function-name ${APP}-worker \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <h3>13.3 Lambda作成時にRole cannot be assumedというエラーが出る</h3>
+            <p>IAMロール作成直後は、反映に少し時間がかかることがあります。</p>
+            <p>少し待ってから再実行してください。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>sleep 10</code></pre>
+            </div>
+            <h3>13.4 EventBridge SchedulerからLambdaが起動しない</h3>
+            <p>考えられる原因は以下です。</p>
+            <ul>
+              <li>Scheduler用IAMロールの信頼ポリシーが間違っている</li>
+              <li>Scheduler用IAMロールにlambda:InvokeFunction権限がない</li>
+              <li>targetのJSON形式が間違っている</li>
+              <li>スケジュールを作成したリージョンが違う</li>
+              <li>まだ実行時刻になっていない</li>
+            </ul>
+            <p>Schedulerの設定を確認します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws scheduler get-schedule \
+  --name ${APP}-every-5-min \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <h3>13.5 DLQにメッセージが入らない</h3>
+            <p>考えられる原因は以下です。</p>
+            <ul>
+              <li>maxReceiveCountに達していない</li>
+              <li>可視性タイムアウトの関係で、まだ再試行中</li>
+              <li>Worker Lambdaが実は成功している</li>
+              <li>RedrivePolicyが正しく設定されていない</li>
+              <li>DLQではなくメインキューに残っている</li>
+            </ul>
+            <p>メインキューとDLQのメッセージ数を確認します。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws sqs get-queue-attributes \
+  --queue-url &quot;$QUEUE_URL&quot; \
+  --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible \
+  --region $AWS_REGION</code></pre>
+            </div>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>aws sqs get-queue-attributes \
+  --queue-url &quot;$DLQ_URL&quot; \
+  --attribute-names ApproximateNumberOfMessages \
+  --region $AWS_REGION</code></pre>
+            </div>
+          </section>
+
+          <section id="question-board">
+            <h2>14. 今回の構成を質問板アプリに組み込むなら</h2>
+            <p>
+              今回のハンズオンは、検証用にProducer Lambdaを手動実行しました。
+            </p>
+            <p>
+              実際の質問板アプリに組み込むなら、質問投稿APIのLambdaでRDS保存後にSQSへメッセージを送ります。
+            </p>
+            <p>イメージは以下です。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>質問投稿画面
+  ↓
+API Gateway
+  ↓
+createQuestion Lambda
+  ↓
+RDSへ質問保存
+  ↓
+SQSへQUESTION_CREATEDメッセージ送信
+  ↓
+レスポンス返却
+
+SQS
+  ↓
+notifyQuestion Lambda
+  ↓
+SNS
+  ↓
+管理者へメール通知</code></pre>
+            </div>
+            <!-- img: 質問投稿APIからSQSへイベントを送り、別LambdaがSNS通知する構成図 -->
+            <figure>
+              <img
+                src="../image/session/9/explain/question-board-integration.png"
+                alt="質問板アプリへの非同期通知組み込み"
+                class="img-w800"
+              />
+              <figcaption class="img-caption">
+                質問投稿APIからSQSへイベントを送り、別LambdaがSNS通知する構成図
+              </figcaption>
+            </figure>
+            <p>重要なのは、RDS保存と通知処理を分けることです。</p>
+            <p>質問投稿APIでは、まず質問を保存します。</p>
+            <p>保存に成功したら、SQSへイベントを送ります。</p>
+            <p>通知処理は別のLambdaで行います。</p>
+            <p>
+              これにより、通知処理が一時的に失敗しても、質問投稿APIそのものへの影響を小さくできます。
+            </p>
+
+            <h3>14.1 SQSへ送るメッセージ例</h3>
+            <p>
+              質問投稿時にSQSへ送るメッセージは、以下のようなJSONにできます。
+            </p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre class="code-block"><code>{
+  &quot;eventType&quot;: &quot;QUESTION_CREATED&quot;,
+  &quot;questionId&quot;: 123,
+  &quot;title&quot;: &quot;SQSの使いどころが知りたいです&quot;,
+  &quot;nickname&quot;: &quot;匿名&quot;,
+  &quot;createdAt&quot;: &quot;2026-06-06T12:00:00.000Z&quot;
+}</code></pre>
+            </div>
+            <p>このとき、メッセージには本文全体を入れすぎない方がよいです。</p>
+            <p>基本的には、後続処理に必要な最小限の情報を入れます。</p>
+            <p>
+              詳細な情報が必要な場合は、questionIdを使ってDBから取得します。
+            </p>
+
+            <h3>14.2 メッセージ設計の注意点</h3>
+            <p>メッセージ設計では、以下を意識します。</p>
+            <ul>
+              <li>eventTypeを入れる</li>
+              <li>idを入れる</li>
+              <li>作成時刻を入れる</li>
+              <li>個人情報や機密情報を入れすぎない</li>
+              <li>後方互換性を意識する</li>
+              <li>JSONの形式を急に壊さない</li>
+            </ul>
+            <p>
+              非同期処理では、古い形式のメッセージがキューに残っていることがあります。
+            </p>
+            <p>
+              そのため、Lambdaのコードを更新するときは、古いメッセージ形式もある程度処理できるようにしておくと安全です。
+            </p>
+          </section>
+
+          <section id="summary">
+            <h2>15. まとめ</h2>
+            <p>
+              今回は、SQS、SNS、EventBridge
+              Schedulerを使って、非同期処理とイベント駆動設計の基本を学びました。
+            </p>
+            <p>重要なポイントは、以下です。</p>
+            <p>SQSは、処理待ちのメッセージをためるキューです。</p>
+            <p>後続処理が遅い場合や、失敗時に再試行したい場合に使います。</p>
+            <p>SNSは、通知を複数の宛先に配信するサービスです。</p>
+            <p>メール通知や複数システムへのイベント配信に使えます。</p>
+            <p>
+              EventBridge
+              Schedulerは、決まった時刻や間隔で処理を起動するサービスです。
+            </p>
+            <p>定期バッチや定期チェックに使えます。</p>
+            <p>今回の一番重要な考え方は、以下です。</p>
+            <div class="code-wrapper">
+              <button class="copy-btn">📋 Copy</button>
+              <pre
+                class="code-block"
+              ><code>今すぐ終わらせるべき処理と、あとで処理してよい処理を分ける</code></pre>
+            </div>
+            <p>
+              この考え方ができると、APIのレスポンスを速くし、障害の影響範囲を小さくし、拡張しやすい構成を作れます。
+            </p>
+            <p>
+              サーバーレス構成では、Lambda単体で何でもやろうとするのではなく、SQS、SNS、EventBridge
+              Schedulerなどのマネージドサービスを組み合わせることが重要です。
+            </p>
+          </section>
+        </div>
+
+        <nav class="toc">
+          <h2>目次</h2>
+          <ul>
+            <li><a href="#intro">1. はじめに</a></li>
+            <li><a href="#goal">2. この回のゴール</a></li>
+            <li><a href="#architecture">3. 今回作る構成</a></li>
+            <li><a href="#async">4. なぜ非同期処理が必要なのか</a></li>
+            <li><a href="#sqs">5. Amazon SQSとは</a></li>
+            <li><a href="#sns">6. Amazon SNSとは</a></li>
+            <li>
+              <a href="#eventbridge">7. Amazon EventBridge Schedulerとは</a>
+            </li>
+            <li><a href="#design">8. 設計の考え方</a></li>
+            <li><a href="#handson-overview">9. ハンズオン概要</a></li>
+            <li><a href="#handson">10. ハンズオン手順</a></li>
+            <li><a href="#cleanup">11. クリーンアップ</a></li>
+            <li><a href="#practice">12. 実務での設計ポイント</a></li>
+            <li>
+              <a href="#troubleshooting">13. よくあるエラーと確認ポイント</a>
+            </li>
+            <li>
+              <a href="#question-board">14. 質問板アプリに組み込むなら</a>
+            </li>
+            <li><a href="#summary">15. まとめ</a></li>
+          </ul>
+        </nav>
+      </div>
+    </main>
+
+    <footer>
+      &copy; 2025 勉強会 for AWS licensed under GPLv3 & CC BY-SA 4.0.
+    </footer>
+
+    <script src="../common/script.js"></script>
+  </body>
+</html>

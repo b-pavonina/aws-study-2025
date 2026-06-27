@@ -319,6 +319,9 @@ hr.bb {
   white-space: pre;
   overflow-x: auto;
 }
+.code-block code {
+  display: block;
+}
 .copy-btn {
   position: absolute;
   top: 8px;
@@ -334,6 +337,14 @@ hr.bb {
 }
 .copy-btn:hover {
   background: #666;
+}
+
+code {
+  font-size: 1.1em;  /* 親要素の110%のサイズ */
+  font-family: 'Fira Code', monospace;
+  /* background: #f0f0f0; */
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
 }
 
 /* =====================

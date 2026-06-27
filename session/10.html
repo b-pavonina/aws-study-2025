@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>振り返り：おわりに | 勉強会 for AWS</title>
+    <link rel="stylesheet" href="../common/style.css" />
+    <style>
+      header .insider-header {
+        max-width: 1160px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <div class="insider-header">
+        <a href="../index.html" class="logo"
+          >勉強会 <span style="font-size: 0.8em">for</span> AWS</a
+        >
+        <span class="header-spacer"></span>
+        <span
+          class="header-btn header-btn-disabled"
+          aria-label="質問板は停止中です"
+        >
+          質問板（停止中）
+        </span>
+      </div>
+    </header>
+
+    <main>
+      <div class="container">
+        <div class="content">
+          <h1>振り返り：おわりに</h1>
+          <div class="post-date">Posted at 2026-06-27</div>
+
+          <section id="retrospective">
+            <br />
+            <br />
+            <br />
+            <p>
+              最後に、今後の学習に役立つリソースの紹介と、勉強会で作成したAWSリソースやAWSアカウントについて確認しておきたいポイントをまとめます。
+            </p>
+          </section>
+
+          <section id="resources">
+            <h2>1. 勉強会後の学習リソース</h2>
+            <h3>AWS Black Belt Online Seminar</h3>
+            <p>
+              <a
+                href="https://aws.amazon.com/jp/blogs/news/aws-blackbelt-overview/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >AWS Black Belt Online Seminar</a
+              >
+              は、AWSの各サービスや設計テーマについて解説している公式セミナー資料です。
+            </p>
+            <p>
+              PDF資料に合わせてYouTube動画が公開されており、気になるサービスを詳しく知りたいときに使えます。動画は2倍速で見れば30分程度で視聴できるものが多いです。詳細な情報が含まれるため、AWSを0からざっくり学ぶのに適しているかは微妙ですが、詳しく知りたい場合には便利です。
+            </p>
+
+            <h3>AWS Skill Builder</h3>
+            <p>
+              <a
+                href="https://skillbuilder.aws/search?searchText=&page=1"
+                target="_blank"
+                rel="noopener noreferrer"
+                >AWS Skill Builder</a
+              >
+              は、AWS公式のオンライン学習サービスです。
+            </p>
+            <p>
+              使い方がわかりづらいので、試す際は
+              <a
+                href="https://qiita.com/shiva_it/items/40e34159d46903006977"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Qiita記事</a
+              >
+              を参考にすると分かりやすいです。
+            </p>
+            <p>
+              動画や読み物形式のコース、学習プラン、試験対策、ラボなどを通してAWSを学べます。
+              AWSアカウントを作成していなくても、AWS Builder ID
+              を作成すれば利用できます。
+            </p>
+            <p>
+              ここでいうAWSアカウントは、EC2やS3などのAWSリソースを作るための課金アカウントです。
+              一方、AWS Builder ID は、Skill
+              Builderなどにサインインするための学習用アカウントのようなものです。
+            </p>
+            <p>
+              Skill Builderでは、無料で受講できるコースも多くあります。
+              また、一部には実際のAWS環境を無料で使って操作できるラボもあります(例：第8回で使用したラボ)。ただし、無料でないラボの場合は、有料サブスクリプションが必要になります。
+            </p>
+            <p>
+              AWSを初めて学ぶ人は、まずSkill
+              Builderで基礎コースを見てから、Black
+              BeltやWorkshopに進むと理解しやすいかもしれないです。
+            </p>
+
+            <h3>AWS Workshops</h3>
+            <p>
+              <a
+                href="https://workshops.aws/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >AWS Workshops</a
+              >
+              は、手順書に沿って実際にAWSサービスを作りながら学ぶハンズオン教材です。
+            </p>
+            <p>
+              この勉強会で行ったように、AWSコンソールやAWS
+              CLIを使って、実際にリソースを作成しながら学ぶ形式です。
+            </p>
+            <p>
+              ただし、Workshopは自分のAWSアカウントで実施することが多く、作成するリソースの種類によっては料金が発生する可能性があります。
+              実施後は、Cleanup手順に従ってリソースを削除することが大切です。
+            </p>
+
+            <h3>JP Contents Hub</h3>
+            <p>
+              <a
+                href="https://aws-samples.github.io/jp-contents-hub/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >JP Contents Hub</a
+              >
+              は、日本語のAWSハンズオンやワークショップを探すためのリンク集です。
+            </p>
+            <p>
+              気になるサービス名で検索し、
+              <a
+                href="https://workshops.aws/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >AWS Workshops</a
+              >より多くの日本語のハンズオンを探すことができます。
+            </p>
+          </section>
+
+          <section id="cleanup-check">
+            <h2>2. ハンズオン後のリソースが残っていないか確認</h2>
+            <p>
+              不要な課金を避けるため、勉強会で作成したリソースが残っていないか、最後にあらためて確認をお願いします。
+            </p>
+            <p>
+              請求が発生しているサービスは<a
+                href="./1.html#billing-check"
+                target="_blank"
+                rel="noopener noreferrer"
+                >請求画面やCost Explorer</a
+              >で確認することができます。ただ無料枠が適用されているサービスは表示されず、無料期間が過ぎてからでないと確認できないため、注意が必要です。
+            </p>
+          </section>
+
+          <section id="account">
+            <h2>3. 無料期間後のAWSアカウントについて</h2>
+            <p>
+              7/15以前に、12か月無料枠でAWSアカウントを作成した方は、無料枠の期間が終了すると、無料枠を超えた利用分が通常の従量課金になります。勉強会で作成したリソースが残っていないか確認をお願いします。
+            </p>
+            <p>
+              7/15以降に、新しいAWS Free planで作成した方は、Free
+              planの期間が終了すると、Paid
+              planへ変更していなければアカウントが閉じられる扱いになります。そのため、自分でPaid
+              planへ変更していなければ、原則としてそのまま課金が続くわけではありません。
+            </p>
+            <p>
+              ただし、Paid
+              planへ変更した場合は、クレジットを使い切ったあとの利用分が通常課金になります。学習を続ける場合は、請求画面、無料枠の利用状況、Budgetsなどを確認しながら使うようにしてください。
+            </p>
+            <p>
+              もうAWSアカウントを使わない場合は、アカウントを閉じることもできます。アカウントを閉じる場合は、rootユーザーでAWSマネジメントコンソールにサインインし、<a
+                href="https://console.aws.amazon.com/billing/home#/account"
+                target="_blank"
+                rel="noopener noreferrer"
+                >アカウントページ</a
+              >から「アカウントを閉鎖」を実行します。
+            </p>
+          </section>
+
+          <section id="official-resources">
+            <h2>4. リンク集</h2>
+
+            <h3>公式学習リソース</h3>
+            <ul>
+              <li>
+                <a
+                  href="https://aws.amazon.com/jp/blogs/news/aws-blackbelt-overview/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >AWS Black Belt Online Seminar 一覧</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://www.youtube.com/playlist?list=PLzWGOASvSx6FIwIC2X1nObr1KcMCBBlqY"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >AWS Black Belt Online Seminar YouTubeプレイリスト</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://aws.amazon.com/jp/training/digital/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >AWS Skill Builder 日本語ページ</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://workshops.aws/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >AWS Workshops</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://aws-samples.github.io/jp-contents-hub/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >JP Contents Hub</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://aws.amazon.com/jp/blogs/news/jp-contents-hub-introduce/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >JP Contents Hub の紹介記事</a
+                >
+              </li>
+            </ul>
+
+            <h3>アカウント・課金確認</h3>
+            <ul>
+              <li>
+                <a
+                  href="https://aws.amazon.com/jp/free/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >AWS Free Tier</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://aws.amazon.com/free/free-tier-faqs/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >AWS Free Tier FAQ</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://docs.aws.amazon.com/accounts/latest/reference/manage-acct-closing.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >AWSアカウントを閉鎖する方法</a
+                >
+              </li>
+            </ul>
+          </section>
+
+          <section id="closing">
+            <h2>5. 最後に</h2>
+            <p>
+              AWSには多くのサービスがあり、今回の勉強会で扱った内容は、その中の一部です。
+            </p>
+
+            <p>
+              それでも、EC2、VPC、RDS、S3、CloudFront、Lambda、SQS、SNSなど、AWSを学ぶうえでよく出てくる基本的なサービスには触れることができたと思います。NAT
+              GatewayとAuroraのハンズオンや、DynamoDBなども扱えればよかったのですが、時間や費用の都合もあり、今回は含めることができませんでした。
+            </p>
+            <p>
+              AWSはサービス数が多く、難しいと思います。ただ、基本的なサービスを一度触っておくと、別のサービスを学ぶときにも、これはどの部分に関係するサービスなのかを理解しやすくなります。
+            </p>
+            <p>
+              また、今はAWS公式のBlack Belt、Skill
+              Builder、Workshopのほか、学習記事、動画、AIなど、調べたり学んだりするための手段も以前よりかなり増えています。今回紹介したリンクも、必要になったときに見返すための参考として使っていただければと思います。
+            </p>
+            <p>
+              この勉強会が、AWSを学ぶきっかけや、今後わからないサービスを調べるときの参考になればと思います。
+            </p>
+
+            <p>ここまでご参加いただき、ありがとうございました。</p>
+          </section>
+        </div>
+
+        <nav class="toc">
+          <h2>目次</h2>
+          <ul>
+            <li><a href="#resources">1. 勉強会後の学習リソース</a></li>
+            <li>
+              <a href="#cleanup-check"
+                >2. ハンズオン後のリソースが残っていないか確認</a
+              >
+            </li>
+            <li><a href="#account">3. 無料期間後のAWSアカウントについて</a></li>
+            <li><a href="#official-resources">4. リンク集</a></li>
+            <li><a href="#closing">5. 最後に</a></li>
+          </ul>
+        </nav>
+      </div>
+    </main>
+
+    <footer>
+      &copy; 2025 勉強会 for AWS licensed under GPLv3 &amp; CC BY-SA 4.0.
+    </footer>
+  </body>
+</html>

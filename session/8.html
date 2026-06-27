@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>第8回：サーバーレスAPIの作成 | 勉強会 for AWS</title>
+    <link rel="stylesheet" href="../common/style.css" />
+    <style>
+      header .insider-header {
+        max-width: 1160px;
+      }
+
+      .img-w800 {
+        width: 100%;
+        max-width: 800px;
+        height: auto;
+      }
+
+      .img-w600 {
+        width: 100%;
+        max-width: 600px;
+        height: auto;
+      }
+
+      .alert-box {
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 5px;
+        border-left: 5px solid #ccc;
+        background-color: #f9f9f9;
+      }
+
+      .alert-box.warning {
+        border-color: #f0ad4e;
+        background-color: #fcf8e3;
+        color: #8a6d3b;
+      }
+
+      .alert-box.info {
+        border-color: #5bc0de;
+        background-color: #d9edf7;
+        color: #31708f;
+      }
+
+      .alert-title {
+        font-weight: bold;
+        display: block;
+        margin-bottom: 5px;
+      }
+
+      .check-list li,
+      .step-list li {
+        margin-bottom: 10px;
+      }
+
+      .code-block {
+        overflow-x: auto;
+        line-height: 1.6;
+      }
+
+      .mini-heading {
+        font-weight: 700;
+        margin-top: 24px;
+        margin-bottom: 8px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 18px 0 24px;
+      }
+
+      th,
+      td {
+        border: 1px solid #d8e2ee;
+        padding: 10px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: #f5f9ff;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <div class="insider-header">
+        <a href="../index.html" class="logo"
+          >勉強会 <span style="font-size: 0.8em">for</span> AWS</a
+        >
+        <span class="header-spacer"></span>
+        <span
+          class="header-btn header-btn-disabled"
+          aria-label="質問板は停止中です"
+        >
+          質問板（停止中）
+        </span>
+      </div>
+    </header>
+    <main>
+      <div class="container">
+        <div class="content">
+          <h1>第8回：サーバーレスAPIの作成(Lambda + API Gateway)</h1>
+          <div class="post-date">Edited at 2026-06-27</div>
+
+          <section id="overview">
+            <h2>使用資料</h2>
+            <ul>
+              <li>
+                <a
+                  href="https://skillbuilder.aws/learn/GQA6FHWPJD/amazon-api-gateway-for-serverless-applications-/S2CSC9WJN5"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >Amazon API Gateway for Serverless Applications
+                  (日本語実写版)</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://skillbuilder.aws/learn/XHRS91KKK6/aws-lambda-foundations-/R69MER3K55"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >AWS Lambda Foundations (日本語実写版)</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://skillbuilder.aws/learn/G3BEYRFNPS/introduction-to-aws-lambda-/PKYQS5JPGN"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >Introduction to AWS Lambda (日本語)</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://skillbuilder.aws/learn/87NHV2TSKV/introduction-to-amazon-api-gateway-/J8QJPBFGAX"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >Introduction to Amazon API Gateway (日本語)</a
+                >
+              </li>
+            </ul>
+            <p>
+              ※この回の勉強会では上記資料を使用しました。なお、「はじめに」以降の内容は上記資料をもとに作成したものではなく、管理人の備忘録として記載しています。作成途中の内容を含むため、正確性は保証できません。
+            </p>
+          </section>
+
+          <section id="intro">
+            <h2>1. はじめに</h2>
+            <p>
+              これまでの回では、Webサーバーやコンテナを使ってアプリケーションを動かす方法を学んできました。
+              ただ、実際の開発では「少しだけバックエンド処理がほしい」「フロントエンドからJSONを返すAPIがほしい」「でもサーバーの台数管理やOS更新まではやりたくない」という場面がよくあります。
+            </p>
+            <p>
+              そのときに強力な選択肢になるのが、<strong
+                >Lambda + API Gateway</strong
+              >
+              によるサーバーレスAPIです。
+              サーバーを自分で起動・管理しなくても、HTTPリクエストを受けて処理し、JSONレスポンスを返すAPIを作れます。
+            </p>
+            <p>
+              今回は、<strong>API Gateway の HTTP API</strong> と
+              <strong>AWS Lambda</strong> を組み合わせて、 ブラウザや
+              <code>curl</code> から呼び出せるシンプルなAPIを作成します。
+              ただ動かすだけではなく、 「なぜ API Gateway が必要なのか」「Lambda
+              はどこまで面倒を見てくれるのか」「ブラウザ連携でなぜ CORS
+              が必要なのか」まで、実務につながる形で整理していきます。
+            </p>
+
+            <div class="alert-box warning">
+              <span class="alert-title">⚠️ 課金に関する注意</span>
+              <p>
+                Lambda と API Gateway
+                は少量であれば安価に使いやすいサービスですが、無料利用枠の条件や利用量によっては料金が発生します。
+                また、CloudWatch Logs
+                に出力したログにも料金がかかる場合があります。 学習後は不要な
+                Lambda 関数、API Gateway、関連ログを削除するようにしてください。
+              </p>
+            </div>
+
+            <div class="alert-box info">
+              <span class="alert-title">この回の位置づけ</span>
+              <p>
+                今回の内容は、静的サイトやフロントエンドからバックエンドAPIを呼び出すための入口になります。
+                今後、投稿機能や問い合わせ機能、外部連携APIなどを作るときの基礎になります。
+              </p>
+            </div>
+          </section>
+
+          <section id="goal">
+            <h2>2. ゴール</h2>
+            <ul class="check-list">
+              <li>
+                サーバーレスAPIの考え方と、Lambda / API Gateway
+                の役割分担を説明できるようになる
+              </li>
+              <li>
+                HTTP API を使って <code>GET</code> /
+                <code>POST</code> のエンドポイントを公開できるようになる
+              </li>
+              <li>Lambda で JSON レスポンスを返す基本形を理解する</li>
+              <li>ブラウザ連携で必要になる CORS の意味を理解する</li>
+              <li>
+                エラー時に API Gateway と CloudWatch Logs
+                を使って原因を切り分けられるようになる
+              </li>
+            </ul>
+          </section>
+
+          <section id="lecture">
+            <h2>3. 解説</h2>
+
+            <h3 id="lecture-api">3-1. そもそもAPIとは何か</h3>
+            <p>
+              API は、アプリケーション同士がデータをやり取りするための窓口です。
+              たとえば、ブラウザ上のJavaScriptが「一覧データを取得したい」と思ったとき、
+              バックエンドに
+              <code>GET /items</code>
+              のようなリクエストを送り、JSONを受け取ります。
+            </p>
+            <p>
+              つまりAPIは、<strong>フロントエンドとバックエンドをつなぐ約束</strong>です。
+              URL、HTTPメソッド、リクエスト形式、レスポンス形式が決まっていると、画面側と処理側を分担して開発しやすくなります。
+            </p>
+
+            <h3 id="lecture-serverless">3-2. なぜサーバーレスなのか</h3>
+            <p>
+              通常のサーバー運用では、OSの管理、ミドルウェアの更新、スケーリング、障害対応などを考える必要があります。
+              学習用途や小さなAPI、イベント駆動の処理では、これらの運用負荷が大きく感じられることがあります。
+            </p>
+            <p>
+              AWS Lambda
+              は、<strong>サーバーを管理せずにコードを実行できるコンピューティングサービス</strong>です。
+              AWS公式ドキュメントでも、サーバー管理不要、需要に応じた自動スケーリング、従量課金が特徴として説明されています。
+              また、Lambda
+              は実行基盤側でキャパシティやOS管理、ログ出力などを担ってくれます。
+            </p>
+            <p>
+              つまりサーバーレスは、
+              <strong
+                >「サーバーが存在しない」ではなく、「サーバー運用を利用者が意識しにくくなる」</strong
+              >
+              という考え方です。
+            </p>
+
+            <h3 id="lecture-lambda">3-3. Lambda の役割</h3>
+            <p>
+              Lambda は、受け取ったイベントをもとに処理を実行する場所です。
+              今回は API Gateway から渡される HTTP リクエスト情報を受け取り、
+              条件に応じて JSON を返す関数を作ります。
+            </p>
+            <p>
+              Lambda では、Node.js や Python
+              など複数のランタイムが利用できます。
+              2026年3月時点のAWS公式ドキュメントでは、Node.js 24 / 22 / 20
+              など複数の Node.js ランタイムがサポートされています。
+            </p>
+            <p>
+              初学者のハンズオンでは、書きやすさと動作確認のしやすさから Node.js
+              か Python を選ぶことが多いです。 今回は JSON
+              の扱いがわかりやすいように Node.js を使用します。
+            </p>
+
+            <h3 id="lecture-apigw">3-4. API Gateway の役割</h3>
+            <p>
+              API Gateway は、HTTP リクエストを受け付ける「表玄関」です。
+              AWS公式では、APIの作成・公開・保守・監視・保護を行うサービスであり、
+              バックエンドの
+              EC2、Lambda、Webアプリなどへのフロントドアとして振る舞うと説明されています。
+            </p>
+            <p>
+              フロントエンドや外部クライアントは API Gateway にアクセスし、 API
+              Gateway が背後の Lambda を呼び出します。
+              これにより、URL設計、認可、CORS、ログ、将来的なルーティング追加などを整理しやすくなります。
+            </p>
+
+            <!-- img: ブラウザまたはcurlからAPI GatewayのHTTP APIへアクセスし、API GatewayがLambdaを呼び出してJSONレスポンスを返す構成図 -->
+
+            <h3 id="lecture-httpapi">3-5. 今回 HTTP API を選ぶ理由</h3>
+            <p>
+              API Gateway には大きく <strong>REST API</strong> と
+              <strong>HTTP API</strong> があります。
+              AWS公式ドキュメントでは、REST API はより多くの機能を持ち、HTTP API
+              は最小限の機能で低価格に提供されると説明されています。
+            </p>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>観点</th>
+                  <th>HTTP API</th>
+                  <th>REST API</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>向いている用途</td>
+                  <td>シンプルなAPI、学習用、小〜中規模のバックエンド</td>
+                  <td>高度なAPI管理が必要な本番API</td>
+                </tr>
+                <tr>
+                  <td>価格感</td>
+                  <td>比較的安価</td>
+                  <td>HTTP APIより高機能、そのぶん重め</td>
+                </tr>
+                <tr>
+                  <td>特徴</td>
+                  <td>CORS設定、JWT認可、Lambda統合を手軽に使いやすい</td>
+                  <td>
+                    APIキー、クライアントごとのレート制限、リクエスト検証、WAF統合、Private
+                    API などが使える
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <p>
+              今回の教材では、まず「APIを公開して呼び出せる」ことに集中したいので
+              HTTP API を選びます。 ただし、本番で
+              <strong
+                >APIキー管理・厳密なリクエスト検証・WAF・Private API</strong
+              >
+              が必要であれば、REST API を選ぶ判断も重要です。
+            </p>
+
+            <h3 id="lecture-flow">3-6. リクエストはどう流れるのか</h3>
+            <p>
+              HTTP API の Lambda プロキシ統合では、クライアントが API
+              を呼ぶと、API Gateway がリクエスト情報を Lambda に渡し、Lambda
+              のレスポンスをそのままクライアントへ返します。
+            </p>
+            <p>
+              HTTP API のペイロード形式 2.0 では、たとえば HTTP メソッドは
+              <code>event.requestContext.http.method</code>、 クエリ文字列は
+              <code>event.queryStringParameters</code>、本文は
+              <code>event.body</code> から取得できます。
+            </p>
+            <p>
+              また、レスポンスを細かく制御したい場合は、
+              <code>statusCode</code>、<code>headers</code>、<code>body</code>
+              を含むオブジェクトを返します。
+              この形が崩れると期待どおりに返せず、エラーの原因になります。
+            </p>
+
+            <div class="code-wrapper">
+              <pre class="code-block"><code>{
+  statusCode: 200,
+  headers: {
+    "Content-Type": "application/json; charset=utf-8"
+  },
+  body: JSON.stringify({ message: "Hello" })
+}</code></pre>
+            </div>
+
+            <h3 id="lecture-cors">3-7. ブラウザ連携で CORS が必要になる理由</h3>
+            <p>
+              静的サイトを S3 や CloudFront で公開し、そこから別ドメインの API
+              Gateway
+              を呼ぶと、ブラウザはセキュリティ上の理由でクロスオリジン通信を制限します。
+              これが CORS の問題です。
+            </p>
+            <p>
+              AWS公式ドキュメントでも、HTTP API の CORS
+              は別オリジンのWebアプリからAPIを呼ぶときに必要であり、設定すると
+              API Gateway がプリフライトの
+              <code>OPTIONS</code>
+              へ自動応答し、設定済みのCORSヘッダーを付与すると説明されています。さらに、HTTP
+              API 側で CORS を設定した場合、バックエンドが返した CORS
+              ヘッダーは無視されます。
+            </p>
+            <p>
+              そのため、学習段階では「Lambda 側でも CORS
+              ヘッダーを返す」ではなく、
+              <strong>まず API Gateway 側で CORS を設定する</strong
+              >と考えると整理しやすいです。
+            </p>
+
+            <h3 id="lecture-summary">3-8. この構成の良いところと限界</h3>
+            <p>
+              Lambda + API Gateway の構成は、少ない手間で API
+              を公開できるのが強みです。
+              一方で、処理が大きくなってくると、関数分割、認証、エラーハンドリング、データベース接続、IaC
+              化などを考える必要があります。
+              今回はまず土台を作ることが目的なので、最小構成で理解を固めましょう。
+            </p>
+          </section>
+
+          <section id="handson">
+            <h2>4. ハンズオン</h2>
+            <p>
+              このハンズオンでは、1つの Lambda 関数に <code>GET /hello</code> と
+              <code>POST /hello</code> をつなぎ、 API Gateway の HTTP API
+              として公開します。 最後に
+              <code>curl</code> とブラウザで動作確認し、必要であれば CORS
+              も有効化します。
+            </p>
+
+            <div class="mini-heading">事前準備</div>
+            <ul class="check-list">
+              <li>AWS マネジメントコンソールにログインできること</li>
+              <li>作業リージョンを決めていること（例: 東京リージョン）</li>
+              <li>
+                <code>curl</code> または Postman など、HTTP
+                リクエストを送れる環境があること
+              </li>
+              <li>所要時間の目安は 45〜60 分程度</li>
+            </ul>
+
+            <h3 id="handson-arch">4-1. 作るもの</h3>
+            <p>今回作る API は次の2つです。</p>
+            <ul>
+              <li>
+                <code>GET /hello?name=Yutaka</code> → 名前付きのメッセージを返す
+              </li>
+              <li>
+                <code>POST /hello</code> → JSON本文を受け取り、その内容を返す
+              </li>
+            </ul>
+
+            <!-- img: GET /hello と POST /hello の2ルートが同じLambda関数に接続される構成図 -->
+
+            <h3 id="handson-lambda">4-2. Lambda 関数を作成する</h3>
+            <ol class="step-list">
+              <li>
+                AWS マネジメントコンソールで
+                <strong>Lambda</strong> を開きます。
+              </li>
+              <li><strong>関数の作成</strong> を押します。</li>
+              <li><strong>一から作成</strong> を選択します。</li>
+              <li>
+                関数名に
+                <code>session8-hello-api</code>
+                など、わかりやすい名前を入力します。
+              </li>
+              <li>
+                ランタイムは、コンソールで選択可能なサポート中の Node.js
+                ランタイムを選びます。学習用としては新しめの LTS
+                系を選べば問題ありません。
+              </li>
+              <li>
+                実行ロールは
+                <strong
+                  >基本的な Lambda アクセス権限で新しいロールを作成</strong
+                >
+                を選びます。
+              </li>
+              <li><strong>関数の作成</strong> を押します。</li>
+            </ol>
+
+            <p>
+              関数が作成できたら、コンソール上のコードを次の内容に置き換えて
+              <strong>Deploy</strong> してください。
+            </p>
+
+            <div class="code-wrapper">
+              <pre
+                class="code-block"
+              ><code>export const handler = async (event) =&gt; {
+  console.log('event:', JSON.stringify(event, null, 2));
+
+  const method = event?.requestContext?.http?.method || 'GET';
+
+  if (method === 'GET') {
+    const name = event?.queryStringParameters?.name || 'world';
+    return response(200, {
+      message: `こんにちは、${name} さん`,
+      method: 'GET'
+    });
+  }
+
+  if (method === 'POST') {
+    let requestBody = {};
+
+    try {
+      requestBody = event?.body ? JSON.parse(event.body) : {};
+    } catch (error) {
+      return response(400, {
+        message: 'JSON の形式が不正です'
+      });
+    }
+
+    const name = requestBody.name || 'anonymous';
+    const message = requestBody.message || 'メッセージなし';
+
+    return response(200, {
+      message: 'POST リクエストを受け取りました',
+      received: {
+        name,
+        message
+      },
+      method: 'POST'
+    });
+  }
+
+  return response(405, {
+    message: '許可されていないメソッドです'
+  });
+};
+
+const response = (statusCode, payload) =&gt; ({
+  statusCode,
+  headers: {
+    'Content-Type': 'application/json; charset=utf-8'
+  },
+  body: JSON.stringify(payload)
+});</code></pre>
+            </div>
+
+            <p>このコードのポイントは次のとおりです。</p>
+            <ul>
+              <li>
+                HTTP メソッドを見て <code>GET</code> と
+                <code>POST</code> を分岐している
+              </li>
+              <li>
+                <code>GET</code> ではクエリ文字列の <code>name</code> を読む
+              </li>
+              <li>
+                <code>POST</code> では JSON 本文を
+                <code>JSON.parse()</code> で読む
+              </li>
+              <li>
+                レスポンスは <code>statusCode</code> と
+                <code>body</code> を含む形で返す
+              </li>
+              <li>
+                <code>console.log()</code> で event を出力し、CloudWatch Logs
+                で中身を確認できるようにしている
+              </li>
+            </ul>
+
+            <h3 id="handson-lambda-test">4-3. Lambda 単体でテストする</h3>
+            <p>
+              API Gateway をつなぐ前に、まず Lambda
+              単体で最低限の動作確認をしておくと安心です。 Lambda コンソールの
+              <strong>テスト</strong>
+              から、次のようなイベントを作成して実行してください。
+            </p>
+
+            <div class="mini-heading">GET 用のテストイベント例</div>
+            <div class="code-wrapper">
+              <pre class="code-block"><code>{
+  "requestContext": {
+    "http": {
+      "method": "GET"
+    }
+  },
+  "queryStringParameters": {
+    "name": "Yutaka"
+  }
+}</code></pre>
+            </div>
+
+            <div class="mini-heading">POST 用のテストイベント例</div>
+            <div class="code-wrapper">
+              <pre class="code-block"><code>{
+  "requestContext": {
+    "http": {
+      "method": "POST"
+    }
+  },
+  "body": "{\"name\":\"Yutaka\",\"message\":\"serverless API の練習中です\"}"
+}</code></pre>
+            </div>
+
+            <h3 id="handson-apigw">4-4. API Gateway の HTTP API を作成する</h3>
+            <ol class="step-list">
+              <li>
+                AWS コンソールで <strong>API Gateway</strong> を開きます。
+              </li>
+              <li><strong>API を作成</strong> を押します。</li>
+              <li>
+                <strong>HTTP API</strong> の <strong>構築</strong> を選びます。
+              </li>
+              <li>
+                統合先として <strong>Lambda</strong> を選び、先ほど作成した
+                <code>session8-hello-api</code> を指定します。
+              </li>
+              <li>ルートを追加します。少なくとも次の2つを作成します。</li>
+            </ol>
+
+            <div class="code-wrapper">
+              <pre class="code-block"><code>GET  /hello
+POST /hello</code></pre>
+            </div>
+
+            <ol class="step-list" start="6">
+              <li>
+                ステージはデフォルトの
+                <code>$default</code> のままで問題ありません。
+              </li>
+              <li>
+                自動デプロイを有効にしたまま作成すると、変更がすぐ反映されて学習しやすいです。
+              </li>
+              <li>
+                作成後、表示される <strong>Invoke URL</strong> を控えます。
+              </li>
+            </ol>
+
+            <p>
+              たとえば Invoke URL が次のような形なら、今回のAPIのURLはその後ろに
+              <code>/hello</code> を付けたものになります。
+            </p>
+
+            <div class="code-wrapper">
+              <pre
+                class="code-block"
+              ><code>https://abc123defg.execute-api.ap-northeast-1.amazonaws.com</code></pre>
+            </div>
+
+            <p>つまり、実際の呼び出し先は次のようになります。</p>
+            <div class="code-wrapper">
+              <pre
+                class="code-block"
+              ><code>GET  https://abc123defg.execute-api.ap-northeast-1.amazonaws.com/hello
+POST https://abc123defg.execute-api.ap-northeast-1.amazonaws.com/hello</code></pre>
+            </div>
+
+            <h3 id="handson-test">4-5. API を呼び出して動作確認する</h3>
+            <p>まずは <code>GET</code> から試します。</p>
+
+            <div class="mini-heading">ブラウザで確認</div>
+            <div class="code-wrapper">
+              <pre
+                class="code-block"
+              ><code>https://abc123defg.execute-api.ap-northeast-1.amazonaws.com/hello?name=Yutaka</code></pre>
+            </div>
+
+            <div class="mini-heading">curl で確認</div>
+            <div class="code-wrapper">
+              <pre
+                class="code-block"
+              ><code>curl "https://abc123defg.execute-api.ap-northeast-1.amazonaws.com/hello?name=Yutaka"</code></pre>
+            </div>
+
+            <p>次のような JSON が返れば成功です。</p>
+            <div class="code-wrapper">
+              <pre class="code-block"><code>{
+  "message": "こんにちは、Yutaka さん",
+  "method": "GET"
+}</code></pre>
+            </div>
+
+            <p>次に <code>POST</code> を試します。</p>
+            <div class="code-wrapper">
+              <pre
+                class="code-block"
+              ><code>curl -X POST "https://abc123defg.execute-api.ap-northeast-1.amazonaws.com/hello" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Yutaka","message":"serverless API の練習中です"}'</code></pre>
+            </div>
+
+            <p>次のようなレスポンスが返れば成功です。</p>
+            <div class="code-wrapper">
+              <pre class="code-block"><code>{
+  "message": "POST リクエストを受け取りました",
+  "received": {
+    "name": "Yutaka",
+    "message": "serverless API の練習中です"
+  },
+  "method": "POST"
+}</code></pre>
+            </div>
+
+            <h3 id="handson-cors">
+              4-6. ブラウザから呼ぶために CORS を有効化する
+            </h3>
+            <p>
+              今の状態でも <code>curl</code> では動きますが、S3 や CloudFront
+              で公開した静的サイトから <code>fetch()</code> で呼ぶと、CORS
+              エラーになることがあります。 その場合は API Gateway の HTTP API
+              側で CORS を設定します。
+            </p>
+
+            <ol class="step-list">
+              <li>API Gateway で対象の HTTP API を開きます。</li>
+              <li><strong>CORS</strong> を選択します。</li>
+              <li>
+                学習用なら一時的に
+                <code>Access-Control-Allow-Origin: *</code>
+                にしてもかまいません。
+              </li>
+              <li>
+                本番を意識するなら、静的サイトのドメインだけを明示します。例:
+                <code>https://aws.cloud-n-code.com</code>
+              </li>
+              <li>
+                許可メソッドは <code>GET</code>, <code>POST</code>,
+                <code>OPTIONS</code> を追加します。
+              </li>
+              <li>
+                許可ヘッダーは少なくとも
+                <code>content-type</code> を追加します。
+              </li>
+              <li>保存して再テストします。</li>
+            </ol>
+
+            <p>
+              フロントエンドからの確認用として、次のような
+              <code>fetch()</code> も試せます。
+            </p>
+
+            <div class="code-wrapper">
+              <pre
+                class="code-block"
+              ><code>fetch('https://abc123defg.execute-api.ap-northeast-1.amazonaws.com/hello?name=Yutaka')
+  .then((res) =&gt; res.json())
+  .then((data) =&gt; console.log(data))
+  .catch((err) =&gt; console.error(err));</code></pre>
+            </div>
+
+            <h3 id="handson-logs">4-7. CloudWatch Logs で中身を確認する</h3>
+            <p>
+              API がうまく動かないときは、まず Lambda 側のログを確認します。
+              今回のコードでは
+              <code>console.log('event:', ...)</code> を入れているので、API
+              Gateway からどのようなイベントが渡ってきたかを見られます。
+            </p>
+            <ol class="step-list">
+              <li>Lambda 関数を開きます。</li>
+              <li><strong>モニタリング</strong> タブを開きます。</li>
+              <li><strong>CloudWatch Logs を表示</strong> を押します。</li>
+              <li>
+                直近のログストリームを開き、<code>event</code>
+                の内容とエラーメッセージを確認します。
+              </li>
+            </ol>
+
+            <h3 id="handson-trouble">4-8. よくあるハマりどころ</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>症状</th>
+                  <th>主な原因</th>
+                  <th>確認ポイント</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>502 Bad Gateway</td>
+                  <td>Lambda のレスポンス形式が不正</td>
+                  <td>
+                    <code>statusCode</code> /
+                    <code>body</code> の返し方、JSON文字列化の有無を確認する
+                  </td>
+                </tr>
+                <tr>
+                  <td>ブラウザだけ失敗する</td>
+                  <td>CORS 未設定</td>
+                  <td>
+                    API Gateway の CORS
+                    設定、許可オリジン、許可メソッドを確認する
+                  </td>
+                </tr>
+                <tr>
+                  <td>POST で 400 になる</td>
+                  <td>リクエスト本文がJSONとして壊れている</td>
+                  <td>
+                    <code>curl</code> の
+                    <code>-H "Content-Type: application/json"</code>
+                    と本文の引用符を確認する
+                  </td>
+                </tr>
+                <tr>
+                  <td>想定外のメソッドになる</td>
+                  <td>ルート設定の不足、URLの誤り</td>
+                  <td>
+                    API Gateway の Route と Invoke URL の組み合わせを確認する
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <h3 id="handson-extend">4-9. 発展課題</h3>
+            <ul class="check-list">
+              <li>
+                <code>/health</code> を追加し、ヘルスチェック用レスポンスを返す
+              </li>
+              <li>
+                <code>POST /hello</code> で <code>message</code> が空なら
+                <code>400</code> を返す
+              </li>
+              <li>Lambda を1つではなく、ルートごとに関数分割してみる</li>
+              <li>API Gateway の認証やカスタムドメインを調べてみる</li>
+              <li>
+                このAPIを、自分の静的サイトの
+                <code>fetch()</code> から呼び出してみる
+              </li>
+            </ul>
+
+            <h3 id="handson-cleanup">4-10. 後片付け</h3>
+            <ol class="step-list">
+              <li>不要になった API Gateway の HTTP API を削除する</li>
+              <li>不要になった Lambda 関数を削除する</li>
+              <li>必要に応じて CloudWatch Logs のロググループも削除する</li>
+            </ol>
+          </section>
+
+          <section id="summary">
+            <h2>5. まとめ</h2>
+            <p>
+              今回は、Lambda と API Gateway
+              を使って、サーバーレスAPIの最小構成を体験しました。
+              重要なのは、単に「動いた」で終わるのではなく、
+              <strong>API Gateway がHTTPの入口、Lambda が処理本体</strong>
+              という役割分担を理解することです。
+            </p>
+            <p>
+              また、HTTP API を使うとシンプルなAPIを比較的軽く作れますが、
+              すべての要件に万能というわけではありません。
+              APIキー、厳密な検証、WAF、Private API などが必要なら REST API
+              の検討も必要です。
+              この切り分けができるようになると、設計の質が一段上がります。
+            </p>
+            <p>
+              次のステップとしては、今回作ったAPIを静的サイトの画面から呼び出し、
+              ユーザー入力を受けて一覧や登録処理を行う形に発展させると、より実務に近い理解につながります。
+            </p>
+          </section>
+        </div>
+
+        <nav class="toc">
+          <h2>目次</h2>
+          <ul>
+            <li><a href="#intro">1. はじめに</a></li>
+            <li><a href="#goal">2. ゴール</a></li>
+            <li><a href="#lecture">3. 解説</a></li>
+            <li><a href="#lecture-api">3-1. そもそもAPIとは何か</a></li>
+            <li>
+              <a href="#lecture-serverless">3-2. なぜサーバーレスなのか</a>
+            </li>
+            <li><a href="#lecture-lambda">3-3. Lambda の役割</a></li>
+            <li><a href="#lecture-apigw">3-4. API Gateway の役割</a></li>
+            <li><a href="#lecture-httpapi">3-5. HTTP API を選ぶ理由</a></li>
+            <li><a href="#lecture-flow">3-6. リクエストの流れ</a></li>
+            <li><a href="#lecture-cors">3-7. CORS の考え方</a></li>
+            <li><a href="#handson">4. ハンズオン</a></li>
+            <li><a href="#handson-lambda">4-2. Lambda 関数を作成する</a></li>
+            <li><a href="#handson-apigw">4-4. HTTP API を作成する</a></li>
+            <li><a href="#handson-test">4-5. API をテストする</a></li>
+            <li><a href="#handson-cors">4-6. CORS を有効化する</a></li>
+            <li><a href="#handson-trouble">4-8. よくあるハマりどころ</a></li>
+            <li><a href="#summary">5. まとめ</a></li>
+          </ul>
+        </nav>
+      </div>
+    </main>
+
+    <footer>
+      &copy; 2025 勉強会 for AWS licensed under GPLv3 &amp; CC BY-SA 4.0.
+    </footer>
+    <script src="../common/script.js"></script>
+  </body>
+</html>
